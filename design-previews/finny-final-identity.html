@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finny — Brand Identity</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Core Palette */
+            --plum: #7c5c7d;
+            --plum-light: #9d7e9e;
+            --plum-dark: #5a3d5b;
+
+            --cream: #fdfbf7;
+            --cream-dark: #f5f0e8;
+            --sand: #e8e0d4;
+
+            --honey: #d4a84b;
+            --honey-light: #f0d9a0;
+
+            --stone: #3d3833;
+            --stone-light: #6b635a;
+            --stone-muted: #9c958c;
+
+            --success: #5a9a6e;
+            --danger: #c76c6c;
+
+            /* Typography */
+            --font-display: 'DM Serif Display', Georgia, serif;
+            --font-body: 'Outfit', -apple-system, sans-serif;
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            --space-3xl: 64px;
+            --space-4xl: 96px;
+
+            /* Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+            --radius-full: 100px;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--cream);
+            color: var(--stone);
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        /* Page Layout */
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-4xl) var(--space-xl);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: var(--space-4xl) 0;
+            margin-bottom: var(--space-4xl);
+            animation: fadeIn 1s ease-out;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: var(--space-sm) var(--space-lg);
+            background: var(--sand);
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--stone-light);
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-lg);
+        }
+
+        .hero-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .logo-mark {
+            width: 64px;
+            height: 64px;
+            background: var(--plum);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--cream);
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+            box-shadow: 0 8px 32px rgba(124, 92, 125, 0.25);
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            color: var(--stone);
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: 3.5rem;
+            font-weight: 400;
+            color: var(--stone);
+            margin-bottom: var(--space-md);
+            letter-spacing: -0.5px;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--stone-light);
+            max-width: 500px;
+            margin: 0 auto;
+            font-weight: 300;
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+            color: var(--stone);
+            margin-bottom: var(--space-xl);
+            text-align: center;
+        }
+
+        .section-subtitle {
+            font-size: 0.95rem;
+            color: var(--stone-muted);
+            text-align: center;
+            margin-top: calc(var(--space-sm) * -1);
+            margin-bottom: var(--space-2xl);
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            box-shadow: 0 4px 24px rgba(61, 56, 51, 0.06);
+            border: 1px solid var(--sand);
+        }
+
+        /* Color Palette Section */
+        .palette-section {
+            margin-bottom: var(--space-4xl);
+            animation: fadeInUp 0.8s ease-out 0.1s both;
+        }
+
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+        }
+
+        .color-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(61, 56, 51, 0.06);
+            border: 1px solid var(--sand);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .color-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(61, 56, 51, 0.1);
+        }
+
+        .color-swatch {
+            height: 120px;
+            display: flex;
+            align-items: flex-end;
+            padding: var(--space-md);
+        }
+
+        .color-info {
+            padding: var(--space-md);
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-xs);
+        }
+
+        .color-hex {
+            font-size: 0.8rem;
+            color: var(--stone-muted);
+            font-family: var(--font-body);
+        }
+
+        .color-usage {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-top: var(--space-sm);
+            line-height: 1.5;
+        }
+
+        /* Typography Section */
+        .typography-section {
+            margin-bottom: var(--space-4xl);
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .type-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-xl);
+        }
+
+        .type-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            box-shadow: 0 4px 24px rgba(61, 56, 51, 0.06);
+            border: 1px solid var(--sand);
+        }
+
+        .type-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--plum);
+            margin-bottom: var(--space-md);
+        }
+
+        .type-sample-display {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            color: var(--stone);
+            margin-bottom: var(--space-md);
+            line-height: 1.3;
+        }
+
+        .type-sample-body {
+            font-family: var(--font-body);
+            font-size: 1rem;
+            color: var(--stone-light);
+            margin-bottom: var(--space-md);
+            font-weight: 300;
+        }
+
+        .type-meta {
+            font-size: 0.8rem;
+            color: var(--stone-muted);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--sand);
+        }
+
+        /* Voice Section */
+        .voice-section {
+            margin-bottom: var(--space-4xl);
+            animation: fadeInUp 0.8s ease-out 0.3s both;
+        }
+
+        .voice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .voice-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: 0 4px 24px rgba(61, 56, 51, 0.06);
+            border: 1px solid var(--sand);
+            border-left: 3px solid var(--plum);
+        }
+
+        .voice-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-sm);
+            color: var(--stone);
+        }
+
+        .voice-example {
+            font-style: italic;
+            color: var(--stone-light);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Principles Section */
+        .principles-section {
+            margin-bottom: var(--space-4xl);
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .principle-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: 0 4px 24px rgba(61, 56, 51, 0.06);
+            border: 1px solid var(--sand);
+            text-align: center;
+        }
+
+        .principle-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--cream-dark);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-md);
+            color: var(--plum);
+        }
+
+        .principle-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-sm);
+        }
+
+        .principle-desc {
+            font-size: 0.85rem;
+            color: var(--stone-muted);
+            line-height: 1.5;
+        }
+
+        /* Mockups Section */
+        .mockups-section {
+            margin-bottom: var(--space-4xl);
+            animation: fadeInUp 0.8s ease-out 0.5s both;
+        }
+
+        .mockups-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-xl);
+        }
+
+        .mockup-wrapper {
+            text-align: center;
+        }
+
+        .phone {
+            width: 100%;
+            max-width: 240px;
+            margin: 0 auto;
+            aspect-ratio: 9/19.5;
+            background: var(--stone);
+            border-radius: 36px;
+            padding: 10px;
+            box-shadow: 0 24px 64px rgba(61, 56, 51, 0.2);
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--cream);
+            border-radius: 28px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mockup-label {
+            margin-top: var(--space-lg);
+            font-size: 0.85rem;
+            color: var(--stone-muted);
+            font-weight: 500;
+        }
+
+        /* Screen Content Styles */
+        .screen-header {
+            padding: var(--space-lg) var(--space-lg) var(--space-md);
+        }
+
+        .screen-greeting {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-bottom: 2px;
+        }
+
+        .screen-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            color: var(--stone);
+        }
+
+        .balance-card {
+            margin: 0 var(--space-md) var(--space-md);
+            background: var(--plum);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            color: var(--cream);
+        }
+
+        .balance-label {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .balance-amount {
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+        }
+
+        .balance-sub {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin-top: var(--space-sm);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--honey);
+            border-radius: 2px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-sm);
+            padding: 0 var(--space-md) var(--space-md);
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            border: 1px solid var(--sand);
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--stone-muted);
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .stat-value.success { color: var(--success); }
+
+        .section-label {
+            font-size: 0.7rem;
+            color: var(--stone-muted);
+            padding: var(--space-sm) var(--space-md);
+            font-weight: 500;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) var(--space-md);
+            margin: 0 var(--space-md) var(--space-xs);
+            background: white;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--sand);
+        }
+
+        .transaction-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .transaction-amount {
+            font-size: 0.8rem;
+            color: var(--plum);
+            font-weight: 500;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: var(--space-xl);
+        }
+
+        .login-logo {
+            width: 56px;
+            height: 56px;
+            background: var(--plum);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--cream);
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: var(--space-md);
+        }
+
+        .login-title {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .login-tagline {
+            font-size: 0.8rem;
+            color: var(--stone-muted);
+            margin-bottom: var(--space-2xl);
+        }
+
+        .login-input {
+            width: 100%;
+            background: white;
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-sm);
+            font-size: 0.8rem;
+            color: var(--stone-muted);
+        }
+
+        .login-button {
+            width: 100%;
+            background: var(--plum);
+            color: var(--cream);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* Add Screen */
+        .add-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: var(--space-lg);
+        }
+
+        .add-header {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .add-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+        }
+
+        .add-amount {
+            text-align: center;
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            color: var(--plum);
+            margin-bottom: var(--space-xl);
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+        }
+
+        .category-chip {
+            background: white;
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-xs);
+            font-size: 0.7rem;
+            text-align: center;
+            color: var(--stone-light);
+        }
+
+        .category-chip.active {
+            background: var(--plum);
+            color: var(--cream);
+            border-color: var(--plum);
+        }
+
+        .add-button {
+            margin-top: auto;
+            background: var(--plum);
+            color: var(--cream);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* Invite Screen */
+        .invite-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            padding: var(--space-xl);
+        }
+
+        .invite-progress {
+            display: flex;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-xl);
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sand);
+        }
+
+        .progress-dot.active {
+            background: var(--plum);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .progress-dot.done {
+            background: var(--success);
+        }
+
+        .invite-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            margin-bottom: var(--space-xs);
+            text-align: center;
+        }
+
+        .invite-subtitle {
+            font-size: 0.8rem;
+            color: var(--stone-muted);
+            margin-bottom: var(--space-xl);
+            text-align: center;
+        }
+
+        .qr-placeholder {
+            width: 120px;
+            height: 120px;
+            background: white;
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .qr-inner {
+            width: 100px;
+            height: 100px;
+            background: repeating-linear-gradient(
+                45deg,
+                var(--stone) 0px,
+                var(--stone) 4px,
+                white 4px,
+                white 8px
+            );
+            border-radius: 4px;
+            opacity: 0.3;
+        }
+
+        .share-button {
+            background: white;
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-lg);
+            font-size: 0.8rem;
+            color: var(--stone);
+            margin-bottom: var(--space-xl);
+        }
+
+        .skip-link {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-top: auto;
+        }
+
+        /* Components Section */
+        .components-section {
+            margin-bottom: var(--space-4xl);
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+        }
+
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xl);
+        }
+
+        .component-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: 0 4px 24px rgba(61, 56, 51, 0.06);
+            border: 1px solid var(--sand);
+        }
+
+        .component-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: var(--space-lg);
+            color: var(--stone);
+        }
+
+        .component-preview {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        /* Button Components */
+        .btn {
+            padding: var(--space-md) var(--space-xl);
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--plum);
+            color: var(--cream);
+        }
+
+        .btn-primary:hover {
+            background: var(--plum-dark);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--stone);
+            border: 1px solid var(--sand);
+        }
+
+        .btn-secondary:hover {
+            background: var(--cream-dark);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--plum);
+        }
+
+        /* Input Components */
+        .input-demo {
+            background: white;
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            width: 100%;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-demo:focus {
+            outline: none;
+            border-color: var(--plum);
+        }
+
+        .input-demo.error {
+            border-color: var(--danger);
+        }
+
+        .input-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--stone);
+            margin-bottom: var(--space-xs);
+            display: block;
+        }
+
+        .input-helper {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-top: var(--space-xs);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .palette-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .mockups-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .principles-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .voice-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page {
+                padding: var(--space-xl) var(--space-md);
+            }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .type-grid {
+                grid-template-columns: 1fr;
+            }
+            .components-grid {
+                grid-template-columns: 1fr;
+            }
+            .mockups-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-2xl);
+            }
+            .phone {
+                max-width: 280px;
+            }
+            .principles-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <!-- Hero -->
+        <header class="hero">
+            <div class="hero-badge">Brand Identity</div>
+            <div class="hero-logo">
+                <div class="logo-mark">F</div>
+                <div class="logo-text">Finny</div>
+            </div>
+            <h1>Money, together</h1>
+            <p>A warm, elegant experience for couples building their financial future — one mindful decision at a time.</p>
+        </header>
+
+        <!-- Color Palette -->
+        <section class="palette-section">
+            <h2 class="section-title">Color Palette</h2>
+            <p class="section-subtitle">Warm, grounded, and sophisticated</p>
+            <div class="palette-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--plum); color: var(--cream);">
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Plum</div>
+                        <div class="color-hex">#7C5C7D</div>
+                        <div class="color-usage">Primary actions, key UI elements, brand moments</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--cream);">
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Cream</div>
+                        <div class="color-hex">#FDFBF7</div>
+                        <div class="color-usage">Page backgrounds, creates warmth and calm</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--honey); color: var(--stone);">
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Honey</div>
+                        <div class="color-hex">#D4A84B</div>
+                        <div class="color-usage">Accents, progress indicators, highlights</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--stone); color: var(--cream);">
+                    </div>
+                    <div class="color-info">
+                        <div class="color-name">Stone</div>
+                        <div class="color-hex">#3D3833</div>
+                        <div class="color-usage">Text, headings, high-contrast elements</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Typography -->
+        <section class="typography-section">
+            <h2 class="section-title">Typography</h2>
+            <p class="section-subtitle">Editorial elegance meets everyday clarity</p>
+            <div class="type-grid">
+                <div class="type-card">
+                    <div class="type-label">Headlines</div>
+                    <div class="type-sample-display">DM Serif Display</div>
+                    <div class="type-sample-body">
+                        Elegant serif for display text. Brings warmth and sophistication to headings, amounts, and key moments.
+                    </div>
+                    <div class="type-meta">
+                        Weights: Regular, Italic &nbsp;•&nbsp; Use for: Titles, amounts, section headers
+                    </div>
+                </div>
+                <div class="type-card">
+                    <div class="type-label">Body & UI</div>
+                    <div class="type-sample-display" style="font-family: var(--font-body); font-weight: 500; font-size: 1.5rem;">Outfit</div>
+                    <div class="type-sample-body">
+                        Clean, modern sans-serif for everything else. Light weight for body text, medium for labels, semibold for emphasis.
+                    </div>
+                    <div class="type-meta">
+                        Weights: 300, 400, 500, 600, 700 &nbsp;•&nbsp; Use for: Body, buttons, labels, inputs
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Voice & Tone -->
+        <section class="voice-section">
+            <h2 class="section-title">Voice & Tone</h2>
+            <p class="section-subtitle">Warm, encouraging, and never preachy</p>
+            <div class="voice-grid">
+                <div class="voice-card">
+                    <div class="voice-title">Warm & Present</div>
+                    <div class="voice-example">"You're doing beautifully this month. Every small step counts."</div>
+                </div>
+                <div class="voice-card">
+                    <div class="voice-title">Gently Insightful</div>
+                    <div class="voice-example">"This week, you spent a little more on dining. Want to look at it together?"</div>
+                </div>
+                <div class="voice-card">
+                    <div class="voice-title">Celebratory</div>
+                    <div class="voice-example">"You both stayed on track. That's worth celebrating."</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Design Principles -->
+        <section class="principles-section">
+            <h2 class="section-title">Design Principles</h2>
+            <p class="section-subtitle">The rules we design by</p>
+            <div class="principles-grid">
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="4"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Generous Space</div>
+                    <div class="principle-desc">Let elements breathe. White space is not wasted space — it's calm.</div>
+                </div>
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="9"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Soft & Rounded</div>
+                    <div class="principle-desc">Generous border radius everywhere. Nothing sharp. Everything feels safe.</div>
+                </div>
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 3v18M3 12h18"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Clear Hierarchy</div>
+                    <div class="principle-desc">One thing matters most on every screen. Guide the eye with intention.</div>
+                </div>
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Graceful Motion</div>
+                    <div class="principle-desc">Slow, elegant transitions. Nothing jarring. Everything flows naturally.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Screen Mockups -->
+        <section class="mockups-section">
+            <h2 class="section-title">Screen Language</h2>
+            <p class="section-subtitle">How Finny looks in your hands</p>
+            <div class="mockups-grid">
+                <!-- Dashboard -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="screen-header">
+                                <div class="screen-greeting">Good evening</div>
+                                <div class="screen-title">Varshine & Anita</div>
+                            </div>
+                            <div class="balance-card">
+                                <div class="balance-label">Remaining this month</div>
+                                <div class="balance-amount">₹47,250</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 61%;"></div>
+                                </div>
+                                <div class="balance-sub">of ₹1,20,000 budget</div>
+                            </div>
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-label">Spent</div>
+                                    <div class="stat-value">₹72,750</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Saved</div>
+                                    <div class="stat-value success">₹15,000</div>
+                                </div>
+                            </div>
+                            <div class="section-label">This week</div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Morning coffee</span>
+                                <span class="transaction-amount">₹180</span>
+                            </div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Groceries</span>
+                                <span class="transaction-amount">₹2,340</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Dashboard</div>
+                </div>
+
+                <!-- Add Transaction -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="add-screen">
+                                <div class="add-header">
+                                    <div class="add-title">Add expense</div>
+                                </div>
+                                <div class="add-amount">₹850</div>
+                                <div class="category-grid">
+                                    <div class="category-chip">Food</div>
+                                    <div class="category-chip active">Transport</div>
+                                    <div class="category-chip">Shopping</div>
+                                    <div class="category-chip">Bills</div>
+                                    <div class="category-chip">Health</div>
+                                    <div class="category-chip">Other</div>
+                                </div>
+                                <div class="add-button">Save</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Add Expense</div>
+                </div>
+
+                <!-- Invite Partner -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="invite-screen">
+                                <div class="invite-progress">
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot active"></div>
+                                </div>
+                                <div class="invite-title">Invite your partner</div>
+                                <div class="invite-subtitle">Share finances together</div>
+                                <div class="qr-placeholder">
+                                    <div class="qr-inner"></div>
+                                </div>
+                                <div class="share-button">Share link</div>
+                                <div class="skip-link">Skip for now</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Partner Invite</div>
+                </div>
+
+                <!-- Login -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="login-screen">
+                                <div class="login-logo">F</div>
+                                <div class="login-title">Finny</div>
+                                <div class="login-tagline">Money, together</div>
+                                <div class="login-input">+91 98765 43210</div>
+                                <div class="login-button">Continue</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Login</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Components -->
+        <section class="components-section">
+            <h2 class="section-title">Component Library</h2>
+            <p class="section-subtitle">Building blocks of the experience</p>
+            <div class="components-grid">
+                <div class="component-card">
+                    <div class="component-title">Buttons</div>
+                    <div class="component-preview">
+                        <div class="btn btn-primary">Primary Action</div>
+                        <div class="btn btn-secondary">Secondary</div>
+                        <div class="btn btn-ghost">Text Link</div>
+                    </div>
+                </div>
+                <div class="component-card">
+                    <div class="component-title">Inputs</div>
+                    <div class="component-preview">
+                        <div>
+                            <label class="input-label">Phone number</label>
+                            <input type="text" class="input-demo" placeholder="+91 98765 43210">
+                        </div>
+                        <div>
+                            <label class="input-label">Amount</label>
+                            <input type="text" class="input-demo error" value="₹-500">
+                            <div class="input-helper" style="color: var(--danger);">Amount must be positive</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-card">
+                    <div class="component-title">Cards</div>
+                    <div class="component-preview">
+                        <div class="card" style="padding: var(--space-lg);">
+                            <div style="font-weight: 600; margin-bottom: var(--space-xs);">Groceries</div>
+                            <div style="font-size: 0.85rem; color: var(--stone-muted);">₹8,500 of ₹12,000 spent</div>
+                            <div class="progress-bar" style="background: var(--sand); margin-top: var(--space-sm);">
+                                <div class="progress-fill" style="width: 70%; background: var(--plum);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</body>
+</html>

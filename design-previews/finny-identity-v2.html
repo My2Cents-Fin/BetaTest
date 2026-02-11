@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finny — Brand Identity v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Primary - Electric Purple */
+            --purple: #7c3aed;
+            --purple-light: #a78bfa;
+            --purple-dark: #5b21b6;
+            --purple-soft: #ede9fe;
+
+            /* Backgrounds */
+            --cream: #fdfbf7;
+            --cream-dark: #f7f3ed;
+            --white: #ffffff;
+
+            /* Neutrals */
+            --stone: #1f1f1f;
+            --stone-light: #525252;
+            --stone-muted: #a3a3a3;
+            --sand: #e7e5e4;
+
+            /* Semantic */
+            --success: #22c55e;
+            --success-soft: #dcfce7;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            /* Typography */
+            --font-display: 'Poppins', -apple-system, sans-serif;
+            --font-body: 'Outfit', -apple-system, sans-serif;
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            --space-3xl: 64px;
+            --space-4xl: 96px;
+
+            /* Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --radius-full: 100px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --shadow-xl: 0 16px 48px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--cream);
+            color: var(--stone);
+            line-height: 1.6;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Page Layout */
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-4xl) var(--space-xl);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: var(--space-3xl) 0 var(--space-4xl);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            background: var(--purple-soft);
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--purple);
+            margin-bottom: var(--space-xl);
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--purple);
+            border-radius: 50%;
+        }
+
+        .hero-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .logo-mark {
+            width: 56px;
+            height: 56px;
+            background: var(--purple);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--stone);
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            font-weight: 600;
+            color: var(--stone);
+            margin-bottom: var(--space-md);
+            letter-spacing: -0.5px;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--stone-light);
+            max-width: 480px;
+            margin: 0 auto;
+            font-weight: 400;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: var(--space-4xl);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--stone);
+            margin-bottom: var(--space-sm);
+        }
+
+        .section-subtitle {
+            font-size: 0.95rem;
+            color: var(--stone-muted);
+        }
+
+        /* Color Palette */
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: var(--space-md);
+        }
+
+        .color-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .color-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .color-swatch {
+            height: 100px;
+        }
+
+        .color-info {
+            padding: var(--space-md);
+        }
+
+        .color-name {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        .color-hex {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            font-family: var(--font-body);
+            letter-spacing: 0.5px;
+        }
+
+        /* Typography Section */
+        .type-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .type-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-md);
+        }
+
+        .type-label {
+            display: inline-block;
+            padding: var(--space-xs) var(--space-sm);
+            background: var(--purple-soft);
+            color: var(--purple);
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: var(--space-md);
+        }
+
+        .type-sample-display {
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--stone);
+            margin-bottom: var(--space-sm);
+            line-height: 1.3;
+        }
+
+        .type-sample-body {
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            color: var(--stone-light);
+            line-height: 1.7;
+        }
+
+        .type-specs {
+            display: flex;
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--sand);
+        }
+
+        .type-spec {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+        }
+
+        .type-spec strong {
+            display: block;
+            color: var(--stone);
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        /* Voice Section */
+        .voice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .voice-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .voice-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--purple);
+        }
+
+        .voice-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-sm);
+            color: var(--stone);
+        }
+
+        .voice-example {
+            font-size: 0.9rem;
+            color: var(--stone-light);
+            font-style: italic;
+            line-height: 1.6;
+        }
+
+        /* Principles Section */
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .principle-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+
+        .principle-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--purple-soft);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-md);
+            color: var(--purple);
+        }
+
+        .principle-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-xs);
+        }
+
+        .principle-desc {
+            font-size: 0.85rem;
+            color: var(--stone-muted);
+            line-height: 1.5;
+        }
+
+        /* Mockups Section */
+        .mockups-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-xl);
+        }
+
+        .mockup-wrapper {
+            text-align: center;
+        }
+
+        .phone {
+            width: 100%;
+            max-width: 220px;
+            margin: 0 auto;
+            aspect-ratio: 9/19.5;
+            background: var(--stone);
+            border-radius: 32px;
+            padding: 8px;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--cream);
+            border-radius: 26px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mockup-label {
+            margin-top: var(--space-md);
+            font-size: 0.8rem;
+            color: var(--stone-muted);
+            font-weight: 500;
+        }
+
+        /* Screen Components */
+        .screen-status {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--stone);
+        }
+
+        .screen-header {
+            padding: var(--space-md) var(--space-md) var(--space-sm);
+        }
+
+        .screen-greeting {
+            font-size: 0.65rem;
+            color: var(--stone-muted);
+            margin-bottom: 2px;
+        }
+
+        .screen-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--stone);
+        }
+
+        .balance-card {
+            margin: 0 var(--space-md) var(--space-md);
+            background: var(--purple);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+            color: white;
+        }
+
+        .balance-label {
+            font-size: 0.6rem;
+            opacity: 0.85;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+
+        .balance-amount {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .balance-progress {
+            height: 4px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 2px;
+            margin-top: var(--space-sm);
+            overflow: hidden;
+        }
+
+        .balance-progress-fill {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+        }
+
+        .balance-sub {
+            font-size: 0.6rem;
+            opacity: 0.75;
+            margin-top: 6px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-sm);
+            padding: 0 var(--space-md) var(--space-md);
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-label {
+            font-size: 0.55rem;
+            color: var(--stone-muted);
+            margin-bottom: 1px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .stat-value.success { color: var(--success); }
+
+        .list-label {
+            font-size: 0.6rem;
+            color: var(--stone-muted);
+            padding: var(--space-xs) var(--space-md);
+            font-weight: 500;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) var(--space-md);
+            margin: 0 var(--space-md) var(--space-xs);
+            background: var(--white);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .transaction-name {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .transaction-amount {
+            font-size: 0.75rem;
+            color: var(--stone-light);
+            font-weight: 500;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: var(--space-lg);
+            background: var(--cream);
+        }
+
+        .login-logo {
+            width: 48px;
+            height: 48px;
+            background: var(--purple);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+        }
+
+        .login-title {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .login-tagline {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-bottom: var(--space-xl);
+        }
+
+        .login-input {
+            width: 100%;
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-md);
+            margin-bottom: var(--space-sm);
+            font-size: 0.75rem;
+            color: var(--stone);
+        }
+
+        .login-button {
+            width: 100%;
+            background: var(--purple);
+            color: white;
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-md);
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+
+        /* Add Screen */
+        .add-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: var(--space-md);
+            background: var(--cream);
+        }
+
+        .add-header {
+            text-align: center;
+            padding-top: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .add-title {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .add-amount {
+            text-align: center;
+            font-family: var(--font-display);
+            font-size: 2.25rem;
+            font-weight: 600;
+            color: var(--purple);
+            margin-bottom: var(--space-lg);
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xs);
+            margin-bottom: var(--space-md);
+        }
+
+        .category-chip {
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-sm);
+            font-size: 0.65rem;
+            text-align: center;
+            color: var(--stone-light);
+            font-weight: 500;
+        }
+
+        .category-chip.active {
+            background: var(--purple);
+            color: white;
+            border-color: var(--purple);
+        }
+
+        .add-note {
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-md);
+            font-size: 0.7rem;
+            color: var(--stone-muted);
+            margin-bottom: var(--space-md);
+        }
+
+        .add-button {
+            margin-top: auto;
+            background: var(--purple);
+            color: white;
+            border-radius: var(--radius-md);
+            padding: var(--space-sm);
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+
+        /* Invite Screen */
+        .invite-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            padding: var(--space-lg);
+            background: var(--cream);
+        }
+
+        .invite-progress {
+            display: flex;
+            gap: 6px;
+            margin-bottom: var(--space-xl);
+            margin-top: var(--space-md);
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sand);
+        }
+
+        .progress-dot.active {
+            width: 20px;
+            border-radius: 4px;
+            background: var(--purple);
+        }
+
+        .progress-dot.done {
+            background: var(--success);
+        }
+
+        .invite-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .invite-subtitle {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-bottom: var(--space-lg);
+            text-align: center;
+        }
+
+        .qr-box {
+            width: 110px;
+            height: 110px;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--space-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .qr-pattern {
+            width: 90px;
+            height: 90px;
+            background:
+                linear-gradient(90deg, var(--stone) 2px, transparent 2px),
+                linear-gradient(var(--stone) 2px, transparent 2px);
+            background-size: 10px 10px;
+            opacity: 0.15;
+            border-radius: 4px;
+        }
+
+        .share-button {
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-xs) var(--space-lg);
+            font-size: 0.75rem;
+            color: var(--stone);
+            font-weight: 500;
+            margin-bottom: var(--space-md);
+        }
+
+        .continue-button {
+            width: 100%;
+            background: var(--purple);
+            color: white;
+            border-radius: var(--radius-md);
+            padding: var(--space-sm);
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+            margin-top: auto;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+
+        .skip-link {
+            font-size: 0.7rem;
+            color: var(--stone-muted);
+            margin-top: var(--space-sm);
+        }
+
+        /* Components Section */
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .component-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-md);
+        }
+
+        .component-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: var(--space-lg);
+            color: var(--stone);
+        }
+
+        .component-preview {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        /* Button Components */
+        .btn {
+            padding: var(--space-md) var(--space-xl);
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background: var(--purple);
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+
+        .btn-primary:hover {
+            background: var(--purple-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--stone);
+            border: 1px solid var(--sand);
+        }
+
+        .btn-secondary:hover {
+            background: var(--cream-dark);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--purple);
+        }
+
+        .btn-ghost:hover {
+            background: var(--purple-soft);
+        }
+
+        /* Input Components */
+        .input-group {
+            margin-bottom: var(--space-md);
+        }
+
+        .input-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--stone);
+            margin-bottom: var(--space-xs);
+            display: block;
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            color: var(--stone);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--purple);
+            box-shadow: 0 0 0 3px var(--purple-soft);
+        }
+
+        .input-field.error {
+            border-color: var(--danger);
+        }
+
+        .input-field.error:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .input-helper {
+            font-size: 0.75rem;
+            color: var(--stone-muted);
+            margin-top: var(--space-xs);
+        }
+
+        .input-helper.error {
+            color: var(--danger);
+        }
+
+        /* Card Component */
+        .card-demo {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-demo-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-demo-sub {
+            font-size: 0.85rem;
+            color: var(--stone-muted);
+            margin-bottom: var(--space-md);
+        }
+
+        .card-progress {
+            height: 6px;
+            background: var(--sand);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .card-progress-fill {
+            height: 100%;
+            background: var(--purple);
+            border-radius: 3px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section {
+            animation: fadeIn 0.6s ease-out both;
+        }
+
+        .section:nth-child(2) { animation-delay: 0.1s; }
+        .section:nth-child(3) { animation-delay: 0.15s; }
+        .section:nth-child(4) { animation-delay: 0.2s; }
+        .section:nth-child(5) { animation-delay: 0.25s; }
+        .section:nth-child(6) { animation-delay: 0.3s; }
+        .section:nth-child(7) { animation-delay: 0.35s; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .palette-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .mockups-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .principles-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page {
+                padding: var(--space-xl) var(--space-md);
+            }
+            .hero h1 {
+                font-size: 2rem;
+            }
+            .palette-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .type-grid,
+            .voice-grid,
+            .components-grid {
+                grid-template-columns: 1fr;
+            }
+            .mockups-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-2xl);
+            }
+            .phone {
+                max-width: 260px;
+            }
+            .principles-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <!-- Hero -->
+        <header class="hero">
+            <div class="hero-badge">Brand Identity v2</div>
+            <div class="hero-logo">
+                <div class="logo-mark">F</div>
+                <div class="logo-text">Finny</div>
+            </div>
+            <h1>Money, together</h1>
+            <p>A fresh, modern experience for couples building their financial future — one mindful step at a time.</p>
+        </header>
+
+        <!-- Color Palette -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Color System</h2>
+                <p class="section-subtitle">Vibrant, warm, and trustworthy</p>
+            </div>
+            <div class="palette-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--purple);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Purple</div>
+                        <div class="color-hex">#7C3AED</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--purple-light);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Purple Light</div>
+                        <div class="color-hex">#A78BFA</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--cream);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Cream</div>
+                        <div class="color-hex">#FDFBF7</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--stone);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Stone</div>
+                        <div class="color-hex">#1F1F1F</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--success);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success</div>
+                        <div class="color-hex">#22C55E</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Typography -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Typography</h2>
+                <p class="section-subtitle">Friendly headlines, clean body text</p>
+            </div>
+            <div class="type-grid">
+                <div class="type-card">
+                    <div class="type-label">Headlines</div>
+                    <div class="type-sample-display">Poppins Semibold</div>
+                    <div class="type-sample-body">
+                        Friendly, geometric, and modern. Rounded letterforms feel approachable without being childish. Perfect for a finance app that wants to feel human.
+                    </div>
+                    <div class="type-specs">
+                        <div class="type-spec">
+                            <strong>Weights</strong>
+                            500, 600, 700
+                        </div>
+                        <div class="type-spec">
+                            <strong>Use for</strong>
+                            Titles, amounts, CTAs
+                        </div>
+                    </div>
+                </div>
+                <div class="type-card">
+                    <div class="type-label">Body & UI</div>
+                    <div class="type-sample-display" style="font-family: var(--font-body); font-weight: 500;">Outfit Regular</div>
+                    <div class="type-sample-body">
+                        Clean, highly legible sans-serif. Works beautifully at small sizes. Light weight for body, medium for labels, semibold for emphasis.
+                    </div>
+                    <div class="type-specs">
+                        <div class="type-spec">
+                            <strong>Weights</strong>
+                            300, 400, 500, 600
+                        </div>
+                        <div class="type-spec">
+                            <strong>Use for</strong>
+                            Body, buttons, inputs
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Voice & Tone -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Voice & Tone</h2>
+                <p class="section-subtitle">Warm, encouraging, never preachy</p>
+            </div>
+            <div class="voice-grid">
+                <div class="voice-card">
+                    <div class="voice-title">Encouraging</div>
+                    <div class="voice-example">"You're doing great this month. Keep it up!"</div>
+                </div>
+                <div class="voice-card">
+                    <div class="voice-title">Helpful</div>
+                    <div class="voice-example">"Looks like groceries went over. Want to adjust?"</div>
+                </div>
+                <div class="voice-card">
+                    <div class="voice-title">Celebratory</div>
+                    <div class="voice-example">"Goal reached! You two make a great team."</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Design Principles -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Design Principles</h2>
+                <p class="section-subtitle">The rules we design by</p>
+            </div>
+            <div class="principles-grid">
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="4" y="4" width="16" height="16" rx="4"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Breathe</div>
+                    <div class="principle-desc">Generous spacing. Nothing cramped. Every element has room.</div>
+                </div>
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="8"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Soft</div>
+                    <div class="principle-desc">Rounded corners everywhere. Nothing sharp or harsh.</div>
+                </div>
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 4v16M4 12h16"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Clear</div>
+                    <div class="principle-desc">One focus per screen. Guide attention with intention.</div>
+                </div>
+                <div class="principle-card">
+                    <div class="principle-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                    <div class="principle-title">Flow</div>
+                    <div class="principle-desc">Smooth transitions. Satisfying feedback. Natural motion.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Screen Mockups -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Screens</h2>
+                <p class="section-subtitle">How Finny looks in your hands</p>
+            </div>
+            <div class="mockups-grid">
+                <!-- Dashboard -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="screen-status">
+                                <span>9:41</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="screen-header">
+                                <div class="screen-greeting">Good evening</div>
+                                <div class="screen-title">Varshine & Anita</div>
+                            </div>
+                            <div class="balance-card">
+                                <div class="balance-label">Remaining this month</div>
+                                <div class="balance-amount">₹47,250</div>
+                                <div class="balance-progress">
+                                    <div class="balance-progress-fill" style="width: 61%;"></div>
+                                </div>
+                                <div class="balance-sub">of ₹1,20,000 budget</div>
+                            </div>
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-label">Spent</div>
+                                    <div class="stat-value">₹72,750</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Saved</div>
+                                    <div class="stat-value success">₹15,000</div>
+                                </div>
+                            </div>
+                            <div class="list-label">This week</div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Morning coffee</span>
+                                <span class="transaction-amount">₹180</span>
+                            </div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Groceries</span>
+                                <span class="transaction-amount">₹2,340</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Dashboard</div>
+                </div>
+
+                <!-- Add Transaction -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="add-screen">
+                                <div class="add-header">
+                                    <div class="add-title">Add expense</div>
+                                </div>
+                                <div class="add-amount">₹850</div>
+                                <div class="category-grid">
+                                    <div class="category-chip">Food</div>
+                                    <div class="category-chip active">Transport</div>
+                                    <div class="category-chip">Shopping</div>
+                                    <div class="category-chip">Bills</div>
+                                    <div class="category-chip">Health</div>
+                                    <div class="category-chip">Other</div>
+                                </div>
+                                <div class="add-note">Add a note...</div>
+                                <div class="add-button">Save</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Add Expense</div>
+                </div>
+
+                <!-- Invite Partner -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="invite-screen">
+                                <div class="invite-progress">
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot active"></div>
+                                </div>
+                                <div class="invite-title">Invite your partner</div>
+                                <div class="invite-subtitle">Share finances together</div>
+                                <div class="qr-box">
+                                    <div class="qr-pattern"></div>
+                                </div>
+                                <div class="share-button">Share link</div>
+                                <div class="continue-button">Continue</div>
+                                <div class="skip-link">Skip for now</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Partner Invite</div>
+                </div>
+
+                <!-- Login -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="login-screen">
+                                <div class="login-logo">F</div>
+                                <div class="login-title">Finny</div>
+                                <div class="login-tagline">Money, together</div>
+                                <div class="login-input">+91 98765 43210</div>
+                                <div class="login-button">Continue</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Login</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Components -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Components</h2>
+                <p class="section-subtitle">Building blocks</p>
+            </div>
+            <div class="components-grid">
+                <div class="component-card">
+                    <div class="component-title">Buttons</div>
+                    <div class="component-preview">
+                        <div class="btn btn-primary">Primary</div>
+                        <div class="btn btn-secondary">Secondary</div>
+                        <div class="btn btn-ghost">Ghost</div>
+                    </div>
+                </div>
+                <div class="component-card">
+                    <div class="component-title">Inputs</div>
+                    <div class="component-preview">
+                        <div class="input-group">
+                            <label class="input-label">Phone number</label>
+                            <input type="text" class="input-field" placeholder="+91 98765 43210">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label class="input-label">Amount</label>
+                            <input type="text" class="input-field error" value="₹-500">
+                            <div class="input-helper error">Amount must be positive</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-card">
+                    <div class="component-title">Cards</div>
+                    <div class="component-preview">
+                        <div class="card-demo">
+                            <div class="card-demo-title">Groceries</div>
+                            <div class="card-demo-sub">₹8,500 of ₹12,000</div>
+                            <div class="card-progress">
+                                <div class="card-progress-fill" style="width: 70%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</body>
+</html>

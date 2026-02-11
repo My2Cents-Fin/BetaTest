@@ -1,0 +1,12 @@
+interface ErrorAlertProps {
+  message: string;
+}
+
+export function ErrorAlert({ message }: ErrorAlertProps) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl mb-6">
+      <span className="text-lg flex-shrink-0 text-red-500">⚠</span>
+      <span className="text-sm font-medium text-red-600">{message}</span>
+    </div>
+  );
+}

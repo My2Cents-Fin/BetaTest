@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Finny - Vibrant Lime + Montserrat (Duolingo-inspired)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F7F7;
+      --surface: #FFFFFF;
+      --primary: #58CC02;
+      --primary-dark: #46A302;
+      --primary-light: #D7FFB8;
+      --secondary: #1CB0F6;
+      --accent-orange: #FF9600;
+      --accent-purple: #CE82FF;
+      --accent-pink: #FF4B4B;
+      --text-primary: #3C3C3C;
+      --text-secondary: #777777;
+      --success: #58CC02;
+      --warning: #FF9600;
+      --error: #FF4B4B;
+      --border: #E5E5E5;
+      --font: 'Montserrat', system-ui, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      max-width: 390px;
+      margin: 0 auto;
+      position: relative;
+      padding-bottom: 90px;
+    }
+
+    .status-bar {
+      height: 44px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .header {
+      background: var(--primary);
+      padding: 0 20px 24px;
+      border-radius: 0 0 32px 32px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+    }
+
+    .greeting {
+      color: white;
+    }
+
+    .greeting-text {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .greeting-name {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .streak-badge {
+      background: var(--accent-orange);
+      border-radius: 16px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: 0 4px 0 #CC7A00;
+    }
+
+    .balance-card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      margin-top: 16px;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.08);
+    }
+
+    .balance-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .balance-amount {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 4px 0 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .balance-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .balance-pill {
+      flex: 1;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .balance-pill-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .balance-pill-value {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .balance-pill-value.income { color: var(--success); }
+    .balance-pill-value.spent { color: var(--accent-pink); }
+    .balance-pill-value.saved { color: var(--secondary); }
+
+    .section {
+      padding: 24px 20px 0;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .section-link {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .category-card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .category-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .category-info {
+      flex: 1;
+    }
+
+    .category-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 10px;
+      background: var(--bg);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-green { background: linear-gradient(90deg, #58CC02, #7ED321); }
+    .progress-amber { background: linear-gradient(90deg, #FF9600, #FFB347); }
+    .progress-red { background: linear-gradient(90deg, #FF4B4B, #FF6B6B); }
+
+    .category-amounts {
+      text-align: right;
+    }
+
+    .category-spent {
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .category-budget {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .mascot-tip {
+      background: linear-gradient(135deg, #D7FFB8 0%, #B8F5B8 100%);
+      border-radius: 20px;
+      padding: 16px;
+      margin: 24px 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .mascot {
+      width: 56px;
+      height: 56px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 4px 0 var(--primary-dark);
+    }
+
+    .tip-content {
+      flex: 1;
+    }
+
+    .tip-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 2px;
+    }
+
+    .tip-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .transaction-item {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .transaction-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .transaction-details {
+      flex: 1;
+    }
+
+    .transaction-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .transaction-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .transaction-amount {
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .transaction-amount.expense { color: var(--text-primary); }
+    .transaction-amount.income { color: var(--success); }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 390px;
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 28px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-item.active .nav-icon {
+      background: var(--primary-light);
+      border-radius: 10px;
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 100px;
+      right: calc(50% - 195px + 20px);
+      width: 60px;
+      height: 60px;
+      border-radius: 20px;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 0 var(--primary-dark);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .fab:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 var(--primary-dark);
+    }
+
+    .fab svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .design-label {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent-purple);
+      color: white;
+      padding: 8px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 0 0 12px 12px;
+      z-index: 100;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .mascot {
+      animation: bounce 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="design-label">Option 6: Vibrant Lime + Montserrat</div>
+
+  <div class="status-bar">9:41</div>
+
+  <div class="header">
+    <div class="header-top">
+      <div class="greeting">
+        <div class="greeting-text">Good evening,</div>
+        <div class="greeting-name">Varshi! 👋</div>
+      </div>
+      <div class="streak-badge">
+        🔥 12 days
+      </div>
+    </div>
+
+    <div class="balance-card">
+      <div class="balance-label">Spendable Balance</div>
+      <div class="balance-amount">₹1,08,420</div>
+      <div class="balance-row">
+        <div class="balance-pill">
+          <div class="balance-pill-label">Income</div>
+          <div class="balance-pill-value income">₹4.1L</div>
+        </div>
+        <div class="balance-pill">
+          <div class="balance-pill-label">Spent</div>
+          <div class="balance-pill-value spent">₹2.3L</div>
+        </div>
+        <div class="balance-pill">
+          <div class="balance-pill-label">Saved</div>
+          <div class="balance-pill-value saved">₹72K</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mascot-tip">
+    <div class="mascot">🦉</div>
+    <div class="tip-content">
+      <div class="tip-title">Great job! 🎉</div>
+      <div class="tip-text">You're ₹5,200 under budget this week. Keep it up!</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Budget Overview</span>
+      <span class="section-link">See All →</span>
+    </div>
+
+    <div class="category-card">
+      <div class="category-icon" style="background: #E8F5E9;">🛒</div>
+      <div class="category-info">
+        <div class="category-title">Groceries</div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-green" style="width: 69%;"></div>
+        </div>
+      </div>
+      <div class="category-amounts">
+        <div class="category-spent">₹12,450</div>
+        <div class="category-budget">of ₹18,000</div>
+      </div>
+    </div>
+
+    <div class="category-card">
+      <div class="category-icon" style="background: #FFF3E0;">🍕</div>
+      <div class="category-info">
+        <div class="category-title">Food Ordering</div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-amber" style="width: 90%;"></div>
+        </div>
+      </div>
+      <div class="category-amounts">
+        <div class="category-spent">₹7,200</div>
+        <div class="category-budget">of ₹8,000</div>
+      </div>
+    </div>
+
+    <div class="category-card">
+      <div class="category-icon" style="background: #FFEBEE;">⛽</div>
+      <div class="category-info">
+        <div class="category-title">Fuel</div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-red" style="width: 100%;"></div>
+        </div>
+      </div>
+      <div class="category-amounts">
+        <div class="category-spent">₹6,800</div>
+        <div class="category-budget">of ₹6,000</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Recent Activity</span>
+      <span class="section-link">See All →</span>
+    </div>
+
+    <div class="transaction-item">
+      <div class="transaction-icon" style="background: #E8F5E9;">🛒</div>
+      <div class="transaction-details">
+        <div class="transaction-title">BigBasket</div>
+        <div class="transaction-meta">Groceries • Today</div>
+      </div>
+      <div class="transaction-amount expense">-₹2,340</div>
+    </div>
+
+    <div class="transaction-item">
+      <div class="transaction-icon" style="background: #E3F2FD;">💰</div>
+      <div class="transaction-details">
+        <div class="transaction-title">Salary Credit</div>
+        <div class="transaction-meta">Income • 1 Feb</div>
+      </div>
+      <div class="transaction-amount income">+₹2,10,000</div>
+    </div>
+  </div>
+
+  <div class="fab">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active">
+      <div class="nav-icon">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      </div>
+      <span>Home</span>
+    </div>
+    <div class="nav-item">
+      <div class="nav-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      </div>
+      <span>Budget</span>
+    </div>
+    <div class="nav-item">
+      <div class="nav-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <span>Plan</span>
+    </div>
+    <div class="nav-item">
+      <div class="nav-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      </div>
+      <span>Profile</span>
+    </div>
+  </div>
+</body>
+</html>

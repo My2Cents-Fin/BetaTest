@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Finny Preview v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --plum: #6A4C6B;
+  --plum-soft: #F2ECF3;
+  --cream: #FDFBF7;
+  --stone: #2B2A28;
+  --stone-light: #6B655F;
+  --sand: #E7E3DC;
+  --success: #2E7D32;
+  --warning: #F57C00;
+  --danger: #D32F2F;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Poppins", -apple-system, sans-serif;
+  background: linear-gradient(180deg, #ffffff 0%, var(--cream) 100%);
+  color: var(--stone);
+}
+
+/* Phone container */
+.app {
+  max-width: 430px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 28px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.04);
+}
+
+/* HEADER */
+.header {
+  padding: 24px;
+  background: linear-gradient(135deg, var(--plum) 0%, #5A3D5B 100%);
+  color: white;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.header-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* NEW BALANCE CARD (flatter, modern) */
+.balance-card {
+  margin: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 22px;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.balance-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--stone-light);
+  margin-bottom: 6px;
+}
+
+.balance-amount {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* NEW PROGRESS BAR (clean, modern, no pills) */
+.progress {
+  margin-top: 12px;
+  height: 4px;
+  background: rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.progress-inner {
+  height: 100%;
+  width: 62%;
+  background: linear-gradient(90deg, var(--plum) 0%, #8B5CF6 100%);
+  transition: width 0.4s ease-out;
+}
+
+/* STATS (simpler cards) */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.stat {
+  background: var(--plum-soft);
+  padding: 12px 14px;
+  border-radius: 16px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--stone-light);
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* CATEGORIES */
+.section-title {
+  margin: 20px 16px 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--stone-light);
+}
+
+.category-list {
+  margin: 0 16px 80px; /* space for centered button */
+}
+
+.category {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.category:last-child {
+  border-bottom: none;
+}
+
+.cat-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* REPLACED EMOJIS WITH SIMPLE DOT ICON */
+.cat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--plum-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-icon::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--plum);
+}
+
+.cat-name {
+  font-weight: 500;
+}
+
+.cat-right {
+  text-align: right;
+}
+
+.cat-usage {
+  font-size: 12px;
+  color: var(--stone-light);
+}
+
+/* NEW CATEGORY BARS (thinner, modern) */
+.bar {
+  margin-top: 6px;
+  height: 3px;
+  width: 100px;
+  background: rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.bar-inner {
+  height: 100%;
+}
+
+/* Status colors */
+.on-track { background: var(--success); }
+.warning { background: var(--warning); }
+.over { background: var(--danger); }
+
+/* NEW CENTERED FLOATING BUTTON (FAB) */
+.fab-container {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.add-btn {
+  padding: 14px 28px;
+  background: var(--plum);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(106,76,107,0.25);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-btn:hover {
+  box-shadow: 0 10px 24px rgba(106,76,107,0.35);
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>Finny</h1>
+    <div class="header-sub">Money, together — in control</div>
+  </div>
+
+  <div class="balance-card">
+    <div class="balance-label">Remaining this month</div>
+    <div class="balance-amount">₹47,250</div>
+
+    <div class="progress">
+      <div class="progress-inner"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Spent</div>
+        <div class="stat-value">₹72,750</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Saved</div>
+        <div class="stat-value">₹15,000</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Categories</div>
+
+  <div class="category-list">
+
+    <div class="category">
+      <div class="cat-left">
+        <div class="cat-icon"></div>
+        <div class="cat-name">Food</div>
+      </div>
+      <div class="cat-right">
+        <div class="cat-usage">₹9,200 / ₹11,000</div>
+        <div class="bar">
+          <div class="bar-inner warning" style="width: 84%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="category">
+      <div class="cat-left">
+        <div class="cat-icon"></div>
+        <div class="cat-name">Rent</div>
+      </div>
+      <div class="cat-right">
+        <div class="cat-usage">₹45,000 / ₹45,000</div>
+        <div class="bar">
+          <div class="bar-inner on-track" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="category">
+      <div class="cat-left">
+        <div class="cat-icon"></div>
+        <div class="cat-name">Fuel</div>
+      </div>
+      <div class="cat-right">
+        <div class="cat-usage">₹3,900 / ₹6,000</div>
+        <div class="bar">
+          <div class="bar-inner on-track" style="width: 65%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="category">
+      <div class="cat-left">
+        <div class="cat-icon"></div>
+        <div class="cat-name">EMI</div>
+      </div>
+      <div class="cat-right">
+        <div class="cat-usage">Upcoming</div>
+        <div class="bar">
+          <div class="bar-inner" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="fab-container">
+    <button class="add-btn">＋ Add expense</button>
+  </div>
+
+</div>
+</body>
+</html>

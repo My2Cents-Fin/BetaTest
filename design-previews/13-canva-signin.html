@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finny - Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Brand Colors */
+            --blue: #3969E7;
+            --blue-light: #07B9CE;
+            --purple: #7D2AE7;
+
+            /* Functional */
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            /* Grays */
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --white: #FFFFFF;
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 12px;
+            --space-lg: 16px;
+            --space-xl: 24px;
+            --space-2xl: 32px;
+            --space-3xl: 48px;
+
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-2xl: 20px;
+            --radius-full: 9999px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+            /* Typography */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--white);
+            color: var(--gray-800);
+            font-size: 15px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        .phone-frame {
+            max-width: 390px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: var(--white);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Hero Gradient Background */
+        .bg-hero {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(135deg, #07B9CE 0%, #3969E7 50%, #7D2AE7 100%);
+            border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+        }
+
+        .bg-hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .bg-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 10%;
+            left: -15%;
+            width: 180px;
+            height: 180px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-md) var(--space-xl);
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-bar-right {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        /* Content */
+        .content {
+            position: relative;
+            z-index: 10;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0 var(--space-xl);
+        }
+
+        /* Logo Section */
+        .logo-section {
+            text-align: center;
+            padding-top: var(--space-3xl);
+            padding-bottom: var(--space-3xl);
+        }
+
+        .logo {
+            width: 72px;
+            height: 72px;
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .logo-icon {
+            font-size: 36px;
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            letter-spacing: -0.02em;
+        }
+
+        .logo-tagline {
+            font-size: 15px;
+            color: rgba(255,255,255,0.9);
+            margin-top: var(--space-sm);
+            font-weight: 500;
+        }
+
+        /* Card */
+        .signin-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: var(--space-2xl) var(--space-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--space-sm);
+            text-align: center;
+            letter-spacing: -0.01em;
+        }
+
+        .card-subtitle {
+            font-size: 15px;
+            color: var(--gray-500);
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        /* Form Field */
+        .form-field {
+            margin-bottom: var(--space-xl);
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: var(--space-sm);
+        }
+
+        /* Phone Input */
+        .phone-input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            background: var(--white);
+            transition: all 0.2s ease;
+        }
+
+        .phone-input-wrapper:focus-within {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(57, 105, 231, 0.1);
+        }
+
+        .country-code {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: var(--space-md) var(--space-lg);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-700);
+            border-right: 1px solid var(--gray-200);
+            background: var(--gray-50);
+            border-radius: var(--radius-md) 0 0 var(--radius-md);
+        }
+
+        .country-flag {
+            font-size: 18px;
+        }
+
+        .phone-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: var(--space-md) var(--space-lg);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-900);
+            font-family: var(--font-mono);
+            letter-spacing: 0.5px;
+            min-height: 48px;
+        }
+
+        .phone-input::placeholder {
+            color: var(--gray-400);
+            font-family: var(--font-sans);
+            font-weight: 400;
+        }
+
+        .phone-input:focus {
+            outline: none;
+        }
+
+        /* Primary Button */
+        .btn-primary {
+            width: 100%;
+            padding: var(--space-md) var(--space-xl);
+            background: linear-gradient(135deg, #3969E7 0%, #6B85EC 100%);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 600;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 48px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, #2954D6 0%, #5A74DB 100%);
+        }
+
+        .btn-primary:disabled {
+            background: var(--gray-200);
+            color: var(--gray-400);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Footer */
+        .footer {
+            padding: var(--space-xl);
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: var(--gray-500);
+            line-height: 1.6;
+        }
+
+        .footer-link {
+            color: var(--blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* OTP Section */
+        .otp-section {
+            display: none;
+        }
+
+        .otp-section.active {
+            display: block;
+        }
+
+        .phone-section.hidden {
+            display: none;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: var(--gray-600);
+            text-decoration: none;
+            margin-bottom: var(--space-lg);
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            color: var(--blue);
+        }
+
+        .otp-inputs {
+            display: flex;
+            gap: var(--space-md);
+            justify-content: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .otp-input {
+            width: 48px;
+            height: 56px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+            color: var(--gray-900);
+            background: var(--white);
+            transition: all 0.2s ease;
+        }
+
+        .otp-input:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(57, 105, 231, 0.1);
+        }
+
+        .otp-input.filled {
+            border-color: var(--blue);
+            background: rgba(57, 105, 231, 0.05);
+        }
+
+        .resend-text {
+            text-align: center;
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-bottom: var(--space-xl);
+        }
+
+        .resend-link {
+            color: var(--purple);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .phone-display {
+            font-family: var(--font-mono);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <!-- Hero Background -->
+        <div class="bg-hero"></div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span>9:41</span>
+            <div class="status-bar-right">
+                <span>📶</span>
+                <span>🔋</span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Logo Section -->
+            <div class="logo-section">
+                <div class="logo">
+                    <span class="logo-icon">💰</span>
+                </div>
+                <div class="logo-text">Finny</div>
+                <div class="logo-tagline">Family finances, simplified</div>
+            </div>
+
+            <!-- Sign In Card -->
+            <div class="signin-card">
+                <!-- Phone Number State -->
+                <div class="phone-section">
+                    <h1 class="card-title">Welcome!</h1>
+                    <p class="card-subtitle">Enter your phone number to get started</p>
+
+                    <div class="form-field">
+                        <label class="form-label">Phone Number</label>
+                        <div class="phone-input-wrapper">
+                            <div class="country-code">
+                                <span class="country-flag">🇮🇳</span>
+                                <span>+91</span>
+                            </div>
+                            <input
+                                type="tel"
+                                class="phone-input"
+                                placeholder="98765 43210"
+                                maxlength="12"
+                            >
+                        </div>
+                    </div>
+
+                    <button class="btn-primary">Send OTP</button>
+                </div>
+
+                <!-- OTP State -->
+                <div class="otp-section">
+                    <a href="#" class="back-link">← Back</a>
+                    <h1 class="card-title">Verify OTP</h1>
+                    <p class="card-subtitle">Enter the 6-digit code sent to<br><span class="phone-display">+91 98765 43210</span></p>
+
+                    <div class="otp-inputs">
+                        <input type="text" class="otp-input filled" maxlength="1" value="4">
+                        <input type="text" class="otp-input filled" maxlength="1" value="2">
+                        <input type="text" class="otp-input" maxlength="1" value="">
+                        <input type="text" class="otp-input" maxlength="1" value="">
+                        <input type="text" class="otp-input" maxlength="1" value="">
+                        <input type="text" class="otp-input" maxlength="1" value="">
+                    </div>
+
+                    <p class="resend-text">
+                        Didn't receive code? <a href="#" class="resend-link">Resend in 0:45</a>
+                    </p>
+
+                    <button class="btn-primary">Verify & Continue</button>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p class="footer-text">
+                    By continuing, you agree to our<br>
+                    <a href="#" class="footer-link">Terms of Service</a> & <a href="#" class="footer-link">Privacy Policy</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

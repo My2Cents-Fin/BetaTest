@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Finny - Warm Teal + Plus Jakarta Sans</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FAFAF8;
+      --surface: #FFFFFF;
+      --primary: #0D9488;
+      --primary-light: #CCFBF1;
+      --secondary: #78716C;
+      --text-primary: #1C1917;
+      --text-secondary: #57534E;
+      --success: #22C55E;
+      --success-light: #DCFCE7;
+      --warning: #F59E0B;
+      --warning-light: #FEF3C7;
+      --error: #EF4444;
+      --error-light: #FEE2E2;
+      --border: #E7E5E4;
+      --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      max-width: 390px;
+      margin: 0 auto;
+      position: relative;
+      padding-bottom: 80px;
+    }
+
+    .status-bar {
+      height: 44px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .header {
+      background: var(--surface);
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .month-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .month-selector svg {
+      width: 20px;
+      height: 20px;
+      color: var(--secondary);
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--primary);
+    }
+
+    .balance-card {
+      margin: 20px;
+      background: var(--primary);
+      border-radius: 16px;
+      padding: 24px;
+      color: white;
+    }
+
+    .balance-label {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-bottom: 4px;
+    }
+
+    .balance-amount {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .balance-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+    }
+
+    .balance-item {
+      flex: 1;
+    }
+
+    .balance-item-label {
+      font-size: 12px;
+      opacity: 0.75;
+      margin-bottom: 2px;
+    }
+
+    .balance-item-value {
+      font-size: 18px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section {
+      padding: 0 20px;
+      margin-bottom: 24px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .section-link {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .category-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .category-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .category-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .category-title {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .category-amounts {
+      text-align: right;
+    }
+
+    .category-spent {
+      font-size: 15px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .category-budget {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-green { background: var(--success); }
+    .progress-amber { background: var(--warning); }
+    .progress-red { background: var(--error); }
+
+    .transaction-item {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .transaction-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .transaction-details {
+      flex: 1;
+    }
+
+    .transaction-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .transaction-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .transaction-amount {
+      font-size: 15px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .transaction-amount.expense { color: var(--text-primary); }
+    .transaction-amount.income { color: var(--success); }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 390px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 24px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--secondary);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 90px;
+      right: calc(50% - 195px + 20px);
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+      cursor: pointer;
+    }
+
+    .fab svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .design-label {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: white;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 0 0 8px 8px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="design-label">Option 2: Warm Teal + Plus Jakarta Sans</div>
+
+  <div class="status-bar">9:41</div>
+
+  <div class="header">
+    <div class="month-selector">
+      <span>February 2026</span>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+    <div class="avatar">VK</div>
+  </div>
+
+  <div class="balance-card">
+    <div class="balance-label">Spendable Balance</div>
+    <div class="balance-amount">₹1,08,420</div>
+    <div class="balance-row">
+      <div class="balance-item">
+        <div class="balance-item-label">Income</div>
+        <div class="balance-item-value">₹4,10,000</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-item-label">Spent</div>
+        <div class="balance-item-value">₹2,31,580</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-item-label">Allocated</div>
+        <div class="balance-item-value">₹3,72,000</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Budget Overview</span>
+      <span class="section-link">See All</span>
+    </div>
+
+    <div class="category-card">
+      <div class="category-header">
+        <div class="category-name">
+          <div class="category-icon" style="background: #DCFCE7;">🛒</div>
+          <span class="category-title">Groceries</span>
+        </div>
+        <div class="category-amounts">
+          <div class="category-spent">₹12,450</div>
+          <div class="category-budget">of ₹18,000</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill progress-green" style="width: 69%;"></div>
+      </div>
+    </div>
+
+    <div class="category-card">
+      <div class="category-header">
+        <div class="category-name">
+          <div class="category-icon" style="background: #FEF3C7;">🍕</div>
+          <span class="category-title">Food Ordering</span>
+        </div>
+        <div class="category-amounts">
+          <div class="category-spent">₹7,200</div>
+          <div class="category-budget">of ₹8,000</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill progress-amber" style="width: 90%;"></div>
+      </div>
+    </div>
+
+    <div class="category-card">
+      <div class="category-header">
+        <div class="category-name">
+          <div class="category-icon" style="background: #FEE2E2;">⛽</div>
+          <span class="category-title">Fuel</span>
+        </div>
+        <div class="category-amounts">
+          <div class="category-spent">₹6,800</div>
+          <div class="category-budget">of ₹6,000</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill progress-red" style="width: 100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Recent Transactions</span>
+      <span class="section-link">See All</span>
+    </div>
+
+    <div class="transaction-item">
+      <div class="transaction-icon">🛒</div>
+      <div class="transaction-details">
+        <div class="transaction-title">BigBasket</div>
+        <div class="transaction-meta">Groceries • Today</div>
+      </div>
+      <div class="transaction-amount expense">-₹2,340</div>
+    </div>
+
+    <div class="transaction-item">
+      <div class="transaction-icon">⛽</div>
+      <div class="transaction-details">
+        <div class="transaction-title">HP Petrol Pump</div>
+        <div class="transaction-meta">Fuel • Yesterday</div>
+      </div>
+      <div class="transaction-amount expense">-₹1,500</div>
+    </div>
+
+    <div class="transaction-item">
+      <div class="transaction-icon">💰</div>
+      <div class="transaction-details">
+        <div class="transaction-title">Salary Credit</div>
+        <div class="transaction-meta">Income • 1 Feb</div>
+      </div>
+      <div class="transaction-amount income">+₹2,10,000</div>
+    </div>
+  </div>
+
+  <div class="fab">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active">
+      <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span>Home</span>
+    </div>
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <span>Budget</span>
+    </div>
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span>Plan</span>
+    </div>
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span>Settings</span>
+    </div>
+  </div>
+</body>
+</html>

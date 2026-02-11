@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Finny - Neon Dark + Plus Jakarta Sans</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0F0F1A;
+      --surface: #1A1A2E;
+      --surface-elevated: #252542;
+      --primary: #00D9FF;
+      --primary-dark: #00B8D9;
+      --primary-glow: rgba(0, 217, 255, 0.3);
+      --secondary: #FF6B9D;
+      --accent-purple: #A855F7;
+      --accent-green: #00FF88;
+      --accent-yellow: #FFE66D;
+      --text-primary: #FFFFFF;
+      --text-secondary: #8B8BA7;
+      --success: #00FF88;
+      --warning: #FFE66D;
+      --error: #FF6B9D;
+      --border: #2A2A4A;
+      --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      max-width: 390px;
+      margin: 0 auto;
+      position: relative;
+      padding-bottom: 90px;
+    }
+
+    .status-bar {
+      height: 44px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .header {
+      padding: 16px 20px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .greeting {
+    }
+
+    .greeting-emoji {
+      font-size: 32px;
+      margin-bottom: 4px;
+    }
+
+    .greeting-name {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .streak-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .streak-fire {
+      font-size: 20px;
+    }
+
+    .streak-count {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-yellow);
+    }
+
+    .balance-card {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .balance-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent-purple));
+    }
+
+    .balance-glow {
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .balance-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .balance-amount {
+      font-size: 44px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      position: relative;
+      z-index: 1;
+    }
+
+    .balance-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .balance-stat {
+      flex: 1;
+      background: var(--surface-elevated);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .balance-stat-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .balance-stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .balance-stat-value.income { color: var(--success); }
+    .balance-stat-value.spent { color: var(--error); }
+    .balance-stat-value.saved { color: var(--primary); }
+
+    .balance-stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .achievement-banner {
+      background: linear-gradient(135deg, var(--surface), var(--surface-elevated));
+      border: 1px solid var(--accent-yellow);
+      border-radius: 20px;
+      padding: 16px 20px;
+      margin: 20px 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .achievement-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 230, 109, 0.1), transparent);
+      pointer-events: none;
+    }
+
+    .achievement-icon {
+      font-size: 36px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .achievement-content {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+    }
+
+    .achievement-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent-yellow);
+    }
+
+    .achievement-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .section {
+      padding: 28px 20px 0;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .section-link {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .category-card {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .category-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+    }
+
+    .category-card.green::before { background: var(--success); }
+    .category-card.amber::before { background: var(--warning); }
+    .category-card.red::before { background: var(--error); }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .category-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: var(--surface-elevated);
+    }
+
+    .category-info {
+      flex: 1;
+    }
+
+    .category-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .category-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .category-amounts {
+      text-align: right;
+    }
+
+    .category-spent {
+      font-size: 17px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .category-budget {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--surface-elevated);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .progress-green {
+      background: linear-gradient(90deg, #00FF88, #00D9FF);
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+    }
+    .progress-amber {
+      background: linear-gradient(90deg, #FFE66D, #FF9F43);
+      box-shadow: 0 0 12px rgba(255, 230, 109, 0.4);
+    }
+    .progress-red {
+      background: linear-gradient(90deg, #FF6B9D, #FF4757);
+      box-shadow: 0 0 12px rgba(255, 107, 157, 0.4);
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 390px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 14px 0 32px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-item.active svg {
+      filter: drop-shadow(0 0 8px var(--primary-glow));
+    }
+
+    .nav-item svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 110px;
+      right: calc(50% - 195px + 20px);
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 32px var(--primary-glow);
+      cursor: pointer;
+    }
+
+    .fab svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .design-label {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: var(--bg);
+      padding: 8px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 0 0 12px 12px;
+      z-index: 100;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+  </style>
+</head>
+<body>
+  <div class="design-label">Option 10: Neon Dark + Plus Jakarta Sans</div>
+
+  <div class="status-bar">9:41</div>
+
+  <div class="header">
+    <div class="header-top">
+      <div class="greeting">
+        <div class="greeting-emoji">✨</div>
+        <div class="greeting-name">Hey Varshi!</div>
+      </div>
+      <div class="streak-pill">
+        <span class="streak-fire">🔥</span>
+        <span class="streak-count">12 days</span>
+      </div>
+    </div>
+
+    <div class="balance-card">
+      <div class="balance-glow"></div>
+      <div class="balance-label">Spendable Balance</div>
+      <div class="balance-amount">₹1,08,420</div>
+      <div class="balance-row">
+        <div class="balance-stat">
+          <div class="balance-stat-icon">📈</div>
+          <div class="balance-stat-value income">₹4.1L</div>
+          <div class="balance-stat-label">Income</div>
+        </div>
+        <div class="balance-stat">
+          <div class="balance-stat-icon">💳</div>
+          <div class="balance-stat-value spent">₹2.3L</div>
+          <div class="balance-stat-label">Spent</div>
+        </div>
+        <div class="balance-stat">
+          <div class="balance-stat-icon">🎯</div>
+          <div class="balance-stat-value saved">₹72K</div>
+          <div class="balance-stat-label">Saved</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="achievement-banner">
+    <div class="achievement-icon">🏆</div>
+    <div class="achievement-content">
+      <div class="achievement-title">Savings Legend!</div>
+      <div class="achievement-text">You've saved 18% this month. Top 10%!</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Budget 📊</span>
+      <span class="section-link">See All →</span>
+    </div>
+
+    <div class="category-card green">
+      <div class="category-header">
+        <div class="category-icon">🛒</div>
+        <div class="category-info">
+          <div class="category-title">Groceries</div>
+          <div class="category-subtitle">₹5,550 left • Nice! 👍</div>
+        </div>
+        <div class="category-amounts">
+          <div class="category-spent">₹12,450</div>
+          <div class="category-budget">of ₹18,000</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill progress-green" style="width: 69%;"></div>
+      </div>
+    </div>
+
+    <div class="category-card amber">
+      <div class="category-header">
+        <div class="category-icon">🍕</div>
+        <div class="category-info">
+          <div class="category-title">Food Ordering</div>
+          <div class="category-subtitle">₹800 left • Careful! ⚠️</div>
+        </div>
+        <div class="category-amounts">
+          <div class="category-spent">₹7,200</div>
+          <div class="category-budget">of ₹8,000</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill progress-amber" style="width: 90%;"></div>
+      </div>
+    </div>
+
+    <div class="category-card red">
+      <div class="category-header">
+        <div class="category-icon">⛽</div>
+        <div class="category-info">
+          <div class="category-title">Fuel</div>
+          <div class="category-subtitle">₹800 over • Oops! 🙈</div>
+        </div>
+        <div class="category-amounts">
+          <div class="category-spent" style="color: var(--error);">₹6,800</div>
+          <div class="category-budget">of ₹6,000</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill progress-red" style="width: 100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fab">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active">
+      <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span>Home</span>
+    </div>
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <span>Budget</span>
+    </div>
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span>Plan</span>
+    </div>
+    <div class="nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span>Profile</span>
+    </div>
+  </div>
+</body>
+</html>

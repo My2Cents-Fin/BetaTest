@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* Base styles */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #FDFBF7;
+  color: #2B2A28;
+  line-height: 1.6;
+}
+
+input, select, textarea {
+  font-size: 16px;
+}
+
+/* Gradients */
+.bg-hero-gradient {
+  background: linear-gradient(135deg, #6A4C6B 0%, #5A3D5B 100%);
+}
+
+.bg-success-gradient {
+  background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes scale-in {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}

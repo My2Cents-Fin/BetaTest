@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My2cents — Brand Identity Comparison</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Version A - Muted Plum (from spec) */
+            --a-primary: #6A4C6B;
+            --a-primary-dark: #5A3D5B;
+            --a-primary-light: #8B7089;
+            --a-primary-soft: #F2ECF3;
+
+            /* Version B - Electric Purple */
+            --b-primary: #7C3AED;
+            --b-primary-dark: #6D28D9;
+            --b-primary-light: #A78BFA;
+            --b-primary-soft: #EDE9FE;
+
+            /* Shared */
+            --honey: #D4A84B;
+            --cream: #FDFBF7;
+            --cream-dark: #F5F0E8;
+            --white: #FFFFFF;
+            --text-primary: #2B2A28;
+            --text-secondary: #6B655F;
+            --sand: #E7E3DC;
+            --success: #2E7D32;
+            --warning: #F57C00;
+            --danger: #D32F2F;
+
+            --font: 'Poppins', -apple-system, sans-serif;
+            --radius: 22px;
+            --radius-sm: 12px;
+            --radius-xs: 8px;
+        }
+
+        body {
+            font-family: var(--font);
+            background: #f5f5f5;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: var(--text-primary);
+            color: white;
+            text-align: center;
+            padding: 60px 24px;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        /* Version Container */
+        .version {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 32px;
+        }
+
+        .version-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .version-a .version-badge {
+            background: var(--a-primary-soft);
+            color: var(--a-primary);
+        }
+
+        .version-b .version-badge {
+            background: var(--b-primary-soft);
+            color: var(--b-primary);
+        }
+
+        .version-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .version-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: var(--sand);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Logo Section */
+        .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 60px;
+            flex-wrap: wrap;
+        }
+
+        .logo-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-mark {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: white;
+            position: relative;
+        }
+
+        .logo-mark .dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--honey);
+            border-radius: 50%;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        .version-a .logo-mark { background: var(--a-primary); }
+        .version-b .logo-mark { background: var(--b-primary); }
+
+        .logo-wordmark {
+            font-size: 1.5rem;
+        }
+
+        .logo-wordmark .my {
+            font-weight: 400;
+        }
+
+        .logo-wordmark .cents {
+            font-weight: 600;
+        }
+
+        .logo-variant {
+            text-align: center;
+        }
+
+        .logo-variant-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        /* Color Palette */
+        .palette-section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .color-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .color-swatch {
+            height: 80px;
+        }
+
+        .color-info {
+            padding: 14px 16px;
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 2px;
+        }
+
+        .color-hex {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Screen Mockups */
+        .mockups-section {
+            margin-bottom: 40px;
+        }
+
+        .mockups-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .mockup-wrapper {
+            text-align: center;
+        }
+
+        .phone {
+            width: 100%;
+            max-width: 200px;
+            margin: 0 auto;
+            aspect-ratio: 9/19.5;
+            background: var(--text-primary);
+            border-radius: 28px;
+            padding: 6px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--cream);
+            border-radius: 24px;
+            overflow: hidden;
+        }
+
+        .mockup-label {
+            margin-top: 16px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Screen Components */
+        .screen-status {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 14px;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+
+        .screen-header {
+            padding: 10px 14px 8px;
+        }
+
+        .screen-greeting {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+        }
+
+        .screen-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .balance-card {
+            margin: 0 10px 10px;
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            color: white;
+        }
+
+        .version-a .balance-card {
+            background: linear-gradient(135deg, var(--a-primary), var(--a-primary-dark));
+        }
+
+        .version-b .balance-card {
+            background: linear-gradient(135deg, var(--b-primary), var(--b-primary-dark));
+        }
+
+        .balance-label {
+            font-size: 0.55rem;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+
+        .balance-amount {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 2px 0;
+        }
+
+        .balance-progress {
+            height: 3px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 2px;
+            margin-top: 8px;
+        }
+
+        .balance-progress-fill {
+            height: 100%;
+            background: var(--honey);
+            border-radius: 2px;
+        }
+
+        .balance-sub {
+            font-size: 0.5rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 0 10px 10px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius-xs);
+            padding: 8px 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .stat-label {
+            font-size: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        .stat-value.success { color: var(--success); }
+
+        .list-label {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            padding: 4px 14px;
+            font-weight: 500;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            margin: 0 10px 4px;
+            background: var(--white);
+            border-radius: var(--radius-xs);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .transaction-name {
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+
+        .transaction-amount {
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+
+        .version-a .transaction-amount { color: var(--a-primary); }
+        .version-b .transaction-amount { color: var(--b-primary); }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+        }
+
+        .login-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .version-a .login-logo {
+            background: var(--a-primary);
+            box-shadow: 0 6px 20px rgba(106, 76, 107, 0.3);
+        }
+        .version-b .login-logo {
+            background: var(--b-primary);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+        }
+
+        .login-logo .dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--honey);
+            border-radius: 50%;
+            bottom: 8px;
+            right: 8px;
+        }
+
+        .login-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .login-title .my { font-weight: 400; }
+
+        .login-tagline {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .login-input {
+            width: 100%;
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-xs);
+            padding: 10px 12px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .login-button {
+            width: 100%;
+            color: white;
+            border-radius: var(--radius-xs);
+            padding: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .version-a .login-button {
+            background: var(--a-primary);
+        }
+        .version-b .login-button {
+            background: var(--b-primary);
+        }
+
+        /* Add Screen */
+        .add-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 14px;
+        }
+
+        .add-header {
+            text-align: center;
+            margin-bottom: 16px;
+            padding-top: 8px;
+        }
+
+        .add-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .add-amount {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .version-a .add-amount { color: var(--a-primary); }
+        .version-b .add-amount { color: var(--b-primary); }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .category-chip {
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-xs);
+            padding: 8px 4px;
+            font-size: 0.6rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .version-a .category-chip.active {
+            background: var(--a-primary);
+            color: white;
+            border-color: var(--a-primary);
+        }
+
+        .version-b .category-chip.active {
+            background: var(--b-primary);
+            color: white;
+            border-color: var(--b-primary);
+        }
+
+        .add-button {
+            margin-top: auto;
+            color: white;
+            border-radius: var(--radius-xs);
+            padding: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .version-a .add-button { background: var(--a-primary); }
+        .version-b .add-button { background: var(--b-primary); }
+
+        /* Invite Screen */
+        .invite-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            padding: 16px;
+        }
+
+        .invite-progress {
+            display: flex;
+            gap: 6px;
+            margin: 12px 0 20px;
+        }
+
+        .progress-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sand);
+        }
+
+        .progress-dot.done { background: var(--success); }
+
+        .version-a .progress-dot.active {
+            width: 16px;
+            border-radius: 3px;
+            background: var(--a-primary);
+        }
+
+        .version-b .progress-dot.active {
+            width: 16px;
+            border-radius: 3px;
+            background: var(--b-primary);
+        }
+
+        .invite-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .invite-subtitle {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .qr-box {
+            width: 90px;
+            height: 90px;
+            background: var(--white);
+            border-radius: var(--radius-xs);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .qr-pattern {
+            width: 70px;
+            height: 70px;
+            background:
+                linear-gradient(90deg, var(--text-primary) 2px, transparent 2px),
+                linear-gradient(var(--text-primary) 2px, transparent 2px);
+            background-size: 8px 8px;
+            opacity: 0.12;
+            border-radius: 4px;
+        }
+
+        .share-button {
+            background: var(--white);
+            border: 1px solid var(--sand);
+            border-radius: var(--radius-xs);
+            padding: 6px 16px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .continue-button {
+            width: 100%;
+            color: white;
+            border-radius: var(--radius-xs);
+            padding: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .version-a .continue-button { background: var(--a-primary); }
+        .version-b .continue-button { background: var(--b-primary); }
+
+        .skip-link {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Glass Card Demo */
+        .glass-section {
+            margin-top: 40px;
+        }
+
+        .glass-demo {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .glass-card {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: var(--radius);
+            padding: 24px 32px;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .glass-card-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .glass-card-sub {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Comparison Summary */
+        .comparison-summary {
+            max-width: 800px;
+            margin: 60px auto;
+            padding: 0 32px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--sand);
+        }
+
+        .comparison-table th {
+            background: var(--cream);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .comparison-table td {
+            font-size: 0.9rem;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .swatch-inline {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .mockups-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 32px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .page-header h1 {
+                font-size: 1.75rem;
+            }
+            .version {
+                padding: 48px 20px;
+            }
+            .mockups-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .phone {
+                max-width: 240px;
+            }
+            .logo-section {
+                flex-direction: column;
+                gap: 32px;
+            }
+            .comparison-summary {
+                padding: 0 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Page Header -->
+    <header class="page-header">
+        <h1>My2cents</h1>
+        <p>Brand Identity — Two Color Directions</p>
+    </header>
+
+    <!-- VERSION A: Muted Plum -->
+    <section class="version version-a" style="background: var(--cream);">
+        <div class="version-header">
+            <div class="version-badge">Version A</div>
+            <h2 class="version-title">Muted Plum</h2>
+            <p class="version-subtitle">Sophisticated, calm, premium — #6A4C6B</p>
+        </div>
+
+        <!-- Logo -->
+        <div class="logo-section">
+            <div class="logo-variant">
+                <div class="logo-variant-label">Primary</div>
+                <div class="logo-display">
+                    <div class="logo-mark">
+                        2
+                        <span class="dot"></span>
+                    </div>
+                    <div class="logo-wordmark">
+                        <span class="my">My</span><span class="cents">2cents</span>
+                    </div>
+                </div>
+            </div>
+            <div class="logo-variant">
+                <div class="logo-variant-label">Compact</div>
+                <div class="logo-display">
+                    <div class="logo-mark">
+                        2
+                        <span class="dot"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="palette-section">
+            <h3 class="section-title">Color Palette</h3>
+            <div class="palette-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--a-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Deep Plum</div>
+                        <div class="color-hex">#6A4C6B</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--a-primary-dark);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Darker Plum</div>
+                        <div class="color-hex">#5A3D5B</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--honey);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Honey Gold</div>
+                        <div class="color-hex">#D4A84B</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--cream);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Cream</div>
+                        <div class="color-hex">#FDFBF7</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--text-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Primary Text</div>
+                        <div class="color-hex">#2B2A28</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--success);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success</div>
+                        <div class="color-hex">#2E7D32</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen Mockups -->
+        <div class="mockups-section">
+            <h3 class="section-title">Screens</h3>
+            <div class="mockups-grid">
+                <!-- Dashboard -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="screen-status">
+                                <span>9:41</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="screen-header">
+                                <div class="screen-greeting">Good evening</div>
+                                <div class="screen-title">Varshine & Anita</div>
+                            </div>
+                            <div class="balance-card">
+                                <div class="balance-label">Remaining this month</div>
+                                <div class="balance-amount">₹47,250</div>
+                                <div class="balance-progress">
+                                    <div class="balance-progress-fill" style="width: 61%;"></div>
+                                </div>
+                                <div class="balance-sub">of ₹1,20,000 budget</div>
+                            </div>
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-label">Spent</div>
+                                    <div class="stat-value">₹72,750</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Saved</div>
+                                    <div class="stat-value success">₹15,000</div>
+                                </div>
+                            </div>
+                            <div class="list-label">This week</div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Morning coffee</span>
+                                <span class="transaction-amount">₹180</span>
+                            </div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Groceries</span>
+                                <span class="transaction-amount">₹2,340</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Dashboard</div>
+                </div>
+
+                <!-- Add -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="add-screen">
+                                <div class="add-header">
+                                    <div class="add-title">Add expense</div>
+                                </div>
+                                <div class="add-amount">₹850</div>
+                                <div class="category-grid">
+                                    <div class="category-chip">Food</div>
+                                    <div class="category-chip active">Transport</div>
+                                    <div class="category-chip">Shopping</div>
+                                    <div class="category-chip">Bills</div>
+                                    <div class="category-chip">Health</div>
+                                    <div class="category-chip">Other</div>
+                                </div>
+                                <div class="add-button">Save</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Add Expense</div>
+                </div>
+
+                <!-- Invite -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="invite-screen">
+                                <div class="invite-progress">
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot active"></div>
+                                </div>
+                                <div class="invite-title">Invite your partner</div>
+                                <div class="invite-subtitle">Share finances together</div>
+                                <div class="qr-box">
+                                    <div class="qr-pattern"></div>
+                                </div>
+                                <div class="share-button">Share link</div>
+                                <div class="continue-button">Continue</div>
+                                <div class="skip-link">Skip for now</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Partner Invite</div>
+                </div>
+
+                <!-- Login -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="login-screen">
+                                <div class="login-logo">
+                                    2
+                                    <span class="dot"></span>
+                                </div>
+                                <div class="login-title"><span class="my">My</span>2cents</div>
+                                <div class="login-tagline">Money, together</div>
+                                <div class="login-input">+91 98765 43210</div>
+                                <div class="login-button">Continue</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Login</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Glass Demo -->
+        <div class="glass-section">
+            <h3 class="section-title">Glass Treatment</h3>
+            <div class="glass-demo">
+                <div class="glass-card">
+                    <div class="glass-card-title">Frosted Glass</div>
+                    <div class="glass-card-sub">backdrop-filter: blur(8px)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- VERSION B: Electric Purple -->
+    <section class="version version-b" style="background: var(--cream);">
+        <div class="version-header">
+            <div class="version-badge">Version B</div>
+            <h2 class="version-title">Electric Purple</h2>
+            <p class="version-subtitle">Vibrant, modern, energetic — #7C3AED</p>
+        </div>
+
+        <!-- Logo -->
+        <div class="logo-section">
+            <div class="logo-variant">
+                <div class="logo-variant-label">Primary</div>
+                <div class="logo-display">
+                    <div class="logo-mark">
+                        2
+                        <span class="dot"></span>
+                    </div>
+                    <div class="logo-wordmark">
+                        <span class="my">My</span><span class="cents">2cents</span>
+                    </div>
+                </div>
+            </div>
+            <div class="logo-variant">
+                <div class="logo-variant-label">Compact</div>
+                <div class="logo-display">
+                    <div class="logo-mark">
+                        2
+                        <span class="dot"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="palette-section">
+            <h3 class="section-title">Color Palette</h3>
+            <div class="palette-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--b-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Electric Purple</div>
+                        <div class="color-hex">#7C3AED</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--b-primary-dark);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Deep Purple</div>
+                        <div class="color-hex">#6D28D9</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--honey);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Honey Gold</div>
+                        <div class="color-hex">#D4A84B</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--cream);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Cream</div>
+                        <div class="color-hex">#FDFBF7</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--text-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Primary Text</div>
+                        <div class="color-hex">#2B2A28</div>
+                    </div>
+                </div>
+                <div class="color-card">
+                    <div class="color-swatch" style="background: var(--success);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success</div>
+                        <div class="color-hex">#2E7D32</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen Mockups -->
+        <div class="mockups-section">
+            <h3 class="section-title">Screens</h3>
+            <div class="mockups-grid">
+                <!-- Dashboard -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="screen-status">
+                                <span>9:41</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="screen-header">
+                                <div class="screen-greeting">Good evening</div>
+                                <div class="screen-title">Varshine & Anita</div>
+                            </div>
+                            <div class="balance-card">
+                                <div class="balance-label">Remaining this month</div>
+                                <div class="balance-amount">₹47,250</div>
+                                <div class="balance-progress">
+                                    <div class="balance-progress-fill" style="width: 61%;"></div>
+                                </div>
+                                <div class="balance-sub">of ₹1,20,000 budget</div>
+                            </div>
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-label">Spent</div>
+                                    <div class="stat-value">₹72,750</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Saved</div>
+                                    <div class="stat-value success">₹15,000</div>
+                                </div>
+                            </div>
+                            <div class="list-label">This week</div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Morning coffee</span>
+                                <span class="transaction-amount">₹180</span>
+                            </div>
+                            <div class="transaction-item">
+                                <span class="transaction-name">Groceries</span>
+                                <span class="transaction-amount">₹2,340</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Dashboard</div>
+                </div>
+
+                <!-- Add -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="add-screen">
+                                <div class="add-header">
+                                    <div class="add-title">Add expense</div>
+                                </div>
+                                <div class="add-amount">₹850</div>
+                                <div class="category-grid">
+                                    <div class="category-chip">Food</div>
+                                    <div class="category-chip active">Transport</div>
+                                    <div class="category-chip">Shopping</div>
+                                    <div class="category-chip">Bills</div>
+                                    <div class="category-chip">Health</div>
+                                    <div class="category-chip">Other</div>
+                                </div>
+                                <div class="add-button">Save</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Add Expense</div>
+                </div>
+
+                <!-- Invite -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="invite-screen">
+                                <div class="invite-progress">
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot done"></div>
+                                    <div class="progress-dot active"></div>
+                                </div>
+                                <div class="invite-title">Invite your partner</div>
+                                <div class="invite-subtitle">Share finances together</div>
+                                <div class="qr-box">
+                                    <div class="qr-pattern"></div>
+                                </div>
+                                <div class="share-button">Share link</div>
+                                <div class="continue-button">Continue</div>
+                                <div class="skip-link">Skip for now</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Partner Invite</div>
+                </div>
+
+                <!-- Login -->
+                <div class="mockup-wrapper">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="login-screen">
+                                <div class="login-logo">
+                                    2
+                                    <span class="dot"></span>
+                                </div>
+                                <div class="login-title"><span class="my">My</span>2cents</div>
+                                <div class="login-tagline">Money, together</div>
+                                <div class="login-input">+91 98765 43210</div>
+                                <div class="login-button">Continue</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">Login</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Glass Demo -->
+        <div class="glass-section">
+            <h3 class="section-title">Glass Treatment</h3>
+            <div class="glass-demo">
+                <div class="glass-card">
+                    <div class="glass-card-title">Frosted Glass</div>
+                    <div class="glass-card-sub">backdrop-filter: blur(8px)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Summary -->
+    <div class="comparison-summary">
+        <h3 class="section-title" style="margin-bottom: 24px;">Quick Comparison</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>A: Muted Plum</th>
+                    <th>B: Electric Purple</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Primary Color</strong></td>
+                    <td><span class="swatch-inline" style="background: #6A4C6B;"></span>#6A4C6B</td>
+                    <td><span class="swatch-inline" style="background: #7C3AED;"></span>#7C3AED</td>
+                </tr>
+                <tr>
+                    <td><strong>Feel</strong></td>
+                    <td>Calm, sophisticated, luxury</td>
+                    <td>Energetic, modern, optimistic</td>
+                </tr>
+                <tr>
+                    <td><strong>Best For</strong></td>
+                    <td>Premium positioning, mature audience</td>
+                    <td>Broad appeal, younger couples</td>
+                </tr>
+                <tr>
+                    <td><strong>Risk</strong></td>
+                    <td>May feel heavy or dull</td>
+                    <td>May feel too "tech startup"</td>
+                </tr>
+                <tr>
+                    <td><strong>Mobile Visibility</strong></td>
+                    <td>Lower contrast, softer</td>
+                    <td>Higher contrast, pops more</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

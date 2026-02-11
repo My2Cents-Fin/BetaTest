@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finny - Onboarding Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --blue: #3969E7;
+            --blue-light: #07B9CE;
+            --purple: #7D2AE7;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --white: #FFFFFF;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 12px;
+            --space-lg: 16px;
+            --space-xl: 24px;
+            --space-2xl: 32px;
+            --space-3xl: 48px;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-2xl: 20px;
+            --radius-full: 9999px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--gray-100);
+            color: var(--gray-800);
+            font-size: 15px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Screen Switcher */
+        .screen-nav {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .screen-nav button {
+            padding: 8px 16px;
+            border: 1px solid var(--gray-300);
+            background: var(--white);
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: var(--font-sans);
+        }
+
+        .screen-nav button.active {
+            background: var(--blue);
+            color: var(--white);
+            border-color: var(--blue);
+        }
+
+        /* Phone Frame */
+        .phone-frame {
+            max-width: 390px;
+            margin: 0 auto;
+            min-height: 844px;
+            background: var(--white);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 8px solid #1a1a1a;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            position: relative;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Hero Background */
+        .bg-hero {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(135deg, #07B9CE 0%, #3969E7 50%, #7D2AE7 100%);
+            border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+        }
+
+        .bg-hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .bg-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 10%;
+            left: -15%;
+            width: 180px;
+            height: 180px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+
+        /* Success Background */
+        .bg-success {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+        }
+
+        .bg-success::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        /* White Background for Name Screen */
+        .bg-white-full {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--white);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-md) var(--space-xl);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-bar.light {
+            color: var(--white);
+        }
+
+        .status-bar.dark {
+            color: var(--gray-900);
+        }
+
+        .status-bar-right {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        /* Content */
+        .content {
+            position: relative;
+            z-index: 10;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0 var(--space-xl);
+        }
+
+        /* Logo Section */
+        .logo-section {
+            text-align: center;
+            padding-top: var(--space-3xl);
+            padding-bottom: var(--space-3xl);
+        }
+
+        .logo-section.compact {
+            padding-top: var(--space-xl);
+            padding-bottom: var(--space-xl);
+        }
+
+        .logo {
+            width: 72px;
+            height: 72px;
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .logo-icon {
+            font-size: 36px;
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            letter-spacing: -0.02em;
+        }
+
+        .logo-tagline {
+            font-size: 15px;
+            color: rgba(255,255,255,0.9);
+            margin-top: var(--space-sm);
+            font-weight: 500;
+        }
+
+        /* Card */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: var(--space-2xl) var(--space-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--space-sm);
+            text-align: center;
+            letter-spacing: -0.01em;
+        }
+
+        .card-subtitle {
+            font-size: 15px;
+            color: var(--gray-500);
+            text-align: center;
+            margin-bottom: var(--space-xl);
+            line-height: 1.5;
+        }
+
+        /* Form Field */
+        .form-field {
+            margin-bottom: var(--space-xl);
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: var(--space-sm);
+        }
+
+        /* Input */
+        .input {
+            width: 100%;
+            padding: var(--space-md) var(--space-lg);
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-900);
+            font-family: var(--font-sans);
+            min-height: 48px;
+            background: var(--white);
+            transition: all 0.2s ease;
+        }
+
+        .input::placeholder {
+            color: var(--gray-400);
+            font-weight: 400;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(57, 105, 231, 0.1);
+        }
+
+        .input.error {
+            border-color: var(--danger);
+        }
+
+        .input.error:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .form-helper {
+            display: block;
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 6px;
+        }
+
+        .form-helper.error {
+            color: var(--danger);
+        }
+
+        /* Phone Input */
+        .phone-input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            background: var(--white);
+            transition: all 0.2s ease;
+        }
+
+        .phone-input-wrapper:focus-within {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(57, 105, 231, 0.1);
+        }
+
+        .country-code {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: var(--space-md) var(--space-lg);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-700);
+            border-right: 1px solid var(--gray-200);
+            background: var(--gray-50);
+            border-radius: var(--radius-md) 0 0 var(--radius-md);
+        }
+
+        .country-flag {
+            font-size: 18px;
+        }
+
+        .phone-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: var(--space-md) var(--space-lg);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-900);
+            font-family: var(--font-mono);
+            letter-spacing: 0.5px;
+            min-height: 48px;
+        }
+
+        .phone-input::placeholder {
+            color: var(--gray-400);
+            font-family: var(--font-sans);
+            font-weight: 400;
+        }
+
+        .phone-input:focus {
+            outline: none;
+        }
+
+        /* OTP Inputs */
+        .otp-inputs {
+            display: flex;
+            gap: var(--space-lg);
+            justify-content: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .otp-input {
+            width: 56px;
+            height: 64px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            text-align: center;
+            font-size: 28px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+            color: var(--gray-900);
+            background: var(--white);
+            transition: all 0.2s ease;
+        }
+
+        .otp-input:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(57, 105, 231, 0.1);
+        }
+
+        .otp-input.filled {
+            border-color: var(--blue);
+            background: rgba(57, 105, 231, 0.05);
+        }
+
+        .otp-input.error {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        /* Buttons */
+        .btn-primary {
+            width: 100%;
+            padding: var(--space-md) var(--space-xl);
+            background: linear-gradient(135deg, #3969E7 0%, #6B85EC 100%);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 600;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 48px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            background: var(--gray-200);
+            color: var(--gray-400);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: var(--space-md) var(--space-xl);
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 600;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            min-height: 48px;
+        }
+
+        .btn-secondary:active {
+            background: var(--gray-200);
+        }
+
+        /* Back Link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: var(--gray-600);
+            text-decoration: none;
+            margin-bottom: var(--space-lg);
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            color: var(--blue);
+        }
+
+        /* Resend */
+        .resend-text {
+            text-align: center;
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-bottom: var(--space-xl);
+        }
+
+        .resend-link {
+            color: var(--purple);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .phone-display {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        /* Error Alert */
+        .error-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .error-alert-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .error-alert-text {
+            font-size: 14px;
+            color: var(--danger);
+            font-weight: 500;
+        }
+
+        /* Success State */
+        .success-icon-container {
+            width: 100px;
+            height: 100px;
+            background: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-xl);
+            box-shadow: var(--shadow-lg);
+            animation: scaleIn 0.4s ease;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .success-icon {
+            font-size: 48px;
+        }
+
+        .success-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--white);
+            text-align: center;
+            margin-bottom: var(--space-sm);
+        }
+
+        .success-subtitle {
+            font-size: 15px;
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+        }
+
+        /* Footer */
+        .footer {
+            padding: var(--space-xl);
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: var(--gray-500);
+            line-height: 1.6;
+        }
+
+        .footer-link {
+            color: var(--blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Progress Dots */
+        .progress-dots {
+            display: flex;
+            gap: var(--space-sm);
+            justify-content: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: var(--blue);
+            width: 24px;
+            border-radius: var(--radius-full);
+        }
+
+        .progress-dot.completed {
+            background: var(--success);
+        }
+
+        /* Top Nav for inner screens */
+        .top-nav {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            padding: var(--space-md) var(--space-lg);
+            gap: var(--space-md);
+        }
+
+        .top-nav-back {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            color: var(--gray-700);
+            text-decoration: none;
+            font-size: 18px;
+        }
+
+        .top-nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        /* Illustration placeholder */
+        .illustration {
+            width: 200px;
+            height: 160px;
+            margin: 0 auto var(--space-xl);
+            background: linear-gradient(135deg, rgba(57, 105, 231, 0.1) 0%, rgba(125, 42, 231, 0.1) 100%);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Screen Navigation -->
+    <div class="screen-nav">
+        <button class="active" onclick="showScreen('phone')">1. Phone</button>
+        <button onclick="showScreen('otp')">2. OTP</button>
+        <button onclick="showScreen('otp-error')">2b. OTP Error</button>
+        <button onclick="showScreen('success')">3. Success</button>
+        <button onclick="showScreen('name')">4. Your Name</button>
+        <button onclick="showScreen('household')">5. Household</button>
+    </div>
+
+    <div class="phone-frame">
+        <!-- Screen 1: Phone Number -->
+        <div class="screen active" id="screen-phone">
+            <div class="bg-hero"></div>
+            <div class="status-bar light">
+                <span>9:41</span>
+                <div class="status-bar-right">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="logo-section">
+                    <div class="logo">
+                        <span class="logo-icon">💰</span>
+                    </div>
+                    <div class="logo-text">Finny</div>
+                    <div class="logo-tagline">Family finances, simplified</div>
+                </div>
+
+                <div class="card">
+                    <h1 class="card-title">Welcome!</h1>
+                    <p class="card-subtitle">Enter your phone number to get started</p>
+
+                    <div class="form-field">
+                        <label class="form-label">Phone Number</label>
+                        <div class="phone-input-wrapper">
+                            <div class="country-code">
+                                <span class="country-flag">🇮🇳</span>
+                                <span>+91</span>
+                            </div>
+                            <input type="tel" class="phone-input" id="input-phone" placeholder="98765 43210" maxlength="12">
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="btn-send-otp" disabled>Send OTP</button>
+                </div>
+
+                <div class="footer">
+                    <p class="footer-text">
+                        By continuing, you agree to our<br>
+                        <a href="#" class="footer-link">Terms of Service</a> & <a href="#" class="footer-link">Privacy Policy</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 2: OTP Entry -->
+        <div class="screen" id="screen-otp">
+            <div class="bg-hero"></div>
+            <div class="status-bar light">
+                <span>9:41</span>
+                <div class="status-bar-right">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="logo-section compact">
+                    <div class="logo">
+                        <span class="logo-icon">💰</span>
+                    </div>
+                    <div class="logo-text">Finny</div>
+                </div>
+
+                <div class="card">
+                    <a href="#" class="back-link" onclick="showScreen('phone'); return false;">← Back</a>
+                    <h1 class="card-title">Verify OTP</h1>
+                    <p class="card-subtitle">Enter the 4-digit code sent to<br><span class="phone-display">+91 98765 43210</span></p>
+
+                    <div class="otp-inputs" id="otp-container">
+                        <input type="text" class="otp-input" maxlength="1" value="" inputmode="numeric">
+                        <input type="text" class="otp-input" maxlength="1" value="" inputmode="numeric">
+                        <input type="text" class="otp-input" maxlength="1" value="" inputmode="numeric">
+                        <input type="text" class="otp-input" maxlength="1" value="" inputmode="numeric">
+                    </div>
+
+                    <p class="resend-text">
+                        Didn't receive code? <a href="#" class="resend-link">Resend in 0:28</a>
+                    </p>
+
+                    <button class="btn-primary" id="btn-verify-otp" disabled>Verify</button>
+                </div>
+
+                <div class="footer"></div>
+            </div>
+        </div>
+
+        <!-- Screen 2b: OTP Error -->
+        <div class="screen" id="screen-otp-error">
+            <div class="bg-hero"></div>
+            <div class="status-bar light">
+                <span>9:41</span>
+                <div class="status-bar-right">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="logo-section compact">
+                    <div class="logo">
+                        <span class="logo-icon">💰</span>
+                    </div>
+                    <div class="logo-text">Finny</div>
+                </div>
+
+                <div class="card">
+                    <a href="#" class="back-link" onclick="showScreen('phone'); return false;">← Back</a>
+                    <h1 class="card-title">Verify OTP</h1>
+                    <p class="card-subtitle">Enter the 4-digit code sent to<br><span class="phone-display">+91 98765 43210</span></p>
+
+                    <div class="error-alert">
+                        <span class="error-alert-icon">⚠️</span>
+                        <span class="error-alert-text">Incorrect code. Please try again.</span>
+                    </div>
+
+                    <div class="otp-inputs">
+                        <input type="text" class="otp-input error" maxlength="1" value="4">
+                        <input type="text" class="otp-input error" maxlength="1" value="2">
+                        <input type="text" class="otp-input error" maxlength="1" value="3">
+                        <input type="text" class="otp-input error" maxlength="1" value="1">
+                    </div>
+
+                    <p class="resend-text">
+                        Didn't receive code? <a href="#" class="resend-link">Resend OTP</a>
+                    </p>
+
+                    <button class="btn-primary" id="btn-try-again">Try Again</button>
+                </div>
+
+                <div class="footer"></div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Success -->
+        <div class="screen" id="screen-success">
+            <div class="bg-success"></div>
+            <div class="status-bar light">
+                <span>9:41</span>
+                <div class="status-bar-right">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            <div class="content" style="justify-content: center; padding-bottom: 100px;">
+                <div class="success-icon-container">
+                    <span class="success-icon">✓</span>
+                </div>
+                <h1 class="success-title">You're in!</h1>
+                <p class="success-subtitle">Phone verified successfully</p>
+            </div>
+        </div>
+
+        <!-- Screen 4: Your Name -->
+        <div class="screen" id="screen-name">
+            <div class="bg-white-full"></div>
+            <div class="status-bar dark">
+                <span>9:41</span>
+                <div class="status-bar-right">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            <div class="content" style="padding-top: var(--space-xl);">
+                <div class="progress-dots">
+                    <span class="progress-dot completed"></span>
+                    <span class="progress-dot active"></span>
+                    <span class="progress-dot"></span>
+                    <span class="progress-dot"></span>
+                </div>
+
+                <div class="illustration">👋</div>
+
+                <h1 class="card-title" style="margin-bottom: var(--space-md);">What should we call you?</h1>
+                <p class="card-subtitle" style="margin-bottom: var(--space-2xl);">Just your first name is fine</p>
+
+                <div class="form-field">
+                    <input type="text" class="input" id="input-name" placeholder="e.g., Varshi" value="">
+                </div>
+
+                <button class="btn-primary" id="btn-name-continue" disabled>Continue</button>
+
+                <div class="footer"></div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Household Name -->
+        <div class="screen" id="screen-household">
+            <div class="bg-white-full"></div>
+            <div class="status-bar dark">
+                <span>9:41</span>
+                <div class="status-bar-right">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            <div class="content" style="padding-top: var(--space-xl);">
+                <div class="progress-dots">
+                    <span class="progress-dot completed"></span>
+                    <span class="progress-dot completed"></span>
+                    <span class="progress-dot active"></span>
+                    <span class="progress-dot"></span>
+                </div>
+
+                <div class="illustration">🏠</div>
+
+                <h1 class="card-title" style="margin-bottom: var(--space-md);">Name your household</h1>
+                <p class="card-subtitle" style="margin-bottom: var(--space-2xl);">This helps identify your shared finances</p>
+
+                <div class="form-field">
+                    <input type="text" class="input" id="input-household" placeholder="e.g., Sharma Family" value="">
+                    <span class="form-helper">You can change this later in settings</span>
+                </div>
+
+                <button class="btn-primary" id="btn-create-household" disabled>Create Household</button>
+
+                <div class="footer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Screen Navigation
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + screenId).classList.add('active');
+            document.querySelectorAll('.screen-nav button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Phone Validation
+        const PHONE_REGEX = /^[6-9]\d{9}$/;
+        const phoneInput = document.getElementById('input-phone');
+        const btnSendOtp = document.getElementById('btn-send-otp');
+
+        function validatePhone() {
+            const digits = phoneInput.value.replace(/\D/g, '');
+            const isValid = PHONE_REGEX.test(digits);
+            btnSendOtp.disabled = !isValid;
+            return isValid;
+        }
+
+        phoneInput.addEventListener('input', function(e) {
+            // Only allow digits
+            let value = e.target.value.replace(/\D/g, '');
+            // Limit to 10 digits
+            value = value.slice(0, 10);
+            // Format with space: 98765 43210
+            if (value.length > 5) {
+                value = value.slice(0, 5) + ' ' + value.slice(5);
+            }
+            e.target.value = value;
+            validatePhone();
+        });
+
+        // OTP Validation
+        const otpContainer = document.getElementById('otp-container');
+        const otpInputs = otpContainer.querySelectorAll('.otp-input');
+        const btnVerifyOtp = document.getElementById('btn-verify-otp');
+
+        function validateOTP() {
+            let otp = '';
+            otpInputs.forEach(input => {
+                otp += input.value;
+                // Add/remove filled class
+                if (input.value) {
+                    input.classList.add('filled');
+                } else {
+                    input.classList.remove('filled');
+                }
+            });
+            const isValid = otp.length === 4 && /^\d{4}$/.test(otp);
+            btnVerifyOtp.disabled = !isValid;
+            return isValid;
+        }
+
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', function(e) {
+                // Only allow single digit
+                const value = e.target.value.replace(/\D/g, '').slice(0, 1);
+                e.target.value = value;
+
+                // Auto-advance to next input
+                if (value && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+
+                validateOTP();
+            });
+
+            input.addEventListener('keydown', function(e) {
+                // Handle backspace - go to previous input
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    otpInputs[index - 1].focus();
+                }
+            });
+
+            // Select all on focus for easy replacement
+            input.addEventListener('focus', function() {
+                this.select();
+            });
+        });
+
+        // Name Validation
+        const nameInput = document.getElementById('input-name');
+        const btnNameContinue = document.getElementById('btn-name-continue');
+        const NAME_REGEX = /^[a-zA-Z\s'-]{2,50}$/;
+
+        function validateName() {
+            const value = nameInput.value.trim();
+            const isValid = value.length >= 2 && NAME_REGEX.test(value);
+            btnNameContinue.disabled = !isValid;
+            return isValid;
+        }
+
+        nameInput.addEventListener('input', validateName);
+
+        // Household Name Validation
+        const householdInput = document.getElementById('input-household');
+        const btnCreateHousehold = document.getElementById('btn-create-household');
+        const HOUSEHOLD_REGEX = /^[a-zA-Z0-9\s'&-]{2,50}$/;
+
+        function validateHousehold() {
+            const value = householdInput.value.trim();
+            const isValid = value.length >= 2 && HOUSEHOLD_REGEX.test(value);
+            btnCreateHousehold.disabled = !isValid;
+            return isValid;
+        }
+
+        householdInput.addEventListener('input', validateHousehold);
+
+        // Initialize - ensure all buttons start disabled
+        document.addEventListener('DOMContentLoaded', function() {
+            validatePhone();
+            validateOTP();
+            validateName();
+            validateHousehold();
+        });
+    </script>
+</body>
+</html>
