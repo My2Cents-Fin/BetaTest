@@ -185,6 +185,10 @@
   },
   "active": "ce58d6c4fa16878b",
   "lastOpenFiles": [
+    "progress.md.tmp.269004.1770835099754",
+    "progress.md.tmp.269004.1770835088794",
+    "supabase/migrations/000_create_base_tables.sql",
+    "DEPLOYMENT_STEPS.md",
     "app/public/ICONS_README.md",
     "DEPLOYMENT_CHECKLIST.md",
     "app/public/manifest.json",
@@ -196,8 +200,6 @@
     "app/src/modules/dashboard/components/FundTransferModal.tsx.tmp.96576.1770825458857",
     "supabase/migrations/004_add_household_members_user_fk.sql",
     "app/node_modules/@babel/runtime/LICENSE",
-    "app/src/modules/dashboard/components/FundTransferModal.tsx",
-    "supabase/migrations/003_add_fund_transfer_support.sql",
     "docs/Finny-Foundation-Pillar/finny-user-journey-transactions.md",
     "docs/Finny-Foundation-Pillar/finny-user-journey-onboarding.md",
     "design-previews/App screenshots/bottom nav.png",
@@ -226,8 +228,6 @@
     "app/node_modules/parent-module/readme.md",
     "app/node_modules/raf-schd/CHANGELOG.md",
     "app/node_modules/shebang-command/readme.md",
-    "app/node_modules/rollup/README.md",
-    "app/node_modules/@rolldown/pluginutils/README.md",
     "design-previews/App screenshots/catalog template dropdown.PNG",
     "design-previews/App screenshots/dashboard design.PNG",
     "design-previews/App screenshots/dashboard ftue.PNG"

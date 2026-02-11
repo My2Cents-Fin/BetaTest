@@ -3,10 +3,10 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-11
+2026-02-12
 
 ## Last Session Summary
-**Dashboard redesign and UI polish.** Implemented clean 3-card dashboard (Budget Health, Daily Spending, Expected Cash Balance) with progressive disclosure. Fixed transaction amount input alignment issues - moved to standard boxed input like other form fields. Applied smart color gradients to Budget screen: Variable category gets yellow→orange→red gradient (75-89-100%+), other expenses only red when over 100%, income shows green when exceeding planned. Added red dotted underline for over-budget items. Implemented negative amount display with (-) prefix for deficits. Fixed column alignment in Budget view by removing warning icon. Added Enter key submit to transaction form.
+**Deployment to Vercel.** Successfully deployed My2cents app to Vercel at https://finny-phi.vercel.app/. Configured environment variables for Supabase connection. App is now live and accessible from any device with internet connection. All features working in production: onboarding flow, budget planning, transaction recording, dashboard with real-time updates.
 
 ---
 
@@ -243,6 +243,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-12 | **Session 12 (production deployment):** Deployed My2cents app to Vercel at https://finny-phi.vercel.app/. Configured production environment variables for Supabase. App now live and accessible from any device. All features working in production. |
 | 2026-02-11 | **Session 11 (dashboard redesign & UI polish):** Redesigned dashboard with 3 clean cards (Budget Health, Daily Spending, Expected Cash Balance) using progressive disclosure. Fixed transaction amount input - changed from inline rupee symbol to standard boxed input field like other form fields. Implemented smart color gradients in Budget view: Variable category shows yellow→orange→red gradient (75-89-100%+), other expenses only red when >100%, income green when exceeding planned. Added red dotted underline for over-budget items (not for income). Fixed column alignment by removing warning icon. Added negative amount display with (-) prefix for deficits in Dashboard. Implemented Enter key submit throughout transaction form. Renamed "Your Cash Balance" to "Your Expected Cash Balance". |
 | 2026-02-10 | **Session 10 (bug fixes):** Fixed confetti not showing - changed first-freeze detection to query DB for existing frozen plans instead of relying on availableMonths state. Fixed tabs not unlocking - corrected BudgetProvider month format from YYYY-MM to YYYY-MM-01, added 500ms delay before refetch. Changed sidebar default to collapsed. Mobile access: use `npm run dev -- --host` to expose on local network. |
 | 2026-02-10 | **Session 10 (continued):** Added debounced auto-save for budget drafts (1 second delay after last change). Shows "Draft saved" green badge when saved. Implemented confetti animation (50 falling pieces) + success modal on first budget freeze. Budget tab calls `refetchBudgetStatus()` after freeze to unlock Dashboard & Transactions tabs. Added Confetti component with falling animation keyframes. Complete flow now works: Onboarding → Budget (tabs locked) → Edit & save → Freeze → Confetti 🎉 → Success modal → Tabs unlock. |
