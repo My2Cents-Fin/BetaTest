@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "progress.md",
+                "file": "docs/Finny To-Be context/finny-roadmap.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "progress"
+              "title": "finny-roadmap"
             }
           }
         ]
@@ -185,21 +185,25 @@
   },
   "active": "ce58d6c4fa16878b",
   "lastOpenFiles": [
-    "progress.md.tmp.269004.1770835099754",
-    "progress.md.tmp.269004.1770835088794",
-    "supabase/migrations/000_create_base_tables.sql",
+    "supabase/migrations/ADD_FAMILY_INVESTMENT_CATEGORIES.sql",
+    "app/src/modules/dashboard/components/BudgetSection.tsx.tmp.287652.1770926444632",
+    "app/src/modules/budget/components/BudgetTab.tsx.tmp.287652.1770926358025",
+    "app/src/modules/dashboard/components/InlineAddItem.tsx.tmp.287652.1770926299515",
+    "DEPLOYMENT_CHECKLIST.md.tmp.61844.1770925113958",
+    "DEPLOYMENT_CHECKLIST.md.tmp.61844.1770925101420",
+    "app/src/modules/budget/components/InlineAddCategory.tsx",
+    "progress.md",
+    "supabase/migrations/ADD_CUSTOM_CATEGORIES.sql",
+    "supabase/migrations/MIGRATE_UTILITIES_TO_VARIABLE.sql",
+    "supabase/migrations/FIX_DUPLICATE_SUBCATEGORIES.sql",
+    "supabase/migrations/FIX_INVITE_CODE_RLS.sql",
+    "DEV-PROD-REFERENCE.md",
+    "NEXT-STEPS-DEV-SETUP.md",
+    "setup-dev-database.md",
     "DEPLOYMENT_STEPS.md",
     "app/public/ICONS_README.md",
     "DEPLOYMENT_CHECKLIST.md",
-    "app/public/manifest.json",
     "DEPLOYMENT.md",
-    "supabase/migrations/005_enforce_single_household_per_user.sql",
-    "app/node_modules/color-name/LICENSE",
-    "app/node_modules/esquery/dist/esquery.lite.js",
-    "app/node_modules/esquery/dist/esquery.esm.min.js",
-    "app/src/modules/dashboard/components/FundTransferModal.tsx.tmp.96576.1770825458857",
-    "supabase/migrations/004_add_household_members_user_fk.sql",
-    "app/node_modules/@babel/runtime/LICENSE",
     "docs/Finny-Foundation-Pillar/finny-user-journey-transactions.md",
     "docs/Finny-Foundation-Pillar/finny-user-journey-onboarding.md",
     "design-previews/App screenshots/bottom nav.png",
@@ -224,10 +228,6 @@
     "app/node_modules/yocto-queue/readme.md",
     "app/node_modules/p-locate/readme.md",
     "app/node_modules/@jridgewell/trace-mapping/README.md",
-    "app/node_modules/raf-schd/README.md",
-    "app/node_modules/parent-module/readme.md",
-    "app/node_modules/raf-schd/CHANGELOG.md",
-    "app/node_modules/shebang-command/readme.md",
     "design-previews/App screenshots/catalog template dropdown.PNG",
     "design-previews/App screenshots/dashboard design.PNG",
     "design-previews/App screenshots/dashboard ftue.PNG"

@@ -245,12 +245,12 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const remaining = totalPlanned - totalSpent;
   const percentUsed = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
 
-  // Calculate spending velocity metrics (rounded to integers)
+  // Calculate spending velocity metrics (rounded UP to next integer)
   const daysElapsed = today.getDate();
-  const dailyAverage = daysElapsed > 0 ? Math.round(totalSpent / daysElapsed) : 0;
+  const dailyAverage = daysElapsed > 0 ? Math.ceil(totalSpent / daysElapsed) : 0;
   const totalDaysInMonth = lastDayOfMonth.getDate();
-  const projectedSpend = Math.round(dailyAverage * totalDaysInMonth);
-  const projectedOverspend = Math.round(projectedSpend - totalPlanned);
+  const projectedSpend = Math.ceil(dailyAverage * totalDaysInMonth);
+  const projectedOverspend = Math.ceil(projectedSpend - totalPlanned);
 
   // Filter Variable categories at-risk (>=75% of budget)
   const variableAtRisk = categorySpending.filter(cat =>
@@ -338,7 +338,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
               {/* Main amount */}
               <div className="mb-3">
-                <p className={`text-3xl font-bold ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`font-bold ${Math.abs(remaining) >= 100000 ? 'text-[26px]' : 'text-3xl'} ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {remaining >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(remaining))}
                 </p>
                 <p className="text-[10px] text-gray-500 mt-1">
@@ -393,7 +393,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     <span className="font-semibold">Alert</span>
                   </p>
                   <p className="text-[9px] text-red-600 leading-relaxed">
-                    Reduce to ₹{formatNumber(Math.round(remaining / daysRemaining))}/day
+                    Reduce to ₹{formatNumber(Math.ceil(remaining / daysRemaining))}/day
                   </p>
                 </div>
               ) : (
@@ -403,7 +403,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     <span className="font-semibold">On Track</span>
                   </p>
                   <p className="text-[9px] text-green-600 leading-relaxed">
-                    Keep under ₹{formatNumber(Math.round(remaining / daysRemaining))}/day
+                    Keep under ₹{formatNumber(Math.ceil(remaining / daysRemaining))}/day
                   </p>
                 </div>
               )}
@@ -415,8 +415,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             const currentUserBalance = userBalances.find(u => u.userId === currentUserId);
             const otherUsers = userBalances.filter(u => u.userId !== currentUserId);
 
-            // Hide card if current user has no income and no expenses
-            if (currentUserBalance && currentUserBalance.income === 0 && currentUserBalance.spent === 0) {
+            // Hide card if current user doesn't exist or has no income and no expenses
+            if (!currentUserBalance || (currentUserBalance.income === 0 && currentUserBalance.spent === 0 && currentUserBalance.netTransfer === 0)) {
               return null;
             }
 
@@ -517,7 +517,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                       <span className={`text-sm font-medium ${
                         cat.percentUsed > 100 ? 'text-red-600' : 'text-yellow-600'
                       }`}>
-                        {Math.round(cat.percentUsed)}%
+                        {Math.ceil(cat.percentUsed)}%
                       </span>
                       <p className="text-xs text-gray-400">
                         ₹{formatNumber(cat.actual)} / ₹{formatNumber(cat.planned)}
@@ -541,7 +541,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     <span className="flex-1 text-sm text-gray-700">{cat.name}</span>
                     <div className="text-right">
                       <span className="text-sm font-medium text-red-600">
-                        {Math.round(cat.percentUsed)}%
+                        {Math.ceil(cat.percentUsed)}%
                       </span>
                       <p className="text-xs text-gray-400">
                         ₹{formatNumber(cat.actual)} / ₹{formatNumber(cat.planned)}

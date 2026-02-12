@@ -218,7 +218,9 @@ INSERT INTO public.categories (name, type, display_order, icon) VALUES
   ('Savings', 'expense', 4, '🐷'),
   ('Fixed', 'expense', 5, '📌'),
   ('Variable', 'expense', 6, '🔄'),
-  ('One-time', 'expense', 7, '📅');
+  ('Family', 'expense', 7, '👨‍👩‍👧‍👦'),
+  ('Investment', 'expense', 8, '📈'),
+  ('One-time', 'expense', 9, '📅');
 
 -- ============================================
 -- Seed Data: Sub-Category Templates

@@ -6,7 +6,7 @@
 2026-02-12
 
 ## Last Session Summary
-**Deployment to Vercel.** Successfully deployed My2cents app to Vercel at https://finny-phi.vercel.app/. Configured environment variables for Supabase connection. App is now live and accessible from any device with internet connection. All features working in production: onboarding flow, budget planning, transaction recording, dashboard with real-time updates.
+**Dev/Prod database separation COMPLETE.** Successfully set up separate development and production environments. Created My2Cents-dev and My2Cents-prod Supabase projects. Copied complete schema to DEV database (all 9 tables + RLS policies). Configured phone auth on DEV with test numbers (918888888888, 919999999999). Updated local `.env.local` to use DEV database. Vercel production uses PROD database. Established test phone number strategy: PROD uses 918130944414/918056031046, DEV uses 918888888888/919999999999. Created reference guide at `DEV-PROD-REFERENCE.md`. Local development now fully functional with isolated DEV database.
 
 ---
 
@@ -52,10 +52,16 @@
 - [x] Brand identity comparison → `design-previews/my2cents-identity-comparison.html`
 
 ### Supabase Setup
-- [x] Created Supabase project → `qybzttjbjxmqdhcstuif.supabase.co`
-- [x] Configured phone auth with test mode (no Twilio needed)
-- [x] Test phone numbers: `918130944414=000000`, `918056031046=000000`
-- [x] Environment variables → `app/.env.local`
+- [x] **PRODUCTION:** Created Supabase project "My2Cents-prod" → `qybzttjbjxmqdhcstuif.supabase.co`
+- [x] **DEV:** Created Supabase project "My2Cents-dev" → `vcbmazhfcmchbswdcwqr.supabase.co`
+- [x] Configured phone auth with test mode on both PROD and DEV (no Twilio needed)
+- [x] Test phone numbers on PROD: `918130944414=000000`, `918056031046=000000`
+- [x] Test phone numbers on DEV: `918888888888=000000`, `919999999999=000000`
+- [x] Local environment variables → `app/.env.local` (points to DEV database)
+- [x] Vercel environment variables → Points to PROD database
+- [x] Supabase URL whitelist configured for Vercel domains (beta-test-five.vercel.app)
+- [x] Supabase URL whitelist configured for DEV (localhost:5173)
+- [x] Complete database schema copied to DEV (all tables, indexes, RLS policies)
 - [x] Database tables created:
   - `users` (id, display_name, phone, onboarding_complete)
   - `households` (id, name, invite_code, created_by)
@@ -177,6 +183,20 @@
 - [x] Icons added to modal field labels (📁, 📅, 📝)
 - [x] Changed "Date" to "Date of Payment"
 
+### Production Deployment
+- [x] **Deployed to Vercel** → https://beta-test-five.vercel.app
+- [x] Configured Vercel environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+- [x] Configured Supabase URL whitelist for Vercel domains
+- [x] Added test phone numbers for production testing
+- [x] Verified local development works with Supabase auth
+
+### Dev/Prod Environment Separation
+- [x] **Created DEV database** with complete schema
+- [x] **Separated test phone numbers** (PROD: 918130944414/918056031046, DEV: 918888888888/919999999999)
+- [x] **Local development** isolated from production data
+- [x] **Reference documentation** created → `DEV-PROD-REFERENCE.md`
+- [x] **Migration scripts** created → `supabase/migrations/DEV_SCHEMA_FINAL.sql`
+
 ---
 
 ## In Progress
@@ -186,7 +206,13 @@
 
 ## Next Up (in order)
 
-### 1. UI Polish & Fixes
+### 1. Complete Production Deployment
+- [ ] Redeploy Vercel after environment variables are added
+- [ ] Test phone auth on production URL (https://beta-test-five.vercel.app)
+- [ ] Verify full onboarding flow works in production
+- [ ] Test all features (budget, transactions, dashboard) in production
+
+### 2. UI Polish & Fixes
 - [ ] Review and fix any UI inconsistencies across screens
 - [ ] Ensure mobile responsiveness is perfect on all screens
 - [ ] Add proper loading states where missing
@@ -235,6 +261,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 - [x] ~~Transaction filters have some issues (to be debugged)~~ - FIXED
 - [x] ~~Pre-existing TypeScript errors in BudgetTab.tsx, BudgetViewMode.tsx, DashboardScreen.tsx (icon type mismatches)~~ - FIXED
 - [x] ~~Existing users go through onboarding again (need to check onboarding_complete flag)~~ - FIXED (now checks database instead of auth metadata)
+- [x] ~~Vercel production deployment missing environment variables~~ - FIXED (added VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY)
 - [ ] PWA manifest/service worker not yet added
 
 ---
@@ -243,7 +270,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
-| 2026-02-12 | **Session 12 (production deployment):** Deployed My2cents app to Vercel at https://finny-phi.vercel.app/. Configured production environment variables for Supabase. App now live and accessible from any device. All features working in production. |
+| 2026-02-12 | **Session 12 (dev/prod separation & deployment):** Deployed to Vercel, debugged auth errors, set up dev/prod database separation. Deployed My2cents to Vercel (beta-test project, URL: https://beta-test-five.vercel.app). Fixed "unsupported phone provider" and "invalid API key" errors (missing Vercel env vars). Created separate Supabase databases: renamed "My2Cents" → "My2Cents-prod" (production, qybzttjbjxmqdhcstuif), "My2Cents-prod" → "My2Cents-dev" (development, vcbmazhfcmchbswdcwqr). Updated local `.env.local` to use DEV database. Vercel prod uses PROD database. Created setup guide. Still need to: copy schema to DEV, configure phone auth on DEV, test local with DEV database. |
 | 2026-02-11 | **Session 11 (dashboard redesign & UI polish):** Redesigned dashboard with 3 clean cards (Budget Health, Daily Spending, Expected Cash Balance) using progressive disclosure. Fixed transaction amount input - changed from inline rupee symbol to standard boxed input field like other form fields. Implemented smart color gradients in Budget view: Variable category shows yellow→orange→red gradient (75-89-100%+), other expenses only red when >100%, income green when exceeding planned. Added red dotted underline for over-budget items (not for income). Fixed column alignment by removing warning icon. Added negative amount display with (-) prefix for deficits in Dashboard. Implemented Enter key submit throughout transaction form. Renamed "Your Cash Balance" to "Your Expected Cash Balance". |
 | 2026-02-10 | **Session 10 (bug fixes):** Fixed confetti not showing - changed first-freeze detection to query DB for existing frozen plans instead of relying on availableMonths state. Fixed tabs not unlocking - corrected BudgetProvider month format from YYYY-MM to YYYY-MM-01, added 500ms delay before refetch. Changed sidebar default to collapsed. Mobile access: use `npm run dev -- --host` to expose on local network. |
 | 2026-02-10 | **Session 10 (continued):** Added debounced auto-save for budget drafts (1 second delay after last change). Shows "Draft saved" green badge when saved. Implemented confetti animation (50 falling pieces) + success modal on first budget freeze. Budget tab calls `refetchBudgetStatus()` after freeze to unlock Dashboard & Transactions tabs. Added Confetti component with falling animation keyframes. Complete flow now works: Onboarding → Budget (tabs locked) → Edit & save → Freeze → Confetti 🎉 → Success modal → Tabs unlock. |

@@ -112,11 +112,16 @@ export async function createHousehold(name: string): Promise<CreateHouseholdResu
  */
 export async function joinHousehold(inviteCode: string): Promise<CreateHouseholdResult> {
   try {
+    console.log('[joinHousehold] Starting with invite code:', inviteCode);
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+      console.log('[joinHousehold] No authenticated user');
       return { success: false, error: 'Not authenticated' };
     }
+
+    console.log('[joinHousehold] User ID:', user.id);
 
     // Find household by invite code (case-insensitive)
     const { data: household, error: hError } = await supabase
@@ -125,9 +130,14 @@ export async function joinHousehold(inviteCode: string): Promise<CreateHousehold
       .ilike('invite_code', inviteCode)
       .single();
 
+    console.log('[joinHousehold] Household query result:', { household, error: hError });
+
     if (hError || !household) {
+      console.error('[joinHousehold] Household not found or error:', hError);
       return { success: false, error: 'Invalid invite code' };
     }
+
+    console.log('[joinHousehold] Found household:', household.id);
 
     // Check if already a member
     const { data: existing } = await supabase

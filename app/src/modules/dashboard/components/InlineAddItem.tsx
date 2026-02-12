@@ -17,6 +17,8 @@ interface InlineAddItemProps {
   onAdd: (name: string, icon: string, categoryId?: string) => void;
   onCancel: () => void;
   indented?: boolean;
+  // showCategoryOption?: boolean; // REMOVED - custom categories disabled for now
+  // onAddCategory?: (name: string, icon: string) => Promise<{ success: boolean; error?: string; category?: any }>; // REMOVED
 }
 
 export function InlineAddItem({
@@ -30,6 +32,8 @@ export function InlineAddItem({
   onAdd,
   onCancel,
   indented = false,
+  // showCategoryOption = false, // REMOVED
+  // onAddCategory, // REMOVED
 }: InlineAddItemProps) {
   const [name, setName] = useState('');
   const [selectedIcon, _setSelectedIcon] = useState('📦');
@@ -210,7 +214,10 @@ export function InlineAddItem({
           {filteredSuggestions.map((suggestion) => (
             <button
               key={suggestion.name}
-              onClick={() => handleSuggestionClick(suggestion)}
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent input blur
+                handleSuggestionClick(suggestion);
+              }}
               className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:border-purple-300 hover:bg-purple-50 transition-colors"
             >
               <span>{suggestion.icon}</span>

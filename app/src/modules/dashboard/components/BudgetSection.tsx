@@ -49,6 +49,8 @@ interface BudgetSectionProps {
   onReorder?: (startIndex: number, endIndex: number, categoryName?: string) => void;
   incompleteItemIds?: Set<string>;
   isEditable?: boolean;
+  // showCategoryOption?: boolean; // REMOVED - custom categories disabled for now
+  // onAddCategory?: (name: string, icon: string) => Promise<{ success: boolean; error?: string; category?: any }>; // REMOVED
 }
 
 // Group expense items by category name and calculate totals
@@ -105,6 +107,8 @@ export function BudgetSection({
   onReorder,
   incompleteItemIds = new Set(),
   isEditable = true,
+  // showCategoryOption = false, // REMOVED
+  // onAddCategory, // REMOVED
 }: BudgetSectionProps) {
   // Derive existing names from items if not provided
   const itemNames = existingNames || items.map(item => item.name);

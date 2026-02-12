@@ -53,7 +53,7 @@ export async function createTransaction(
       transaction_date: input.transactionDate,
       payment_method: input.paymentMethod,
       remarks: input.remarks || null,
-      logged_by: user.id,
+      logged_by: input.loggedBy || user.id, // Use provided loggedBy or default to current user
     };
 
     // Add transfer_to for fund transfers
@@ -266,6 +266,68 @@ export async function deleteTransaction(
   } catch (e) {
     console.error('deleteTransaction error:', e);
     return { success: false, error: 'Failed to delete transaction' };
+  }
+}
+
+// ============================================
+// Household Users
+// ============================================
+
+/**
+ * Get household members (users) for transaction assignment
+ */
+export async function getHouseholdUsers(
+  householdId: string
+): Promise<{ success: boolean; error?: string; users?: { id: string; displayName: string }[] }> {
+  try {
+    // Get current user to get their display name from auth metadata
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    // Get all household members
+    const { data: members, error } = await supabase
+      .from('household_members')
+      .select('user_id')
+      .eq('household_id', householdId);
+
+    if (error) {
+      console.error('getHouseholdUsers error:', error);
+      return { success: false, error: 'Failed to load household members' };
+    }
+
+    if (!members || members.length === 0) {
+      return { success: true, users: [] };
+    }
+
+    const userIds = members.map(m => m.user_id);
+
+    // Get user display names from users table
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, display_name')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('getHouseholdUsers users error:', usersError);
+      return { success: false, error: 'Failed to load user details' };
+    }
+
+    // Build user list, prioritizing current user's name from auth metadata
+    const userList = (users || []).map(u => {
+      let displayName = u.display_name;
+      // If this is the current user, use their name from auth metadata
+      if (currentUser && u.id === currentUser.id) {
+        displayName = currentUser.user_metadata?.display_name || u.display_name;
+      }
+      return {
+        id: u.id,
+        displayName,
+      };
+    });
+
+    return { success: true, users: userList };
+  } catch (e) {
+    console.error('getHouseholdUsers error:', e);
+    return { success: false, error: 'Failed to load household users' };
   }
 }
 

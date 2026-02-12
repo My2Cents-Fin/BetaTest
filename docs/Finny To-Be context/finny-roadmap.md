@@ -82,6 +82,8 @@ Today, every transaction is hand-entered, every month's plan requires manual rev
 
 **Visions:**
 
+- **Chat assistant for budget addition**: Be able to add budget through a conversational LLM inbuilt in the app so that the user can just instruct and budget gets created.
+
 - **Transaction Auto-Capture:** Automatically detect and draft transactions from bank SMS, email notifications, and CC alerts. The system parses the amount, merchant, date, and payment method from the notification and creates a draft transaction. The user's only job is to confirm the category and optionally add remarks. This eliminates the biggest daily friction point — manual amount and date entry — and addresses the problem of forgotten transactions, since every bank notification becomes a prompt.
 
 - **Bank Statement Import & Auto-Reconciliation:** Enable users to upload bank statements (CSV or PDF) or connect via account aggregator APIs to bulk-import transactions. The system auto-matches imported transactions against manually logged ones, surfacing gaps (transactions in the bank but not in the system), duplicates (logged twice), and phantom entries (logged but not in the bank). Over time, AI-assisted category mapping learns from historical patterns to auto-categorize imported transactions by merchant name, reducing manual tagging to near zero.
@@ -95,6 +97,8 @@ Today, every transaction is hand-entered, every month's plan requires manual rev
 Months of transaction history reveal patterns that humans miss — seasonal spending spikes around festivals, chronic overspending in catch-all categories like "Miscellaneous," suboptimal debt repayment sequencing that costs thousands in avoidable interest. The Intelligence pillar layers AI and analytics on top of the transaction data to generate actionable recommendations: what to budget next month, which loan to prepay first, whether savings goals are on track, and what the household's overall financial health looks like. The goal is to make every financial decision data-informed without requiring the user to be a financial analyst.
 
 **Visions:**
+
+- **Deep Analytics and insights**: display deeper analytics and spending behaviour of the households - aim is to show them patterns they did not even know and build delight/loyalty to the app.
 
 - **AI-Assisted Monthly Planning:** Generate a recommended monthly plan based on spending history, seasonal patterns, upcoming known expenses, and defined financial goals. The system learns that December typically has higher leisure spending, that insurance renewals cluster in certain months, and that variable categories like groceries trend upward over time. The generated plan is a starting point — the user adjusts and freezes, but the heavy lifting of number-crunching is done by the system.
 
@@ -146,7 +150,7 @@ The Foundation pillar proves the model with one household. The Platform pillar m
 
 **Visions:**
 
-- **Multi-Household Tenancy:** Each household operates as a completely isolated tenant with its own data, categories, plans, members, and settings. No cross-household data access under any circumstance. The data model and authorization layer support this from day one (row-level security in Supabase), but the onboarding and admin flows are built when the product is ready to scale.
+- [x] **Multi-Household Tenancy:** Each household operates as a completely isolated tenant with its own data, categories, plans, members, and settings. No cross-household data access under any circumstance. The data model and authorization layer support this from day one (row-level security in Supabase), but the onboarding and admin flows are built when the product is ready to scale.
 
 - **Guided Onboarding:** A setup wizard that walks new users through: creating a household, inviting members, adding income sources, registering accounts, selecting a category template, and creating their first monthly plan. Designed to minimize time-to-value — the goal is for a household to record their first transaction within 10 minutes of signing up.
 
@@ -155,6 +159,8 @@ The Foundation pillar proves the model with one household. The Platform pillar m
 - **Monetization:** A freemium model where the free tier covers basic tracking, manual transaction entry, and budget vs actual views. The paid tier unlocks AI features (smart planning, anomaly detection, goal optimization), automation (transaction auto-capture, bank statement import), advanced analytics (trends, forecasting, net worth tracking), and unlimited transaction history. Pricing is designed for Indian household budgets — accessible enough to drive adoption, valuable enough to sustain development.
 
 - **Data Portability:** Users can export all their data — transactions, plans, budgets, reports — to CSV or Excel at any time. There is no lock-in. If a household wants to leave Finny, they take their complete financial history with them. This is both a user-trust principle and a regulatory consideration for eventual scale.
+
+- **Build you own budget:** Budgeting is a personal preference, not everyone follows the same template, same type of budgeting, this should become a tool for users to create their custom budget processes so that they are not stuck to the process dictated by the app.
 
 ---
 

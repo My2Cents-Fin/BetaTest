@@ -113,6 +113,61 @@ Use this checklist to deploy Finny to production.
 
 ---
 
+## Pending Database Migrations for PROD
+
+**Run these migrations AFTER code deployment:**
+
+### 1. FIX_DUPLICATE_SUBCATEGORIES.sql
+- **Purpose:** Prevent duplicate sub-categories
+- **What:** Cleans up existing duplicates, creates unique index on `household_sub_categories (household_id, LOWER(name))`
+- **Safe:** ✅ Idempotent (can run multiple times)
+- **File:** `supabase/migrations/FIX_DUPLICATE_SUBCATEGORIES.sql`
+
+### 2. FIX_INVITE_CODE_RLS.sql
+- **Purpose:** Allow invite code joining
+- **What:** Adds "Anyone can view households" RLS policy
+- **Safe:** ✅ Uses DROP IF EXISTS (might already be in PROD manually)
+- **File:** `supabase/migrations/FIX_INVITE_CODE_RLS.sql`
+
+### 3. MIGRATE_UTILITIES_TO_VARIABLE.sql
+- **Purpose:** Move Electricity/Water from Fixed to Variable
+- **What:** Updates category_id for utility sub-categories, all transactions follow automatically
+- **Safe:** ✅ Only updates Fixed items, can run multiple times
+- **Impact:** Existing users see utilities under Variable immediately
+- **File:** `supabase/migrations/MIGRATE_UTILITIES_TO_VARIABLE.sql`
+
+### 4. ADD_CUSTOM_CATEGORIES.sql
+- **Purpose:** Enable custom expense categories
+- **What:** Creates `household_categories` table with RLS policies, allows households to create custom categories beyond system defaults
+- **Safe:** ✅ Creates new table, doesn't modify existing data
+- **Impact:** Users can create custom categories like "Travel", "Education", "Gifts", etc.
+- **File:** `supabase/migrations/ADD_CUSTOM_CATEGORIES.sql`
+
+**How to run:**
+```bash
+# Via Supabase CLI
+supabase db push --file supabase/migrations/FIX_DUPLICATE_SUBCATEGORIES.sql
+supabase db push --file supabase/migrations/FIX_INVITE_CODE_RLS.sql
+supabase db push --file supabase/migrations/MIGRATE_UTILITIES_TO_VARIABLE.sql
+supabase db push --file supabase/migrations/ADD_CUSTOM_CATEGORIES.sql
+
+# Or via Supabase Dashboard SQL Editor
+# Copy each file contents and run in order
+```
+
+**Verification after migrations:**
+- [ ] New household: Electricity/Water under Variable
+- [ ] Duplicate sub-categories blocked with error
+- [ ] Invite code joining works
+- [ ] Existing households: utilities moved to Variable
+- [ ] "Paid by" field shows (if 2+ users)
+- [ ] Suggestion chips clickable
+- [ ] Can create custom category (e.g., "Travel")
+- [ ] Custom category appears in category dropdown
+- [ ] Can add sub-categories under custom category
+
+---
+
 ## Environment URLs
 
 | Environment | Purpose | URL | Supabase |

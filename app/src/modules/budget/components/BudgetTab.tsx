@@ -16,6 +16,7 @@ import {
   freezePlan,
   getAvailableBudgetMonths,
   getBudgetViewData,
+  createCustomCategory,
 } from '../services/budget';
 import { calculateMonthlyAmount, EXPENSE_CATEGORIES, INCOME_CATEGORY } from '../data/defaultCategories';
 import { formatNumber } from './AmountInput';
@@ -153,8 +154,8 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       }
       setAvailableMonths(months);
 
-      // Get categories for adding new items
-      const categoriesResult = await getCategoryList();
+      // Get categories for adding new items (includes custom categories)
+      const categoriesResult = await getCategoryList(householdData.id);
       if (categoriesResult.categories) {
         setCategories(categoriesResult.categories);
       }
@@ -226,11 +227,30 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
       // Get sub-categories
       const subCategoriesResult = await getHouseholdSubCategories(hh.id);
-      const subCategories = subCategoriesResult.subCategories || [];
+      let subCategories = subCategoriesResult.subCategories || [];
 
       // Get allocations for selected month
       const allocationsResult = await getAllocations(hh.id, planMonth);
       const allocations = allocationsResult.allocations || [];
+
+      // Clean up orphaned sub-categories (ones with no allocations in ANY month)
+      // This happens when user adds an item but closes tab before entering amount
+      const orphanedSubCats = subCategories.filter(subCat => {
+        // Check if this sub-category has ANY allocation in the current month
+        const hasAllocation = allocations.some(a => a.sub_category_id === subCat.id);
+        return !hasAllocation;
+      });
+
+      // Delete orphaned sub-categories
+      for (const orphan of orphanedSubCats) {
+        console.log('[loadEditData] Deleting orphaned sub-category:', orphan.name);
+        await deleteSubCategory(orphan.id);
+      }
+
+      // Filter out orphaned sub-categories from the list
+      subCategories = subCategories.filter(subCat =>
+        !orphanedSubCats.some(o => o.id === subCat.id)
+      );
 
       // Map sub-categories to budget items with allocations
       const income: BudgetItem[] = [];
@@ -386,6 +406,21 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     setExpenseAddingState({ active: false });
   };
 
+  // REMOVED - Custom category creation disabled for now
+  // const handleAddCustomCategory = async (name: string, icon: string): Promise<{ success: boolean; error?: string; category?: any }> => {
+  //   if (!household) return { success: false, error: 'No household found' };
+  //   const result = await createCustomCategory(household.id, name, icon);
+  //   if (result.success && result.category) {
+  //     const categoriesResult = await getCategoryList(household.id);
+  //     if (categoriesResult.categories) {
+  //       setCategories(categoriesResult.categories);
+  //     }
+  //     return { success: true, category: result.category };
+  //   } else {
+  //     return { success: false, error: result.error || 'Failed to create category' };
+  //   }
+  // };
+
   const handleSaveItem = useCallback(async (id: string, amount: number, period: Period) => {
     if (!household) return;
 
@@ -517,6 +552,37 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   };
 
   const handleFreezePlan = async () => {
+    // Flush any pending saves before freezing
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+
+      // Save all allocations immediately
+      if (household) {
+        const planMonth = `${selectedMonth}-01`;
+        const allAllocations = [...incomeItems, ...expenseItems].map(item => ({
+          subCategoryId: item.id,
+          amount: item.amount,
+          period: item.period,
+        }));
+
+        await saveAllocations(household.id, planMonth, allAllocations);
+
+        const totalIncome = incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+        const totalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+        await upsertMonthlyPlan(household.id, planMonth, totalIncome, totalExpenses);
+      }
+    }
+
+    // Check for over-allocation FIRST (before incomplete check)
+    const currentTotalIncome = incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+    const currentTotalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+
+    if (currentTotalExpenses > currentTotalIncome) {
+      alert(`Cannot freeze plan: Your expenses (₹${formatNumber(currentTotalExpenses)}) exceed your income (₹${formatNumber(currentTotalIncome)}). Please reduce expenses or increase income before freezing.`);
+      return;
+    }
+
     const incompleteIncome = incomeItems.filter(item => item.amount === 0).map(item => item.id);
     const incompleteExpenses = expenseItems.filter(item => item.amount === 0).map(item => item.id);
     const allIncomplete = [...incompleteIncome, ...incompleteExpenses];
@@ -802,6 +868,21 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
                 incompleteItemIds={incompleteItemIds}
                 isEditable={true}
               />
+
+              {/* Over-allocation warning */}
+              {remaining < 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">🚫</span>
+                    <div>
+                      <p className="font-medium text-red-800">Expenses exceed income</p>
+                      <p className="text-sm text-red-600 mt-1">
+                        You've allocated ₹{formatNumber(Math.abs(remaining))} more than your income. Reduce expenses or increase income to freeze this plan.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Incomplete items warning */}
               {showIncompleteWarning && (

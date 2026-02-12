@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, updateTransaction, getTodayDate } from '../../budget/services/transactions';
+import { createTransaction, updateTransaction, getTodayDate, getHouseholdUsers } from '../../budget/services/transactions';
 import type { TransactionType, TransactionWithDetails } from '../../budget/types';
+import { supabase } from '../../../lib/supabase';
 
 interface SubCategoryOption {
   id: string;
@@ -56,6 +57,11 @@ export function QuickAddTransaction({
   });
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [paidBy, setPaidBy] = useState<string>(() =>
+    isEditMode ? (transaction.logged_by || '') : ''
+  );
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const categoryInputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +69,24 @@ export function QuickAddTransaction({
 
   useEffect(() => {
     setTimeout(() => amountInputRef.current?.focus(), 100);
-  }, []);
+
+    // Load household users and current user
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        // Set default paidBy to current user if not editing
+        if (!isEditMode) {
+          setPaidBy(user.id);
+        }
+      }
+
+      const result = await getHouseholdUsers(householdId);
+      if (result.success && result.users) {
+        setHouseholdUsers(result.users);
+      }
+    })();
+  }, [householdId, isEditMode]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -214,6 +237,7 @@ export function QuickAddTransaction({
         transactionDate,
         paymentMethod: 'upi',
         remarks: remarks.trim() || undefined,
+        loggedBy: paidBy || undefined, // Include paidBy
       });
     }
 
@@ -373,6 +397,27 @@ export function QuickAddTransaction({
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
             />
           </div>
+
+          {/* Paid By */}
+          {householdUsers.length > 1 && (
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+                <span>👤</span> Paid by
+              </label>
+              <select
+                value={paidBy}
+                onChange={(e) => setPaidBy(e.target.value)}
+                onKeyDown={handleFieldKeyDown}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
+              >
+                {householdUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.displayName}{user.id === currentUserId ? ' (You)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="mb-4">

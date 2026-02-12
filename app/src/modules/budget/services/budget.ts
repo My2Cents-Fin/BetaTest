@@ -144,23 +144,10 @@ export async function getHouseholdSubCategories(
   householdId: string
 ): Promise<SubCategoriesResult> {
   try {
-    const { data, error } = await supabase
+    // First, get all sub-categories
+    const { data: subCats, error } = await supabase
       .from('household_sub_categories')
-      .select(`
-        id,
-        household_id,
-        category_id,
-        name,
-        icon,
-        is_custom,
-        display_order,
-        categories (
-          id,
-          name,
-          type,
-          icon
-        )
-      `)
+      .select('id, household_id, category_id, name, icon, is_custom, display_order')
       .eq('household_id', householdId)
       .order('display_order');
 
@@ -169,12 +156,43 @@ export async function getHouseholdSubCategories(
       return { success: false, error: 'Failed to load sub-categories' };
     }
 
+    if (!subCats || subCats.length === 0) {
+      return { success: true, subCategories: [] };
+    }
+
+    // Get all unique category IDs
+    const categoryIds = [...new Set(subCats.map(sc => sc.category_id))];
+
+    // Fetch system categories
+    const { data: systemCategories } = await supabase
+      .from('categories')
+      .select('id, name, type, icon')
+      .in('id', categoryIds);
+
+    // Fetch custom categories
+    const { data: customCategories } = await supabase
+      .from('household_categories')
+      .select('id, name, type, icon')
+      .in('id', categoryIds)
+      .eq('household_id', householdId);
+
+    // Create a map of all categories
+    const categoryMap = new Map();
+    (systemCategories || []).forEach(cat => categoryMap.set(cat.id, cat));
+    (customCategories || []).forEach(cat => categoryMap.set(cat.id, cat));
+
+    // Merge category info into sub-categories
+    const subCategories: HouseholdSubCategory[] = subCats.map(sc => ({
+      ...sc,
+      categories: categoryMap.get(sc.category_id) || null,
+    }));
+
     return {
       success: true,
-      subCategories: data as HouseholdSubCategory[],
+      subCategories,
     };
   } catch (e) {
-    console.error('getHouseholdSubCategories error:', e);
+    console.error('getHouseholdSubCategories error:', error);
     return { success: false, error: 'Failed to load sub-categories' };
   }
 }
@@ -286,6 +304,7 @@ export async function getAllocations(
 
 /**
  * Create or update monthly plan
+ * Preserves existing status if plan already exists
  */
 export async function upsertMonthlyPlan(
   householdId: string,
@@ -300,6 +319,18 @@ export async function upsertMonthlyPlan(
       return { success: false, error: 'Not authenticated' };
     }
 
+    // First check if plan exists and get its current status
+    const { data: existingPlan } = await supabase
+      .from('monthly_plans')
+      .select('status')
+      .eq('household_id', householdId)
+      .eq('plan_month', planMonth)
+      .single();
+
+    // If plan exists and is frozen, keep it frozen
+    // If plan is new or draft, set to draft
+    const status = existingPlan?.status === 'frozen' ? 'frozen' : 'draft';
+
     const { data, error } = await supabase
       .from('monthly_plans')
       .upsert(
@@ -308,7 +339,7 @@ export async function upsertMonthlyPlan(
           plan_month: planMonth,
           total_income: totalIncome,
           total_allocated: totalAllocated,
-          status: 'draft',
+          status: status,
         },
         {
           onConflict: 'household_id,plan_month',
@@ -449,6 +480,7 @@ export async function updateSubCategoryOrder(
 
 /**
  * Create a new sub-category
+ * Prevents duplicates by checking for existing name (case-insensitive)
  */
 export async function createSubCategory(
   householdId: string,
@@ -457,6 +489,19 @@ export async function createSubCategory(
   icon: string
 ): Promise<{ success: boolean; error?: string; subCategory?: HouseholdSubCategory }> {
   try {
+    // Check for duplicate name (case-insensitive)
+    const { data: duplicate } = await supabase
+      .from('household_sub_categories')
+      .select('id, name')
+      .eq('household_id', householdId)
+      .ilike('name', name)
+      .limit(1);
+
+    if (duplicate && duplicate.length > 0) {
+      console.warn('[createSubCategory] Duplicate detected:', name);
+      return { success: false, error: `"${name}" already exists` };
+    }
+
     // Get max display_order for this household
     const { data: existing } = await supabase
       .from('household_sub_categories')
@@ -477,29 +522,50 @@ export async function createSubCategory(
         is_custom: true,
         display_order: nextOrder,
       })
-      .select(`
-        id,
-        household_id,
-        category_id,
-        name,
-        icon,
-        is_custom,
-        display_order,
-        categories (
-          id,
-          name,
-          type,
-          icon
-        )
-      `)
+      .select()
       .single();
 
     if (error) {
       console.error('createSubCategory error:', error);
+      // Check if it's a unique constraint violation
+      if (error.code === '23505') {
+        return { success: false, error: `"${name}" already exists` };
+      }
       return { success: false, error: 'Failed to create item' };
     }
 
-    return { success: true, subCategory: data as HouseholdSubCategory };
+    // Fetch category info separately (could be from categories or household_categories)
+    let categoryInfo = null;
+
+    // Try system categories first
+    const { data: systemCategory } = await supabase
+      .from('categories')
+      .select('id, name, type, icon')
+      .eq('id', categoryId)
+      .single();
+
+    if (systemCategory) {
+      categoryInfo = systemCategory;
+    } else {
+      // Try custom categories
+      const { data: customCategory } = await supabase
+        .from('household_categories')
+        .select('id, name, type, icon')
+        .eq('id', categoryId)
+        .single();
+
+      if (customCategory) {
+        categoryInfo = customCategory;
+      }
+    }
+
+    // Construct the sub-category object with category info
+    const subCategory: HouseholdSubCategory = {
+      ...data,
+      categories: categoryInfo,
+    };
+
+    return { success: true, subCategory };
   } catch (e) {
     console.error('createSubCategory error:', e);
     return { success: false, error: 'Failed to create item' };
@@ -508,23 +574,158 @@ export async function createSubCategory(
 
 /**
  * Get all categories (for creating new items)
+ * Includes both system categories and household custom categories
  */
-export async function getCategoryList(): Promise<{ success: boolean; error?: string; categories?: { id: string; name: string; type: string; icon: string }[] }> {
+export async function getCategoryList(householdId?: string): Promise<{ success: boolean; error?: string; categories?: { id: string; name: string; type: string; icon: string; isCustom?: boolean }[] }> {
   try {
-    const { data, error } = await supabase
+    // Get system categories
+    const { data: systemCategories, error: systemError } = await supabase
       .from('categories')
       .select('id, name, type, icon')
       .order('display_order');
 
-    if (error) {
-      console.error('getCategoryList error:', error);
+    if (systemError) {
+      console.error('getCategoryList error:', systemError);
       return { success: false, error: 'Failed to load categories' };
     }
 
-    return { success: true, categories: data };
+    const categories: { id: string; name: string; type: string; icon: string; isCustom?: boolean }[] =
+      (systemCategories || []).map(c => ({ ...c, isCustom: false }));
+
+    // If householdId provided, also get custom categories
+    if (householdId) {
+      const { data: customCategories, error: customError } = await supabase
+        .from('household_categories')
+        .select('id, name, type, icon')
+        .eq('household_id', householdId)
+        .order('display_order');
+
+      if (!customError && customCategories) {
+        categories.push(...customCategories.map(c => ({ ...c, isCustom: true })));
+      }
+    }
+
+    return { success: true, categories };
   } catch (e) {
     console.error('getCategoryList error:', e);
     return { success: false, error: 'Failed to load categories' };
+  }
+}
+
+/**
+ * Create a custom category for a household
+ */
+export async function createCustomCategory(
+  householdId: string,
+  name: string,
+  icon: string
+): Promise<{ success: boolean; error?: string; category?: { id: string; name: string; type: string; icon: string } }> {
+  try {
+    console.log('[createCustomCategory] Starting - householdId:', householdId, 'name:', name, 'icon:', icon);
+
+    // Check for duplicate name (case-insensitive) in both system and custom categories
+    const { data: systemDuplicate } = await supabase
+      .from('categories')
+      .select('id, name')
+      .ilike('name', name)
+      .limit(1);
+
+    console.log('[createCustomCategory] System duplicate check:', systemDuplicate);
+
+    if (systemDuplicate && systemDuplicate.length > 0) {
+      console.log('[createCustomCategory] Found system duplicate:', systemDuplicate[0].name);
+      return { success: false, error: `"${name}" already exists as a system category` };
+    }
+
+    const { data: customDuplicate } = await supabase
+      .from('household_categories')
+      .select('id, name')
+      .eq('household_id', householdId)
+      .ilike('name', name)
+      .limit(1);
+
+    console.log('[createCustomCategory] Custom duplicate check:', customDuplicate);
+
+    if (customDuplicate && customDuplicate.length > 0) {
+      console.log('[createCustomCategory] Found custom duplicate:', customDuplicate[0].name);
+      return { success: false, error: `"${name}" already exists` };
+    }
+
+    // Get max display_order for custom categories
+    const { data: existing } = await supabase
+      .from('household_categories')
+      .select('display_order')
+      .eq('household_id', householdId)
+      .order('display_order', { ascending: false })
+      .limit(1);
+
+    const maxOrder = existing && existing.length > 0 ? existing[0].display_order : 99;
+
+    // Create custom category (always expense type for now)
+    const { data, error } = await supabase
+      .from('household_categories')
+      .insert({
+        household_id: householdId,
+        name,
+        type: 'expense',
+        icon,
+        display_order: maxOrder + 1,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('createCustomCategory error:', error);
+      if (error.code === '23505') {
+        return { success: false, error: `"${name}" already exists` };
+      }
+      return { success: false, error: 'Failed to create category' };
+    }
+
+    return { success: true, category: data as { id: string; name: string; type: string; icon: string } };
+  } catch (e) {
+    console.error('createCustomCategory error:', e);
+    return { success: false, error: 'Failed to create category' };
+  }
+}
+
+/**
+ * Delete a custom category
+ * Only custom categories can be deleted, not system ones
+ */
+export async function deleteCustomCategory(
+  householdId: string,
+  categoryId: string
+): Promise<ServiceResult> {
+  try {
+    // First check if there are any sub-categories under this category
+    const { data: subCategories } = await supabase
+      .from('household_sub_categories')
+      .select('id')
+      .eq('household_id', householdId)
+      .eq('category_id', categoryId)
+      .limit(1);
+
+    if (subCategories && subCategories.length > 0) {
+      return { success: false, error: 'Cannot delete category with items. Delete all items first.' };
+    }
+
+    // Delete the custom category
+    const { error } = await supabase
+      .from('household_categories')
+      .delete()
+      .eq('id', categoryId)
+      .eq('household_id', householdId);
+
+    if (error) {
+      console.error('deleteCustomCategory error:', error);
+      return { success: false, error: 'Failed to delete category' };
+    }
+
+    return { success: true };
+  } catch (e) {
+    console.error('deleteCustomCategory error:', e);
+    return { success: false, error: 'Failed to delete category' };
   }
 }
 

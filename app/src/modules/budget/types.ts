@@ -214,6 +214,7 @@ export interface CreateTransactionInput {
   paymentMethod: PaymentMethod;
   remarks?: string;
   transferTo?: string; // user_id of recipient (only for fund transfers)
+  loggedBy?: string; // user_id of who paid (defaults to current user if not provided)
 }
 
 /**

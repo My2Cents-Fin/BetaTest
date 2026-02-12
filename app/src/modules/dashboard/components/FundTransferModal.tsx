@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, getTodayDate } from '../../budget/services/transactions';
+import { createTransaction, getTodayDate, getHouseholdUsers } from '../../budget/services/transactions';
 import { supabase } from '../../../lib/supabase';
 
 interface HouseholdMember {
@@ -22,14 +22,40 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([]);
+  const [allHouseholdUsers, setAllHouseholdUsers] = useState<HouseholdMember[]>([]); // All users for "Paid by"
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [paidBy, setPaidBy] = useState<string>('');
 
   const amountInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadHouseholdMembers();
+    loadAllUsers();
     setTimeout(() => amountInputRef.current?.focus(), 100);
   }, []);
+
+  async function loadAllUsers() {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setCurrentUserId(user.id);
+      setPaidBy(user.id); // Default to current user
+
+      // Get all household users using the new function
+      const result = await getHouseholdUsers(householdId);
+      if (result.success && result.users) {
+        const users: HouseholdMember[] = result.users.map(u => ({
+          id: u.id,
+          display_name: u.displayName,
+        }));
+        setAllHouseholdUsers(users);
+      }
+    } catch (e) {
+      console.error('Error loading all household users:', e);
+    }
+  }
 
   async function loadHouseholdMembers() {
     try {
@@ -139,6 +165,7 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
       paymentMethod: 'other', // Not applicable for transfers
       remarks: remarks.trim() || undefined,
       transferTo: selectedRecipientId,
+      loggedBy: paidBy || undefined, // Include paidBy
     });
 
     setIsSubmitting(false);
@@ -235,6 +262,27 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
             />
           </div>
+
+          {/* Paid By */}
+          {allHouseholdUsers.length > 1 && (
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+                <span>💳</span> Paid by
+              </label>
+              <select
+                value={paidBy}
+                onChange={(e) => setPaidBy(e.target.value)}
+                onKeyDown={handleFieldKeyDown}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
+              >
+                {allHouseholdUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.display_name}{user.id === currentUserId ? ' (You)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="mb-4">

@@ -208,17 +208,16 @@ export function AmountInput({
 
 /**
  * Format number with Indian comma separators (lakhs/crores)
+ * All numbers are rounded UP to the next integer
  */
 export function formatNumber(num: number): string {
-  // Split into integer and decimal parts
-  const parts = num.toString().split('.');
-  const integerPart = parts[0];
-  const decimalPart = parts.length > 1 ? parts[1] : '';
-
+  // Round UP to next integer
+  const rounded = Math.ceil(num);
+  const integerPart = rounded.toString();
   const len = integerPart.length;
 
   if (len <= 3) {
-    return decimalPart ? `${integerPart}.${decimalPart}` : integerPart;
+    return integerPart;
   }
 
   let result = integerPart.slice(-3);
@@ -230,7 +229,7 @@ export function formatNumber(num: number): string {
     remaining = remaining.slice(0, -2);
   }
 
-  return decimalPart ? `${result}.${decimalPart}` : result;
+  return result;
 }
 
 /**

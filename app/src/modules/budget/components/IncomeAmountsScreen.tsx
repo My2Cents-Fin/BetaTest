@@ -269,9 +269,9 @@ export function IncomeAmountsScreen() {
     });
   };
 
-  // Format number
+  // Format number (round UP to next integer)
   const formatNumber = (num: number): string => {
-    const str = Math.round(num).toString();
+    const str = Math.ceil(num).toString();
     if (str.length <= 3) return str;
     let result = str.slice(-3);
     let remaining = str.slice(0, -3);

@@ -666,7 +666,7 @@ export function DashboardScreen() {
                 />
               </div>
               <p className="text-xs text-gray-400 text-center mt-1">
-                {totalBudgeted > 0 ? Math.round((totalSpent / totalBudgeted) * 100) : 0}% of budget used
+                {totalBudgeted > 0 ? Math.ceil((totalSpent / totalBudgeted) * 100) : 0}% of budget used
               </p>
             </div>
           </div>
