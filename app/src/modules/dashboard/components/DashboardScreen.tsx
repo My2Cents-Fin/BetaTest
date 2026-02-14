@@ -3,7 +3,7 @@ import { ProfilePanel, MenuButton } from '../../../shared/components/ProfilePane
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories, getAllocations, createDefaultExpenseTemplate, upsertMonthlyPlan, saveAllocations, renameSubCategory, updateSubCategoryOrder, createSubCategory, getCategoryList, deleteSubCategory, getMonthlyPlan, freezePlan } from '../../budget/services/budget';
 import { getRecentSubCategories, getCurrentMonthTransactions } from '../../budget/services/transactions';
-import { calculateMonthlyAmount, EXPENSE_CATEGORIES, INCOME_CATEGORY } from '../../budget/data/defaultCategories';
+import { calculateMonthlyAmount, EXPENSE_CATEGORIES } from '../../budget/data/defaultCategories';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { WelcomeCard } from './WelcomeCard';
 import { BudgetSection } from './BudgetSection';

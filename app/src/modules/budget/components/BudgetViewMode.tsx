@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatNumber } from './AmountInput';
 import type { Period, MonthlyPlan } from '../types';
+import type { ActualIncomeItem } from '../services/transactions';
 
 interface BudgetItem {
   id: string;
@@ -17,9 +18,15 @@ interface BudgetItem {
 
 interface BudgetViewModeProps {
   plan: MonthlyPlan | undefined;
-  items: BudgetItem[];
+  items: BudgetItem[]; // expense items only
+  incomeData?: {
+    totalIncome: number;
+    incomeItems: ActualIncomeItem[];
+  };
+  expenseTransactions?: { sub_category_id: string; amount: number; logged_by: string }[];
   onEdit: () => void;
   canEdit: boolean;
+  filterMemberIds?: string[]; // empty = show all
 }
 
 interface GroupedCategory {
@@ -32,23 +39,41 @@ interface GroupedCategory {
   totalActual: number;
 }
 
-export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _canEdit }: BudgetViewModeProps) {
+export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransactions = [], onEdit: _onEdit, canEdit: _canEdit, filterMemberIds = [] }: BudgetViewModeProps) {
   const [incomeCollapsed, setIncomeCollapsed] = useState(false);
   const [expenseCollapsed, setExpenseCollapsed] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Group items by category type and then by category
-  const incomeItems = items.filter(i => i.categoryType === 'income');
+  const isFiltered = filterMemberIds.length > 0;
+
+  // All items are now expense-only (income comes from incomeData)
   const expenseItems = items.filter(i => i.categoryType === 'expense');
 
-  // Group expense items by category
-  const expenseCategories = groupByCategory(expenseItems);
+  // When filtering by member(s), recompute actuals from raw transactions
+  const filteredExpenseItems = isFiltered
+    ? expenseItems.map(item => {
+        const memberActual = expenseTransactions
+          .filter(t => t.sub_category_id === item.id && filterMemberIds.includes(t.logged_by))
+          .reduce((sum, t) => sum + t.amount, 0);
+        return { ...item, actual: memberActual };
+      })
+    : expenseItems;
 
-  // Calculate totals
-  const totalPlannedIncome = incomeItems.reduce((sum, i) => sum + i.planned, 0);
-  const totalActualIncome = incomeItems.reduce((sum, i) => sum + i.actual, 0);
+  // Group expense items by category
+  const expenseCategories = groupByCategory(filteredExpenseItems);
+
+  // Income from actual transactions — filter by member(s) if needed
+  const allIncomeItems = incomeData?.incomeItems || [];
+  const incomeItems = isFiltered
+    ? allIncomeItems.filter(i => filterMemberIds.includes(i.loggedBy))
+    : allIncomeItems;
+  const totalIncome = isFiltered
+    ? incomeItems.reduce((sum, i) => sum + i.amount, 0)
+    : (incomeData?.totalIncome || 0);
+
+  // Calculate expense totals
   const totalPlannedExpense = expenseItems.reduce((sum, i) => sum + i.planned, 0);
-  const totalActualExpense = expenseItems.reduce((sum, i) => sum + i.actual, 0);
+  const totalActualExpense = filteredExpenseItems.reduce((sum, i) => sum + i.actual, 0);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -64,13 +89,13 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
 
   return (
     <div className="space-y-4">
-      {/* Income Section */}
+      {/* Income Section — from actual transactions */}
       <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
         <button
           onClick={() => setIncomeCollapsed(!incomeCollapsed)}
           className="w-full px-3 md:px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform ${incomeCollapsed ? '' : 'rotate-90'}`}
               fill="none"
@@ -79,18 +104,12 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-lg md:text-xl">💰</span>
-            <h2 className="text-base md:text-lg font-semibold text-gray-900">Income</h2>
+            <h2 className="text-base md:text-lg font-semibold text-gray-900">💰 Income</h2>
           </div>
-          <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
-            <div className="w-16 md:w-20 text-right">
-              <span className="text-gray-400 text-[10px] md:text-xs block">Planned</span>
-              <span className="font-medium text-gray-700 tabular-nums">₹{formatNumber(totalPlannedIncome)}</span>
-            </div>
-            <div className="w-16 md:w-20 text-right">
-              <span className="text-gray-400 text-[10px] md:text-xs block">Actual</span>
-              <span className="font-medium text-green-600 tabular-nums">₹{formatNumber(totalActualIncome)}</span>
-            </div>
+          <div className="text-right">
+            <span className="font-semibold text-green-600 tabular-nums text-sm md:text-base">
+              ₹{formatNumber(totalIncome)}
+            </span>
           </div>
         </button>
 
@@ -100,11 +119,25 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
           <div>
             {incomeItems.length === 0 ? (
               <div className="px-4 py-6 text-center text-gray-400 text-sm">
-                No income sources
+                No income recorded
               </div>
             ) : (
               incomeItems.map(item => (
-                <BudgetRow key={item.id} item={item} />
+                <div
+                  key={item.id}
+                  className="px-3 md:px-4 py-2 md:py-2.5 flex items-center justify-between hover:bg-gray-50 border-t border-gray-50"
+                >
+                  <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                    <span className="text-base md:text-lg flex-shrink-0">{item.subCategoryIcon}</span>
+                    <div className="min-w-0">
+                      <span className="text-xs md:text-sm text-gray-900 truncate block">{item.subCategoryName}</span>
+                      <span className="text-[10px] md:text-xs text-gray-400">by {item.loggedByName}</span>
+                    </div>
+                  </div>
+                  <span className="font-medium text-green-600 tabular-nums text-xs md:text-sm">
+                    +₹{formatNumber(item.amount)}
+                  </span>
+                </div>
               ))
             )}
           </div>
@@ -115,28 +148,43 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
       <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
         <button
           onClick={() => setExpenseCollapsed(!expenseCollapsed)}
-          className="w-full px-3 md:px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          className="w-full px-3 md:px-4 py-3 hover:bg-gray-50 transition-colors"
         >
-          <div className="flex items-center gap-2">
-            <svg
-              className={`w-4 h-4 text-gray-400 transition-transform ${expenseCollapsed ? '' : 'rotate-90'}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-lg md:text-xl">📤</span>
-            <h2 className="text-base md:text-lg font-semibold text-gray-900">Expenses</h2>
-          </div>
-          <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
-            <div className="w-16 md:w-20 text-right">
-              <span className="text-gray-400 text-[10px] md:text-xs block">Planned</span>
-              <span className="font-medium text-gray-700 tabular-nums">₹{formatNumber(totalPlannedExpense)}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform ${expenseCollapsed ? '' : 'rotate-90'}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <div>
+                <h2 className="text-base md:text-lg font-semibold text-gray-900">📤 Expenses</h2>
+                {(() => {
+                  const remaining = totalIncome - totalPlannedExpense;
+                  if (remaining >= 0) {
+                    return (
+                      <p className="text-[11px] text-green-600">₹{formatNumber(remaining)} left to plan</p>
+                    );
+                  } else {
+                    return (
+                      <p className="text-[11px] text-red-600">₹{formatNumber(Math.abs(remaining))} over income</p>
+                    );
+                  }
+                })()}
+              </div>
             </div>
-            <div className="w-16 md:w-20 text-right">
-              <span className="text-gray-400 text-[10px] md:text-xs block">Actual</span>
-              <span className="font-medium text-red-600 tabular-nums">₹{formatNumber(totalActualExpense)}</span>
+            <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
+              <div className="w-16 md:w-20 text-right">
+                <span className="text-gray-400 text-[10px] md:text-xs block">Planned</span>
+                <span className="font-medium text-gray-700 tabular-nums">₹{formatNumber(totalPlannedExpense)}</span>
+              </div>
+              <div className="w-16 md:w-20 text-right">
+                <span className="text-gray-400 text-[10px] md:text-xs block">Actual</span>
+                <span className="font-medium text-red-600 tabular-nums">₹{formatNumber(totalActualExpense)}</span>
+              </div>
             </div>
           </div>
         </button>
@@ -187,7 +235,7 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
                     {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.id)}
-                      className="w-full px-3 md:px-4 py-2.5 bg-purple-50 flex items-center gap-2 border-t border-purple-100 hover:bg-purple-100 transition-colors"
+                      className="w-full px-3 md:px-4 py-2.5 bg-purple-50/50 flex items-center gap-2 border-t border-purple-100/50 hover:bg-purple-50 transition-colors"
                     >
                       <svg
                         className={`w-3 h-3 text-purple-400 transition-transform ${isCategoryExpanded ? 'rotate-90' : ''}`}
@@ -242,11 +290,10 @@ function BudgetRow({ item, indented = false }: { item: BudgetItem; indented?: bo
 
   // Apply color gradient only for Variable category
   const isVariable = item.categoryName === 'Variable';
-  const isIncome = item.categoryType === 'income';
 
   // Variable: red at >=100%, orange/yellow for approaching
   // Non-Variable: red only when strictly exceeding (>100%), not at exactly 100%
-  const isOverBudget = isVariable || isIncome
+  const isOverBudget = isVariable
     ? percentUsed >= 100
     : percentUsed > 100;
   const isHighRisk = percentUsed >= 90 && percentUsed < 100;
@@ -254,12 +301,7 @@ function BudgetRow({ item, indented = false }: { item: BudgetItem; indented?: bo
 
   // Determine text color based on percentage
   let textColor = 'text-gray-700'; // default
-  if (isIncome) {
-    // For income, exceeding planned is good (green)
-    if (isOverBudget) {
-      textColor = 'text-green-600';
-    }
-  } else if (isVariable) {
+  if (isVariable) {
     if (isOverBudget) {
       textColor = 'text-red-600';
     } else if (isHighRisk) {
@@ -287,7 +329,7 @@ function BudgetRow({ item, indented = false }: { item: BudgetItem; indented?: bo
         <span className="font-medium tabular-nums w-16 md:w-20 text-right">
           <span
             className={`inline-block ${textColor}`}
-            style={isOverBudget && !isIncome ? {
+            style={isOverBudget ? {
               borderBottom: '2px dotted #ef4444',
               borderSpacing: '4px'
             } : undefined}

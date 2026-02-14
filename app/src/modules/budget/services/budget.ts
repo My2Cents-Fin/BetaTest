@@ -10,6 +10,7 @@ import {
   ALL_CATEGORIES,
   calculateMonthlyAmount,
 } from '../data/defaultCategories';
+import { getActualIncomeForMonth, type ActualIncomeItem } from './transactions';
 
 // ============================================
 // Result Types
@@ -870,181 +871,6 @@ export async function createDefaultExpenseTemplate(householdId: string): Promise
 }
 
 // ============================================
-// Incremental Progress Save/Load (for sign-out resume)
-// ============================================
-
-/**
- * Save income progress (selections + allocations)
- * Called when user navigates away or signs out
- */
-export async function saveIncomeProgress(
-  householdId: string,
-  incomeItems: {
-    id: string;
-    name: string;
-    icon: string | null;
-    isCustom: boolean;
-    amount: number;
-    period: Period;
-  }[]
-): Promise<ServiceResult> {
-  const planMonth = getCurrentPlanMonth();
-
-  try {
-    // First, delete existing sub-categories for this household
-    // During onboarding we only have income items
-    await supabase
-      .from('household_sub_categories')
-      .delete()
-      .eq('household_id', householdId);
-
-    if (incomeItems.length === 0) {
-      return { success: true };
-    }
-
-    // Insert sub-categories (category_id is nullable for now during onboarding)
-    const { data: savedSubCats, error: insertError } = await supabase
-      .from('household_sub_categories')
-      .insert(
-        incomeItems.map((item, index) => ({
-          household_id: householdId,
-          name: item.name,
-          icon: item.icon,
-          is_custom: item.isCustom,
-          display_order: index,
-        }))
-      )
-      .select('id, name');
-
-    if (insertError || !savedSubCats) {
-      console.error('Insert sub-categories error:', insertError);
-      // Table might not exist - just return success to not block the user
-      return { success: true };
-    }
-
-    // Delete existing allocations for these sub-categories
-    const subCatIds = savedSubCats.map(sc => sc.id);
-    if (subCatIds.length > 0) {
-      await supabase
-        .from('budget_allocations')
-        .delete()
-        .in('sub_category_id', subCatIds);
-    }
-
-    // Insert allocations for items with amounts
-    const allocationsToSave = incomeItems
-      .filter(item => item.amount > 0)
-      .map(item => {
-        const savedSubCat = savedSubCats.find(sc => sc.name === item.name);
-        if (!savedSubCat) return null;
-        return {
-          household_id: householdId,
-          sub_category_id: savedSubCat.id,
-          amount: item.amount,
-          period: item.period,
-          monthly_amount: calculateMonthlyAmount(item.amount, item.period),
-          plan_month: planMonth,
-        };
-      })
-      .filter(Boolean);
-
-    if (allocationsToSave.length > 0) {
-      const { error: allocError } = await supabase
-        .from('budget_allocations')
-        .insert(allocationsToSave);
-
-      if (allocError) {
-        console.error('Save allocations error:', allocError);
-        // Don't fail - sub-categories are saved
-      }
-    }
-
-    return { success: true };
-  } catch (e) {
-    console.error('saveIncomeProgress error:', e);
-    return { success: false, error: 'Failed to save progress' };
-  }
-}
-
-/**
- * Load saved income progress
- */
-export async function loadIncomeProgress(
-  householdId: string
-): Promise<{
-  success: boolean;
-  error?: string;
-  incomeItems?: {
-    id: string;
-    name: string;
-    icon: string | null;
-    isCustom: boolean;
-    amount: number;
-    period: Period;
-  }[];
-}> {
-  const planMonth = getCurrentPlanMonth();
-
-  try {
-    // Get income sub-categories with allocations
-    // Note: During onboarding, we only have income items, so we get all sub-categories
-    // In the future, we should join with categories table to filter by type='income'
-    const { data: subCats, error: subCatError } = await supabase
-      .from('household_sub_categories')
-      .select(`
-        id,
-        name,
-        icon,
-        is_custom,
-        display_order
-      `)
-      .eq('household_id', householdId)
-      .order('display_order');
-
-    if (subCatError) {
-      console.error('Load sub-categories error:', subCatError);
-      // Table might not exist - return empty success
-      return { success: true, incomeItems: [] };
-    }
-
-    if (!subCats || subCats.length === 0) {
-      return { success: true, incomeItems: [] };
-    }
-
-    // Get allocations for these sub-categories
-    const subCatIds = subCats.map(sc => sc.id);
-    const { data: allocations, error: allocError } = await supabase
-      .from('budget_allocations')
-      .select('sub_category_id, amount, period')
-      .in('sub_category_id', subCatIds)
-      .eq('plan_month', planMonth);
-
-    if (allocError) {
-      console.error('Load allocations error:', allocError);
-      // Don't fail - return sub-cats without amounts
-    }
-
-    // Build income items
-    const incomeItems = subCats.map(sc => {
-      const allocation = allocations?.find(a => a.sub_category_id === sc.id);
-      return {
-        id: sc.is_custom ? `custom-${sc.id}` : sc.id,
-        name: sc.name,
-        icon: sc.icon,
-        isCustom: sc.is_custom,
-        amount: allocation?.amount || 0,
-        period: (allocation?.period as Period) || 'monthly',
-      };
-    });
-
-    return { success: true, incomeItems };
-  } catch (e) {
-    console.error('loadIncomeProgress error:', e);
-    return { success: false, error: 'Failed to load progress' };
-  }
-}
-
-// ============================================
 // Budget View Mode Functions
 // ============================================
 
@@ -1081,14 +907,14 @@ export async function getAvailableBudgetMonths(
 export async function getActualsBySubCategory(
   householdId: string,
   month: string // Format: YYYY-MM
-): Promise<{ success: boolean; error?: string; actuals?: Map<string, number> }> {
+): Promise<{ success: boolean; error?: string; actuals?: Map<string, number>; rawTransactions?: { sub_category_id: string; amount: number; logged_by: string }[] }> {
   try {
     const startDate = `${month}-01`;
     const endDate = getLastDayOfMonth(month);
 
     const { data, error } = await supabase
       .from('transactions')
-      .select('sub_category_id, amount')
+      .select('sub_category_id, amount, logged_by')
       .eq('household_id', householdId)
       .gte('transaction_date', startDate)
       .lte('transaction_date', endDate);
@@ -1105,7 +931,7 @@ export async function getActualsBySubCategory(
       actuals.set(t.sub_category_id, current + t.amount);
     });
 
-    return { success: true, actuals };
+    return { success: true, actuals, rawTransactions: data || [] };
   } catch (e) {
     console.error('getActualsBySubCategory error:', e);
     return { success: false, error: 'Failed to load actuals' };
@@ -1114,6 +940,7 @@ export async function getActualsBySubCategory(
 
 /**
  * Get budget data for view mode (allocations + actuals)
+ * Income comes from actual transactions, expenses from allocations
  */
 export async function getBudgetViewData(
   householdId: string,
@@ -1134,60 +961,67 @@ export async function getBudgetViewData(
     actual: number;
     period: Period;
   }[];
+  incomeData?: {
+    totalIncome: number;
+    incomeItems: ActualIncomeItem[];
+  };
+  expenseTransactions?: { sub_category_id: string; amount: number; logged_by: string }[];
 }> {
   try {
     const planMonth = `${month}-01`;
 
-    // Get monthly plan
-    const { data: plan, error: planError } = await supabase
-      .from('monthly_plans')
-      .select('*')
-      .eq('household_id', householdId)
-      .eq('plan_month', planMonth)
-      .single();
+    // Run plan, allocations, actuals, and income queries in parallel
+    const [planResult, allocResult, actualsResult, incomeResult] = await Promise.all([
+      supabase
+        .from('monthly_plans')
+        .select('*')
+        .eq('household_id', householdId)
+        .eq('plan_month', planMonth)
+        .single(),
+      supabase
+        .from('budget_allocations')
+        .select(`
+          id,
+          sub_category_id,
+          amount,
+          period,
+          monthly_amount,
+          household_sub_categories (
+            id,
+            name,
+            icon,
+            display_order,
+            category_id,
+            categories (
+              id,
+              name,
+              type,
+              icon,
+              display_order
+            )
+          )
+        `)
+        .eq('household_id', householdId)
+        .eq('plan_month', planMonth),
+      getActualsBySubCategory(householdId, month),
+      getActualIncomeForMonth(householdId, month),
+    ]);
 
+    const { data: plan, error: planError } = planResult;
     if (planError && planError.code !== 'PGRST116') {
       console.error('getBudgetViewData plan error:', planError);
       return { success: false, error: 'Failed to load budget' };
     }
 
-    // Get allocations with sub-category and category info
-    const { data: allocations, error: allocError } = await supabase
-      .from('budget_allocations')
-      .select(`
-        id,
-        sub_category_id,
-        amount,
-        period,
-        monthly_amount,
-        household_sub_categories (
-          id,
-          name,
-          icon,
-          display_order,
-          category_id,
-          categories (
-            id,
-            name,
-            type,
-            icon,
-            display_order
-          )
-        )
-      `)
-      .eq('household_id', householdId)
-      .eq('plan_month', planMonth);
-
+    const { data: allocations, error: allocError } = allocResult;
     if (allocError) {
       console.error('getBudgetViewData allocations error:', allocError);
       return { success: false, error: 'Failed to load budget items' };
     }
 
-    // Get actuals
-    const actualsResult = await getActualsBySubCategory(householdId, month);
     const actuals = actualsResult.actuals || new Map();
 
-    // Transform data
+    // Transform data — ONLY expense items (income comes from transactions now)
     const items = (allocations || [])
       .filter(a => a.household_sub_categories)
       .map(a => {
@@ -1208,8 +1042,8 @@ export async function getBudgetViewData(
           categoryDisplayOrder: cat?.display_order || 0,
         };
       })
+      .filter(item => item.categoryType === 'expense') // Only expenses
       .sort((a, b) => {
-        // Sort by category display order, then by item display order
         if (a.categoryDisplayOrder !== b.categoryDisplayOrder) {
           return a.categoryDisplayOrder - b.categoryDisplayOrder;
         }
@@ -1220,6 +1054,11 @@ export async function getBudgetViewData(
       success: true,
       plan: plan as MonthlyPlan | undefined,
       items,
+      incomeData: {
+        totalIncome: incomeResult.totalIncome,
+        incomeItems: incomeResult.incomeItems,
+      },
+      expenseTransactions: actualsResult.rawTransactions || [],
     };
   } catch (e) {
     console.error('getBudgetViewData error:', e);
@@ -1248,171 +1087,3 @@ export function getCurrentPlanMonth(): string {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 }
 
-/**
- * Complete budget setup (called after review screen)
- * Saves all data and marks onboarding complete
- */
-export async function completeBudgetSetup(
-  householdId: string,
-  incomeSelections: {
-    categoryId: string;
-    name: string;
-    icon: string | null;
-    isCustom: boolean;
-    displayOrder: number;
-  }[],
-  expenseSelections: {
-    categoryId: string;
-    name: string;
-    icon: string | null;
-    isCustom: boolean;
-    displayOrder: number;
-  }[],
-  incomeAllocations: Map<string, { amount: number; period: Period }>,
-  expenseAllocations: Map<string, { amount: number; period: Period }>
-): Promise<ServiceResult> {
-  const planMonth = getCurrentPlanMonth();
-
-  try {
-    // 1. Save income sub-categories
-    const allSelections = [...incomeSelections, ...expenseSelections];
-
-    const { error: subCatError } = await supabase
-      .from('household_sub_categories')
-      .insert(
-        allSelections.map((s, index) => ({
-          household_id: householdId,
-          category_id: s.categoryId,
-          name: s.name,
-          icon: s.icon,
-          is_custom: s.isCustom,
-          display_order: s.displayOrder ?? index,
-        }))
-      )
-      .select();
-
-    if (subCatError) {
-      console.error('Save sub-categories error:', subCatError);
-      return { success: false, error: 'Failed to save categories' };
-    }
-
-    // 2. Get the saved sub-categories to get their IDs
-    const { data: savedSubCats, error: fetchError } = await supabase
-      .from('household_sub_categories')
-      .select('id, name, category_id')
-      .eq('household_id', householdId);
-
-    if (fetchError || !savedSubCats) {
-      console.error('Fetch sub-categories error:', fetchError);
-      return { success: false, error: 'Failed to save allocations' };
-    }
-
-    // 3. Map template names to saved IDs and save allocations
-    const allAllocations: {
-      household_id: string;
-      sub_category_id: string;
-      amount: number;
-      period: Period;
-      monthly_amount: number;
-      plan_month: string;
-    }[] = [];
-
-    // Match by name to find the saved sub-category ID
-    const findSubCatId = (name: string): string | undefined => {
-      return savedSubCats.find(sc => sc.name === name)?.id;
-    };
-
-    // Process income allocations
-    for (const selection of incomeSelections) {
-      const allocation = incomeAllocations.get(selection.name);
-      if (allocation && allocation.amount > 0) {
-        const subCatId = findSubCatId(selection.name);
-        if (subCatId) {
-          allAllocations.push({
-            household_id: householdId,
-            sub_category_id: subCatId,
-            amount: allocation.amount,
-            period: allocation.period,
-            monthly_amount: calculateMonthlyAmount(allocation.amount, allocation.period),
-            plan_month: planMonth,
-          });
-        }
-      }
-    }
-
-    // Process expense allocations
-    for (const selection of expenseSelections) {
-      const allocation = expenseAllocations.get(selection.name);
-      if (allocation && allocation.amount > 0) {
-        const subCatId = findSubCatId(selection.name);
-        if (subCatId) {
-          allAllocations.push({
-            household_id: householdId,
-            sub_category_id: subCatId,
-            amount: allocation.amount,
-            period: allocation.period,
-            monthly_amount: calculateMonthlyAmount(allocation.amount, allocation.period),
-            plan_month: planMonth,
-          });
-        }
-      }
-    }
-
-    // 4. Save allocations
-    if (allAllocations.length > 0) {
-      const { error: allocError } = await supabase
-        .from('budget_allocations')
-        .insert(allAllocations);
-
-      if (allocError) {
-        console.error('Save allocations error:', allocError);
-        return { success: false, error: 'Failed to save amounts' };
-      }
-    }
-
-    // 5. Calculate totals and create monthly plan
-    const totalIncome = allAllocations
-      .filter(a => {
-        const subCat = savedSubCats.find(sc => sc.id === a.sub_category_id);
-        return subCat && incomeSelections.some(s => s.name === subCat.name);
-      })
-      .reduce((sum, a) => sum + a.monthly_amount, 0);
-
-    const totalExpenses = allAllocations
-      .filter(a => {
-        const subCat = savedSubCats.find(sc => sc.id === a.sub_category_id);
-        return subCat && expenseSelections.some(s => s.name === subCat.name);
-      })
-      .reduce((sum, a) => sum + a.monthly_amount, 0);
-
-    const { error: planError } = await supabase
-      .from('monthly_plans')
-      .insert({
-        household_id: householdId,
-        plan_month: planMonth,
-        total_income: totalIncome,
-        total_allocated: totalExpenses,
-        status: 'draft',
-      });
-
-    if (planError) {
-      console.error('Create plan error:', planError);
-      // Don't fail - plan can be created later
-    }
-
-    // 6. Mark onboarding complete
-    const { error: authError } = await supabase.auth.updateUser({
-      data: { onboarding_complete: true },
-    });
-
-    if (authError) {
-      console.error('Update auth error:', authError);
-      // Don't fail - budget is saved
-    }
-
-    return { success: true };
-  } catch (e) {
-    console.error('completeBudgetSetup error:', e);
-    return { success: false, error: 'Failed to save budget' };
-  }
-}

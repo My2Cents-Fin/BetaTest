@@ -426,6 +426,111 @@ export async function getRecentSubCategories(
 }
 
 // ============================================
+// Actual Income Functions
+// ============================================
+
+/**
+ * Income item from actual transactions (not allocations)
+ */
+export interface ActualIncomeItem {
+  id: string;
+  amount: number;
+  subCategoryId: string | null;
+  subCategoryName: string;
+  subCategoryIcon: string;
+  loggedByName: string;
+  loggedBy: string;
+  date: string;
+  remarks: string | null;
+}
+
+export interface ActualIncomeResult {
+  success: boolean;
+  error?: string;
+  totalIncome: number;
+  incomeItems: ActualIncomeItem[];
+}
+
+/**
+ * Get actual income for a month from transactions
+ * Income is recorded as transactions with transaction_type = 'income'
+ */
+export async function getActualIncomeForMonth(
+  householdId: string,
+  month: string // Format: YYYY-MM
+): Promise<ActualIncomeResult> {
+  try {
+    const startDate = `${month}-01`;
+    const [year, monthNum] = month.split('-').map(Number);
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        id,
+        amount,
+        sub_category_id,
+        logged_by,
+        transaction_date,
+        remarks,
+        household_sub_categories (
+          id,
+          name,
+          icon
+        )
+      `)
+      .eq('household_id', householdId)
+      .eq('transaction_type', 'income')
+      .gte('transaction_date', startDate)
+      .lte('transaction_date', endDate)
+      .order('transaction_date', { ascending: true });
+
+    if (error) {
+      console.error('getActualIncomeForMonth error:', error);
+      return { success: false, error: 'Failed to load income', totalIncome: 0, incomeItems: [] };
+    }
+
+    if (!data || data.length === 0) {
+      return { success: true, totalIncome: 0, incomeItems: [] };
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(data.map((t: any) => t.logged_by).filter(Boolean))];
+
+    // Fetch user display names
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, display_name')
+      .in('id', userIds);
+
+    const userMap = new Map<string, string>();
+    (usersData || []).forEach((u: any) => {
+      userMap.set(u.id, u.display_name || 'Unknown');
+    });
+
+    const incomeItems: ActualIncomeItem[] = data.map((t: any) => ({
+      id: t.id,
+      amount: t.amount,
+      subCategoryId: t.sub_category_id,
+      subCategoryName: (t.household_sub_categories as any)?.name || 'Income',
+      subCategoryIcon: (t.household_sub_categories as any)?.icon || '💰',
+      loggedByName: userMap.get(t.logged_by) || 'Unknown',
+      loggedBy: t.logged_by,
+      date: t.transaction_date,
+      remarks: t.remarks,
+    }));
+
+    const totalIncome = incomeItems.reduce((sum, item) => sum + item.amount, 0);
+
+    return { success: true, totalIncome, incomeItems };
+  } catch (e) {
+    console.error('getActualIncomeForMonth error:', e);
+    return { success: false, error: 'Failed to load income', totalIncome: 0, incomeItems: [] };
+  }
+}
+
+// ============================================
 // Helper Functions
 // ============================================
 

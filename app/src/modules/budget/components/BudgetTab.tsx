@@ -16,17 +16,19 @@ import {
   freezePlan,
   getAvailableBudgetMonths,
   getBudgetViewData,
-  createCustomCategory,
 } from '../services/budget';
-import { getHouseholdUsers } from '../services/transactions';
-import { calculateMonthlyAmount, EXPENSE_CATEGORIES, INCOME_CATEGORY } from '../data/defaultCategories';
+import { getHouseholdUsers, getActualIncomeForMonth } from '../services/transactions';
+import type { ActualIncomeItem } from '../services/transactions';
+import { calculateMonthlyAmount, EXPENSE_CATEGORIES } from '../data/defaultCategories';
 import { formatNumber } from './AmountInput';
 import { MonthSelector, formatMonthOption, getCurrentMonth } from './MonthSelector';
 import { BudgetViewMode } from './BudgetViewMode';
+import { InlineIncomeSection } from './InlineIncomeSection';
 import { WelcomeCard } from '../../dashboard/components/WelcomeCard';
 import { BudgetSection } from '../../dashboard/components/BudgetSection';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
+import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 import { useBudget } from '../../../app/providers/BudgetProvider';
 import type { AddingState } from '../../dashboard/components/BudgetSection';
 import type { HouseholdSubCategory, BudgetAllocation, Period, PlanStatus, MonthlyPlan } from '../types';
@@ -57,7 +59,7 @@ interface Household {
   name: string;
 }
 
-type ViewMode = 'view' | 'edit';
+type BudgetStep = 'edit' | 'view';
 
 export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
@@ -69,8 +71,14 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
-  // View/Edit mode
-  const [mode, setMode] = useState<ViewMode>('view');
+  // Budget mode: edit or view
+  const [budgetStep, setBudgetStep] = useState<BudgetStep>('view');
+
+  // Actual income from transactions
+  const [actualIncome, setActualIncome] = useState<{ totalIncome: number; incomeItems: ActualIncomeItem[] }>({ totalIncome: 0, incomeItems: [] });
+
+  // Income sub-categories (for the income recording form)
+  const [incomeSubCategories, setIncomeSubCategories] = useState<{ id: string; name: string; icon: string }[]>([]);
 
   // View mode data
   const [viewPlan, setViewPlan] = useState<MonthlyPlan | undefined>();
@@ -86,13 +94,12 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     actual: number;
     period: Period;
   }[]>([]);
+  const [viewExpenseTransactions, setViewExpenseTransactions] = useState<{ sub_category_id: string; amount: number; logged_by: string }[]>([]);
 
-  // Edit mode data
-  const [incomeItems, setIncomeItems] = useState<BudgetItem[]>([]);
+  // Edit mode data (expenses only)
   const [expenseItems, setExpenseItems] = useState<BudgetItem[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string; type: string; icon: string }[]>([]);
-  const [incomeAddingState, setIncomeAddingState] = useState<AddingState>({ active: false });
   const [expenseAddingState, setExpenseAddingState] = useState<AddingState>({ active: false });
 
   // Plan status
@@ -108,6 +115,12 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
+
+  // Member filter (view mode only) — empty array means "All"
+  const [filterMemberIds, setFilterMemberIds] = useState<string[]>([]);
+  const [showBudgetFilter, setShowBudgetFilter] = useState(false);
+  const mobileFilterRef = useRef<HTMLDivElement>(null);
+  const desktopFilterRef = useRef<HTMLDivElement>(null);
 
   // Auto-save debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -127,13 +140,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Load data when month changes
   useEffect(() => {
     if (household && hasLoadedRef.current) {
-      if (mode === 'view') {
-        loadViewData();
-      } else {
-        loadEditData();
-      }
+      loadForMonth();
     }
-  }, [selectedMonth, mode]);
+  }, [selectedMonth]);
 
   // Respond to quick add trigger from bottom nav
   useEffect(() => {
@@ -157,6 +166,76 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     }
   }, [hasOtherMembers, onHasOtherMembersChange]);
 
+  // Close budget filter when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const isOutsideMobile = mobileFilterRef.current && !mobileFilterRef.current.contains(target);
+      const isOutsideDesktop = desktopFilterRef.current && !desktopFilterRef.current.contains(target);
+      if (isOutsideMobile && isOutsideDesktop) {
+        setShowBudgetFilter(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Default single-member household to that member selected
+  useEffect(() => {
+    if (householdUsers.length === 1 && filterMemberIds.length === 0) {
+      setFilterMemberIds([householdUsers[0].id]);
+    }
+  }, [householdUsers]);
+
+  const toggleMemberFilter = (memberId: string) => {
+    setFilterMemberIds(prev =>
+      prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]
+    );
+  };
+
+  const clearMemberFilter = () => {
+    setFilterMemberIds([]);
+    setShowBudgetFilter(false);
+  };
+
+  const activeFilterCount = filterMemberIds.length > 0 ? 1 : 0;
+
+  async function loadForMonth(householdOverride?: Household) {
+    const hh = householdOverride || household;
+    if (!hh) return;
+
+    setIsLoading(true);
+    try {
+      // Get plan status and income in parallel
+      const planMonth = `${selectedMonth}-01`;
+      const [planResult, incomeResult] = await Promise.all([
+        getMonthlyPlan(hh.id, planMonth),
+        getActualIncomeForMonth(hh.id, selectedMonth),
+      ]);
+
+      setActualIncome({
+        totalIncome: incomeResult.totalIncome,
+        incomeItems: incomeResult.incomeItems,
+      });
+
+      const plan = planResult.plan;
+
+      if (plan?.status === 'frozen') {
+        // Frozen plan → view mode
+        setBudgetStep('view');
+        await loadViewData(hh);
+      } else {
+        // Draft plan or no plan → edit mode (income + expenses together)
+        setBudgetStep('edit');
+        await loadEditData(hh);
+      }
+    } catch (e) {
+      console.error('Error loading for month:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function loadInitialData() {
     setIsLoading(true);
     try {
@@ -169,12 +248,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       setHousehold(householdData);
 
       // Step 2: All independent — run in parallel
-      const [authResult, usersResult, monthsResult, categoriesResult, subCategoriesResult] = await Promise.all([
+      const [authResult, usersResult, monthsResult, categoriesResult, subCategoriesResult, incomeResult] = await Promise.all([
         supabase.auth.getUser(),
         getHouseholdUsers(householdData.id),
         getAvailableBudgetMonths(householdData.id),
         getCategoryList(householdData.id),
         getHouseholdSubCategories(householdData.id),
+        getActualIncomeForMonth(householdData.id, currentMonth),
       ]);
 
       // Process auth + household users
@@ -198,10 +278,19 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       // Process categories
       if (categoriesResult.categories) {
         setCategories(categoriesResult.categories);
+        // Extract income sub-categories for income recording form
+        const incomeCats = categoriesResult.categories.filter(c => c.type === 'income');
+        // We need to get household sub-categories that belong to income categories
+        const incomeSubCats = (subCategoriesResult.subCategories || [])
+          .filter((sc: HouseholdSubCategory & { categories?: { type: string } }) =>
+            sc.categories?.type === 'income' || incomeCats.some(c => c.id === sc.category_id)
+          )
+          .map(sc => ({ id: sc.id, name: sc.name, icon: sc.icon || '💰' }));
+        setIncomeSubCategories(incomeSubCats);
       }
 
       // Process sub-categories
-      let subCategories = subCategoriesResult.subCategories || [];
+      const subCategories = subCategoriesResult.subCategories || [];
 
       // Build sub-categories list for quick add
       const subCatList = subCategories.map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
@@ -213,20 +302,52 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       }));
       setAllSubCategories(subCatList);
 
+      // Set actual income
+      setActualIncome({
+        totalIncome: incomeResult.totalIncome,
+        incomeItems: incomeResult.incomeItems,
+      });
+
       if (subCategories.length === 0) {
         setShowWelcome(true);
         await createDefaultExpenseTemplate(householdData.id);
-        // Go to edit mode for first-time setup (no plan yet)
-        setMode('edit');
-        await loadEditData(householdData);
-      } else {
-        const welcomeDismissed = localStorage.getItem('my2cents_welcome_dismissed');
-        setShowWelcome(!welcomeDismissed);
+        // Reload sub-categories after creating defaults
+        const refreshedSubCats = await getHouseholdSubCategories(householdData.id);
+        const refreshedList = (refreshedSubCats.subCategories || [])
+          .map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
+            id: sc.id,
+            name: sc.name,
+            icon: sc.icon || '📦',
+            categoryName: sc.categories?.name || 'Other',
+            categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+          }));
+        setAllSubCategories(refreshedList);
 
-        // Always default to view mode - user clicks Edit to enter edit mode
-        setMode('view');
-        await loadViewData(householdData);
+        // Also refresh income sub-categories
+        const incomeSubCats = (refreshedSubCats.subCategories || [])
+          .filter((sc: HouseholdSubCategory & { categories?: { type: string } }) =>
+            sc.categories?.type === 'income'
+          )
+          .map(sc => ({ id: sc.id, name: sc.name, icon: sc.icon || '💰' }));
+        setIncomeSubCategories(incomeSubCats);
       }
+
+      // Determine initial step
+      const planMonth = `${currentMonth}-01`;
+      const planResult = await getMonthlyPlan(householdData.id, planMonth);
+      const plan = planResult.plan;
+
+      if (plan?.status === 'frozen') {
+        setBudgetStep('view');
+        await loadViewData(householdData);
+      } else {
+        // Draft plan or no plan → edit mode (income + expenses together)
+        setBudgetStep('edit');
+        await loadEditData(householdData);
+      }
+
+      const welcomeDismissed = localStorage.getItem('my2cents_welcome_dismissed');
+      setShowWelcome(!welcomeDismissed && subCategories.length === 0);
     } catch (e) {
       console.error('Error loading budget:', e);
     } finally {
@@ -244,6 +365,10 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       if (result.success) {
         setViewPlan(result.plan);
         setViewItems(result.items || []);
+        setViewExpenseTransactions(result.expenseTransactions || []);
+        if (result.incomeData) {
+          setActualIncome(result.incomeData);
+        }
         if (result.plan) {
           setPlanStatus(result.plan.status);
           setPlanId(result.plan.id);
@@ -264,23 +389,32 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     try {
       const planMonth = `${selectedMonth}-01`;
 
-      // Get sub-categories
-      const subCategoriesResult = await getHouseholdSubCategories(hh.id);
-      let subCategories = subCategoriesResult.subCategories || [];
+      // Get sub-categories and allocations in parallel, plus income
+      const [subCategoriesResult, allocationsResult, incomeResult] = await Promise.all([
+        getHouseholdSubCategories(hh.id),
+        getAllocations(hh.id, planMonth),
+        getActualIncomeForMonth(hh.id, selectedMonth),
+      ]);
 
-      // Get allocations for selected month
-      const allocationsResult = await getAllocations(hh.id, planMonth);
+      let subCategories = subCategoriesResult.subCategories || [];
       const allocations = allocationsResult.allocations || [];
 
-      // Clean up orphaned sub-categories (ones with no allocations in ANY month)
-      // This happens when user adds an item but closes tab before entering amount
-      const orphanedSubCats = subCategories.filter(subCat => {
-        // Check if this sub-category has ANY allocation in the current month
+      // Update actual income
+      setActualIncome({
+        totalIncome: incomeResult.totalIncome,
+        incomeItems: incomeResult.incomeItems,
+      });
+
+      // Clean up orphaned sub-categories (ones with no allocations)
+      // Only consider expense sub-categories as orphaned
+      const orphanedSubCats = subCategories.filter((subCat: HouseholdSubCategory & { categories?: { type: string } }) => {
+        // Skip income sub-categories — they're not managed through allocations anymore
+        if (subCat.categories?.type === 'income') return false;
         const hasAllocation = allocations.some(a => a.sub_category_id === subCat.id);
         return !hasAllocation;
       });
 
-      // Delete orphaned sub-categories
+      // Delete orphaned expense sub-categories
       for (const orphan of orphanedSubCats) {
         console.log('[loadEditData] Deleting orphaned sub-category:', orphan.name);
         await deleteSubCategory(orphan.id);
@@ -291,11 +425,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         !orphanedSubCats.some(o => o.id === subCat.id)
       );
 
-      // Map sub-categories to budget items with allocations
-      const income: BudgetItem[] = [];
+      // Map sub-categories to budget items — EXPENSES ONLY
       const expenses: BudgetItem[] = [];
 
       subCategories.forEach((subCat: HouseholdSubCategory & { categories?: { type: string; name: string; icon: string } }) => {
+        const categoryType = subCat.categories?.type;
+        if (categoryType === 'income') return; // Skip income — handled as transactions
+
         const allocation = allocations.find((a: BudgetAllocation) => a.sub_category_id === subCat.id);
 
         const item: BudgetItem = {
@@ -310,21 +446,15 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           monthlyAmount: allocation?.monthly_amount || 0,
         };
 
-        const categoryType = subCat.categories?.type;
-        if (categoryType === 'income') {
-          income.push(item);
-        } else {
-          expenses.push(item);
-        }
+        expenses.push(item);
       });
 
-      setIncomeItems(income);
       setExpenseItems(expenses);
 
       // Ensure monthly plan exists and get status
-      const totalIncome = income.reduce((sum, item) => sum + item.monthlyAmount, 0);
+      // Use actual income from transactions (not from allocations)
       const totalExpenses = expenses.reduce((sum, item) => sum + item.monthlyAmount, 0);
-      const planResult = await upsertMonthlyPlan(hh.id, planMonth, totalIncome, totalExpenses);
+      const planResult = await upsertMonthlyPlan(hh.id, planMonth, incomeResult.totalIncome, totalExpenses);
 
       if (planResult.plan) {
         setPlanId(planResult.plan.id);
@@ -345,19 +475,15 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
   const handleMonthChange = (month: string) => {
     setSelectedMonth(month);
-    // Reset to view mode when changing months (unless it's current month with draft)
-    if (month !== currentMonth) {
-      setMode('view');
-    }
   };
 
   const handleEnterEditMode = () => {
-    setMode('edit');
+    setBudgetStep('edit');
     loadEditData();
   };
 
   const handleCancelEdit = () => {
-    setMode('view');
+    setBudgetStep('view');
     loadViewData();
     setShowIncompleteWarning(false);
     setIncompleteItemIds(new Set());
@@ -368,45 +494,24 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     setShowWelcome(false);
   };
 
-  // Income add handlers
-  const handleStartAddIncome = () => {
-    setIncomeAddingState({ active: true });
-    setExpenseAddingState({ active: false });
-  };
-
-  const handleConfirmAddIncome = async (name: string, icon: string) => {
+  // Handle income changed — refresh income data (used by InlineIncomeSection)
+  const handleIncomeChanged = async () => {
     if (!household) return;
+    const result = await getActualIncomeForMonth(household.id, selectedMonth);
+    setActualIncome({
+      totalIncome: result.totalIncome,
+      incomeItems: result.incomeItems,
+    });
 
-    const incomeCategory = categories.find(c => c.type === 'income');
-    if (!incomeCategory) return;
-
-    const result = await createSubCategory(household.id, incomeCategory.id, name, icon);
-    if (result.success && result.subCategory) {
-      const newItem: BudgetItem = {
-        id: result.subCategory.id,
-        name: result.subCategory.name,
-        icon: result.subCategory.icon || icon,
-        categoryId: incomeCategory.id,
-        categoryName: incomeCategory.name,
-        categoryIcon: incomeCategory.icon,
-        amount: 0,
-        period: 'monthly',
-        monthlyAmount: 0,
-      };
-      setIncomeItems([...incomeItems, newItem]);
-    }
-
-    setIncomeAddingState({ active: false });
-  };
-
-  const handleCancelAddIncome = () => {
-    setIncomeAddingState({ active: false });
+    // Also update the monthly plan totals
+    const planMonth = `${selectedMonth}-01`;
+    const totalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+    await upsertMonthlyPlan(household.id, planMonth, result.totalIncome, totalExpenses);
   };
 
   // Expense add handlers
   const handleStartAddExpense = (categoryId?: string, categoryName?: string) => {
     setExpenseAddingState({ active: true, categoryId, categoryName });
-    setIncomeAddingState({ active: false });
   };
 
   const handleConfirmAddExpense = async (name: string, icon: string, categoryId?: string) => {
@@ -445,21 +550,6 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     setExpenseAddingState({ active: false });
   };
 
-  // REMOVED - Custom category creation disabled for now
-  // const handleAddCustomCategory = async (name: string, icon: string): Promise<{ success: boolean; error?: string; category?: any }> => {
-  //   if (!household) return { success: false, error: 'No household found' };
-  //   const result = await createCustomCategory(household.id, name, icon);
-  //   if (result.success && result.category) {
-  //     const categoriesResult = await getCategoryList(household.id);
-  //     if (categoriesResult.categories) {
-  //       setCategories(categoriesResult.categories);
-  //     }
-  //     return { success: true, category: result.category };
-  //   } else {
-  //     return { success: false, error: result.error || 'Failed to create category' };
-  //   }
-  // };
-
   const handleSaveItem = useCallback(async (id: string, amount: number, period: Period) => {
     if (!household) return;
 
@@ -476,9 +566,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           : item
       );
 
-    const newIncomeItems = updateItems(incomeItems);
     const newExpenseItems = updateItems(expenseItems);
-    setIncomeItems(newIncomeItems);
     setExpenseItems(newExpenseItems);
 
     // Debounce the actual API call
@@ -492,20 +580,18 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           { subCategoryId: id, amount, period }
         ]);
 
-        const totalIncome = newIncomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
         const totalExpenses = newExpenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-        await upsertMonthlyPlan(household.id, planMonth, totalIncome, totalExpenses);
+        await upsertMonthlyPlan(household.id, planMonth, actualIncome.totalIncome, totalExpenses);
 
         setLastSaved(new Date());
         console.log('[Budget] Draft auto-saved');
       } catch (e) {
         console.error('Failed to save allocation:', e);
       }
-    }, 1000); // Wait 1 second after last change before saving
-  }, [household, selectedMonth, incomeItems, expenseItems]);
+    }, 1000);
+  }, [household, selectedMonth, expenseItems, actualIncome.totalIncome]);
 
   const handleDeleteItem = async (item: BudgetItem) => {
-    setIncomeItems(incomeItems.filter(i => i.id !== item.id));
     setExpenseItems(expenseItems.filter(i => i.id !== item.id));
 
     try {
@@ -521,30 +607,12 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         item.id === id ? { ...item, name: newName } : item
       );
 
-    setIncomeItems(updateItems(incomeItems));
     setExpenseItems(updateItems(expenseItems));
 
     try {
       await renameSubCategory(id, newName);
     } catch (e) {
       console.error('Failed to rename item:', e);
-    }
-  };
-
-  const handleReorderIncome = async (startIndex: number, endIndex: number) => {
-    const newItems = Array.from(incomeItems);
-    const [removed] = newItems.splice(startIndex, 1);
-    newItems.splice(endIndex, 0, removed);
-    setIncomeItems(newItems);
-
-    try {
-      const updates = newItems.map((item, index) => ({
-        id: item.id,
-        displayOrder: index,
-      }));
-      await updateSubCategoryOrder(updates);
-    } catch (e) {
-      console.error('Failed to reorder items:', e);
     }
   };
 
@@ -596,10 +664,10 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
 
-      // Save all allocations immediately
+      // Save all expense allocations immediately
       if (household) {
         const planMonth = `${selectedMonth}-01`;
-        const allAllocations = [...incomeItems, ...expenseItems].map(item => ({
+        const allAllocations = expenseItems.map(item => ({
           subCategoryId: item.id,
           amount: item.amount,
           period: item.period,
@@ -607,27 +675,38 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
         await saveAllocations(household.id, planMonth, allAllocations);
 
-        const totalIncome = incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
         const totalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-        await upsertMonthlyPlan(household.id, planMonth, totalIncome, totalExpenses);
+        await upsertMonthlyPlan(household.id, planMonth, actualIncome.totalIncome, totalExpenses);
       }
     }
 
-    // Check for over-allocation FIRST (before incomplete check)
-    const currentTotalIncome = incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-    const currentTotalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+    // Refresh actual income before freeze validation
+    if (household) {
+      const freshIncome = await getActualIncomeForMonth(household.id, selectedMonth);
+      setActualIncome({
+        totalIncome: freshIncome.totalIncome,
+        incomeItems: freshIncome.incomeItems,
+      });
 
-    if (currentTotalExpenses > currentTotalIncome) {
-      alert(`Cannot freeze plan: Your expenses (₹${formatNumber(currentTotalExpenses)}) exceed your income (₹${formatNumber(currentTotalIncome)}). Please reduce expenses or increase income before freezing.`);
-      return;
+      const currentTotalIncome = freshIncome.totalIncome;
+      const currentTotalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+
+      // Update the monthly plan with fresh income BEFORE freeze validation
+      const planMonth = `${selectedMonth}-01`;
+      await upsertMonthlyPlan(household.id, planMonth, currentTotalIncome, currentTotalExpenses);
+
+      // Check for over-allocation against ACTUAL income
+      if (currentTotalExpenses > currentTotalIncome) {
+        alert(`Cannot freeze plan: Your expenses (₹${formatNumber(currentTotalExpenses)}) exceed your actual income (₹${formatNumber(currentTotalIncome)}). Please reduce expenses or record more income before freezing.`);
+        return;
+      }
     }
 
-    const incompleteIncome = incomeItems.filter(item => item.amount === 0).map(item => item.id);
+    // Check for incomplete expense items
     const incompleteExpenses = expenseItems.filter(item => item.amount === 0).map(item => item.id);
-    const allIncomplete = [...incompleteIncome, ...incompleteExpenses];
 
-    if (allIncomplete.length > 0) {
-      setIncompleteItemIds(new Set(allIncomplete));
+    if (incompleteExpenses.length > 0) {
+      setIncompleteItemIds(new Set(incompleteExpenses));
       setShowIncompleteWarning(true);
       return;
     }
@@ -645,60 +724,35 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     });
 
     // Check if this is the first ever frozen budget for this household
-    // Check if the current plan has ever been frozen before by looking at frozen_at timestamp
     let isFirstBudget = false;
     if (planStatus === 'draft') {
-      console.log('[handleFreeze] Current plan is draft - checking for first freeze');
-
-      // First, check if THIS plan was previously frozen (has frozen_at timestamp)
       const { data: currentPlan } = await supabase
         .from('monthly_plans')
         .select('id, frozen_at')
         .eq('id', planId)
         .single();
 
-      console.log('[handleFreeze] Current plan frozen_at:', currentPlan?.frozen_at);
-
       if (currentPlan?.frozen_at) {
-        // This plan was already frozen before - not first budget
-        console.log('[handleFreeze] This plan was previously frozen - not first budget');
         isFirstBudget = false;
       } else {
-        // This plan was never frozen - check if ANY other plans exist
-        const { data: anyPlans, error: checkError } = await supabase
+        const { data: anyPlans } = await supabase
           .from('monthly_plans')
           .select('id')
           .eq('household_id', household.id)
-          .not('frozen_at', 'is', null) // Has been frozen at some point
+          .not('frozen_at', 'is', null)
           .limit(1);
 
-        console.log('[handleFreeze] Other frozen plans query result:', {
-          anyPlans,
-          count: anyPlans?.length || 0,
-          error: checkError
-        });
-
         isFirstBudget = !anyPlans || anyPlans.length === 0;
-        console.log('[handleFreeze] First budget check result:', {
-          planStatus,
-          isFirstBudget,
-          planId
-        });
       }
-    } else {
-      console.log('[handleFreeze] Plan status is already frozen - skipping first budget check');
     }
 
-    console.log('[handleFreeze] Calling freezePlan for planId:', planId);
     const result = await freezePlan(planId);
-    console.log('[handleFreeze] freezePlan result:', result);
 
     if (result.success) {
-      console.log('[handleFreeze] Freeze successful - updating UI state');
       setPlanStatus('frozen');
       setShowIncompleteWarning(false);
       setIncompleteItemIds(new Set());
-      setMode('view');
+      setBudgetStep('view');
       loadViewData();
 
       // Update available months if needed
@@ -708,17 +762,10 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
       // Show modal for first budget freeze
       if (isFirstBudget) {
-        console.log('[handleFreeze] This is first budget - showing modal');
         setIsFirstFreeze(true);
-        // Refetch will happen when modal closes
       } else {
-        // Not first budget - refetch immediately to unlock tabs
-        console.log('[handleFreeze] Not first budget - refetching status to unlock tabs');
-        // Use async IIFE to call refetch immediately without setTimeout
         (async () => {
-          console.log('[handleFreeze] Calling refetchBudgetStatus...');
           await refetchBudgetStatus();
-          console.log('[handleFreeze] Budget status refetch complete');
         })();
       }
     }
@@ -735,16 +782,11 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     }
   };
 
-  // Calculate totals
-  const totalIncome = incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+  // Calculate totals (expenses only — income comes from actualIncome)
   const totalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-  const remaining = totalIncome - totalExpenses;
+  const remaining = actualIncome.totalIncome - totalExpenses;
 
-  // Suggestions
-  const incomeSuggestions = INCOME_CATEGORY.sub_category_templates
-    .map(t => ({ name: t.name, icon: t.icon || '📦' }))
-    .filter(s => !incomeItems.some(i => i.name.toLowerCase() === s.name.toLowerCase()));
-
+  // Expense suggestions
   const expenseSuggestionsByCategory: Record<string, { name: string; icon: string }[]> = {};
   EXPENSE_CATEGORIES.forEach(cat => {
     expenseSuggestionsByCategory[cat.name] = cat.sub_category_templates
@@ -766,6 +808,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
   // Can edit only current or future months
   const canEdit = selectedMonth >= currentMonth;
+
+  // Is in edit mode (income + expenses together)
+  const isEditing = budgetStep === 'edit';
 
   if (isLoading) {
     return (
@@ -793,7 +838,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             onMonthChange={handleMonthChange}
           />
 
-          {mode === 'view' && canEdit && (
+          {budgetStep === 'view' && canEdit && (
             <button
               onClick={handleEnterEditMode}
               className="px-4 py-2 text-sm text-purple-700 font-medium border border-purple-200 rounded-lg hover:bg-purple-50 flex items-center gap-2"
@@ -804,34 +849,135 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
               Edit
             </button>
           )}
+          {/* Filter icon — desktop (view mode, multi-member households) */}
+          {budgetStep === 'view' && hasOtherMembers && (
+            <div className="relative" ref={desktopFilterRef}>
+              <button
+                onClick={() => setShowBudgetFilter(!showBudgetFilter)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-purple-600 text-white hover:bg-purple-700"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span className="text-sm font-medium">Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-5 h-5 bg-white text-purple-600 text-xs font-bold rounded-full flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {showBudgetFilter && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-50 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Filters</span>
+                    <button onClick={() => setShowBudgetFilter(false)} className="text-gray-400 hover:text-gray-600">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <MemberMultiSelect
+                    label="Members"
+                    members={householdUsers.map(u => ({ id: u.id, name: u.displayName }))}
+                    selectedIds={filterMemberIds}
+                    onToggle={toggleMemberFilter}
+                  />
+                  {filterMemberIds.length > 0 && (
+                    <button
+                      onClick={clearMemberFilter}
+                      className="w-full mt-4 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Mobile Month Selector + Edit Button */}
-      <div className="md:hidden px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between">
-        <MonthSelector
-          selectedMonth={selectedMonth}
-          availableMonths={monthOptions}
-          onMonthChange={handleMonthChange}
-        />
-        {mode === 'view' && canEdit && (
-          <button
-            onClick={handleEnterEditMode}
-            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-            aria-label="Edit budget"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
-        )}
+      {/* Mobile Month Selector + Edit Button + Filter */}
+      <div className="md:hidden bg-white border-b border-gray-100">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <MonthSelector
+            selectedMonth={selectedMonth}
+            availableMonths={monthOptions}
+            onMonthChange={handleMonthChange}
+          />
+          <div className="flex items-center gap-1">
+            {budgetStep === 'view' && canEdit && (
+              <button
+                onClick={handleEnterEditMode}
+                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                aria-label="Edit budget"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
+            {/* Filter icon — mobile (view mode, multi-member households) */}
+            {budgetStep === 'view' && hasOtherMembers && (
+              <div className="relative" ref={mobileFilterRef}>
+                <button
+                  onClick={() => setShowBudgetFilter(!showBudgetFilter)}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors bg-purple-600 text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                {showBudgetFilter && (
+                  <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-xl shadow-xl border border-gray-100 z-50 p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Filters</span>
+                      <button onClick={() => setShowBudgetFilter(false)} className="text-gray-400 hover:text-gray-600">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <MemberMultiSelect
+                      label="Members"
+                      members={householdUsers.map(u => ({ id: u.id, name: u.displayName }))}
+                      selectedIds={filterMemberIds}
+                      onToggle={toggleMemberFilter}
+                    />
+                    {filterMemberIds.length > 0 && (
+                      <button
+                        onClick={clearMemberFilter}
+                        className="w-full mt-4 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Reset Filters
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Content */}
       <main className="p-4 pb-24">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Welcome Card (only in edit mode, first time) */}
-          {showWelcome && mode === 'edit' && (
+          {showWelcome && budgetStep === 'edit' && (
             <WelcomeCard
               userName={household?.name || 'there'}
               onDismiss={handleDismissWelcome}
@@ -839,53 +985,56 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           )}
 
           {/* VIEW MODE */}
-          {mode === 'view' && (
+          {budgetStep === 'view' && (
             <BudgetViewMode
               plan={viewPlan}
               items={viewItems}
+              incomeData={actualIncome}
+              expenseTransactions={viewExpenseTransactions}
               onEdit={handleEnterEditMode}
               canEdit={canEdit}
+              filterMemberIds={filterMemberIds}
             />
           )}
 
-          {/* EDIT MODE */}
-          {mode === 'edit' && (
+          {/* EDIT MODE — Income + Expenses together */}
+          {isEditing && (
             <>
               {/* Status Badges */}
-              <div className="flex items-center gap-2">
-                {planStatus === 'frozen' && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-yellow-100 text-yellow-700">
-                    <span>✏️</span>
-                    <span>Editing Mode</span>
-                  </div>
-                )}
-                {lastSaved && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-green-50 text-green-700">
+              {lastSaved && (
+                <div className="flex justify-end">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-green-100 text-green-700">
                     <span>✓</span>
                     <span>Draft saved</span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Income Section */}
-              <BudgetSection
-                type="income"
-                title="Income"
-                icon="💰"
-                items={incomeItems}
-                total={totalIncome}
-                addingState={incomeAddingState}
-                suggestions={incomeSuggestions}
-                onStartAdd={handleStartAddIncome}
-                onConfirmAdd={handleConfirmAddIncome}
-                onCancelAdd={handleCancelAddIncome}
-                onSave={handleSaveItem}
-                onDelete={handleDeleteItem}
-                onRename={handleRenameItem}
-                onReorder={handleReorderIncome}
-                incompleteItemIds={incompleteItemIds}
-                isEditable={true}
-              />
+              {/* Income Section — inline editable */}
+              {household && (
+                <InlineIncomeSection
+                  householdId={household.id}
+                  month={selectedMonth}
+                  householdUsers={householdUsers}
+                  currentUserId={currentUserId}
+                  incomeSubCategories={incomeSubCategories}
+                  incomeCategoryId={categories.find(c => c.type === 'income')?.id || ''}
+                  incomeItems={actualIncome.incomeItems}
+                  totalIncome={actualIncome.totalIncome}
+                  onIncomeChanged={handleIncomeChanged}
+                  onSubCategoriesChanged={async () => {
+                    // Refresh income sub-categories after a new one is created
+                    const subCategoriesResult = await getHouseholdSubCategories(household.id);
+                    const incomeCats = categories.filter(c => c.type === 'income');
+                    const incomeSubCats = (subCategoriesResult.subCategories || [])
+                      .filter((sc: HouseholdSubCategory & { categories?: { type: string } }) =>
+                        sc.categories?.type === 'income' || incomeCats.some(c => c.id === sc.category_id)
+                      )
+                      .map(sc => ({ id: sc.id, name: sc.name, icon: sc.icon || '💰' }));
+                    setIncomeSubCategories(incomeSubCats);
+                  }}
+                />
+              )}
 
               {/* Expenses Section */}
               <BudgetSection
@@ -916,7 +1065,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
                     <div>
                       <p className="font-medium text-red-800">Expenses exceed income</p>
                       <p className="text-sm text-red-600 mt-1">
-                        You've allocated ₹{formatNumber(Math.abs(remaining))} more than your income. Reduce expenses or increase income to freeze this plan.
+                        You've allocated ₹{formatNumber(Math.abs(remaining))} more than your actual income. Reduce expenses or record more income to freeze this plan.
                       </p>
                     </div>
                   </div>
@@ -942,8 +1091,8 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         </div>
       </main>
 
-      {/* Bottom Bar - Edit Mode */}
-      {mode === 'edit' && (
+      {/* Bottom Bar - Expense Edit Mode */}
+      {isEditing && (
         <div className={`fixed bottom-16 md:bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-20 transition-all duration-200 ${sidebarCollapsed ? 'md:left-20' : 'md:left-64'}`}>
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <div className="flex-1">
@@ -980,7 +1129,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       )}
 
       {/* FAB - Quick Add Transaction (Web only - mobile uses bottom nav center button) */}
-      {household && mode === 'view' && (
+      {household && budgetStep === 'view' && (
         <div className="hidden md:block fixed bottom-8 right-4 z-30 group">
           <button
             onClick={() => setShowQuickAdd(true)}
@@ -1007,8 +1156,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           currentUserId={currentUserId}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={() => {
-            // Refresh view data after adding transaction
-            if (mode === 'view') {
+            if (budgetStep === 'view') {
               loadViewData();
             }
           }}
@@ -1023,15 +1171,15 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           currentUserId={currentUserId}
           onClose={() => setShowFundTransfer(false)}
           onSuccess={() => {
-            if (mode === 'view') {
+            if (budgetStep === 'view') {
               loadViewData();
             }
           }}
         />
       )}
 
-      {/* Desktop - Secondary FAB for Fund Transfer (only visible if there are other household members) */}
-      {hasOtherMembers && mode === 'view' && (
+      {/* Desktop - Secondary FAB for Fund Transfer */}
+      {hasOtherMembers && budgetStep === 'view' && (
         <div className="hidden md:block fixed bottom-24 right-4 z-30 group">
           <button
             onClick={() => setShowFundTransfer(true)}
@@ -1040,7 +1188,6 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           >
             <span className="text-2xl">💸</span>
           </button>
-          {/* Tooltip */}
           <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Record Fund Transfer
           </div>
@@ -1058,11 +1205,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             </p>
             <button
               onClick={async () => {
-                console.log('[BudgetTab] Let\'s Go clicked - refetching budget status');
                 await refetchBudgetStatus();
-                console.log('[BudgetTab] Budget status refetch complete after first freeze');
                 setIsFirstFreeze(false);
-                loadViewData(); // Reload the view data to show updated amounts
+                loadViewData();
               }}
               className="w-full py-3 px-6 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
             >

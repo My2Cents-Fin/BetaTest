@@ -7,6 +7,7 @@ import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransact
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
 import type { TransactionWithDetails, HouseholdSubCategory } from '../../budget/types';
 import { supabase } from '../../../lib/supabase';
+import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 
 interface TransactionsTabProps {
   quickAddTrigger?: number;
@@ -651,24 +652,14 @@ function FilterContent({
         </div>
       </div>
 
-      {/* Recorded By Filter */}
+      {/* Members Filter */}
       {uniqueRecorders.length > 1 && (
-        <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">Recorded By</label>
-          <div className="space-y-1.5">
-            {uniqueRecorders.map(recorder => (
-              <label key={recorder.id} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filterRecordedBy.includes(recorder.id)}
-                  onChange={() => toggleRecorder(recorder.id)}
-                  className="w-3.5 h-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="text-xs text-gray-700">{recorder.name}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <MemberMultiSelect
+          label="Members"
+          members={uniqueRecorders.map(r => ({ id: r.id, name: r.name }))}
+          selectedIds={filterRecordedBy}
+          onToggle={toggleRecorder}
+        />
       )}
 
       {/* Type Filter (multi-select) */}

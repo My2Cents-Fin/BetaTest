@@ -3,10 +3,30 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-14
+2026-02-15
 
 ## Last Session Summary
-**Comprehensive documentation audit COMPLETE.** Compared entire codebase against all docs and updated every file with discrepancies. Renamed Finny → My2cents across docs. Fixed OTP from 4→6 digits in onboarding journey. Updated database-schema.md with transactions and household_categories tables. Added build status annotations to solution doc. Fixed primary color (purple-600→purple-800) in design system. Updated code organization in skills-developer.md to match actual codebase. Consolidated 4 overlapping deployment docs (archived 3, updated main DEPLOYMENT.md). Removed stale "Complete Production Deployment" items from Next Up. Updated migration file references throughout.
+**Session 20: Member filter on budget tab.**
+
+Added member filter to the budget view mode. When a household has multiple members, pill buttons ("All", "Member1", "Member2") appear after the edit pencil in both desktop and mobile headers.
+
+1. **Member filter UI (`BudgetTab.tsx`):**
+   - Added `filterMemberId` state (null = All, string = specific member)
+   - Desktop: pill buttons after Edit pencil button
+   - Mobile: pill row below month selector (scrollable)
+   - Only shows in view mode when household has >1 member
+
+2. **Data plumbing (`budget.ts`):**
+   - `getActualsBySubCategory` now also returns `rawTransactions` (with `sub_category_id`, `amount`, `logged_by`)
+   - `getBudgetViewData` passes `expenseTransactions` through to the component
+
+3. **Filtering logic (`BudgetViewMode.tsx`):**
+   - When a member is selected: expense actuals recomputed from raw transactions for that member only
+   - Income items filtered by `loggedBy`
+   - Total income recalculated from filtered items
+   - Planned amounts remain unchanged (household-level)
+
+All type checks pass clean. NOT YET DEPLOYED.
 
 ---
 
@@ -132,15 +152,22 @@
 - [x] **Smart color coding:**
   - Variable category: Yellow (75-89%) → Orange (90-99%) → Red (100%+) with dotted underline
   - Other expenses: Gray (0-99%) → Red (100%+) with dotted underline
-  - Income: Gray (normal) → Green (exceeds planned, no underline)
 - [x] Edit mode for modifying allocations
-- [x] **Category sections:** Income, EMI, Insurance, Savings, Fixed, Variable, **Family**, **Investment**, One-time
+- [x] **Category sections:** EMI, Insurance, Savings, Fixed, Variable, **Family**, **Investment**, One-time (expense-only)
 - [x] Inline editing of amounts
 - [x] Add/remove sub-categories with **suggestion clicking fix** (onMouseDown + preventDefault)
 - [x] Freeze/unfreeze plan functionality with **pending saves flush** (prevents stale data in view)
 - [x] Month selector for viewing different months
 - [x] Fixed column alignment (removed warning icon, using dotted underline instead)
 - [x] **Subcategory creation supports custom categories** (dual table lookup: categories + household_categories)
+- [x] **Income as transactions only** — Income recorded as actual transactions, not plan allocations
+- [x] **Inline income editing** — `InlineIncomeSection.tsx` shows income items inline in edit mode. Two-step add flow (name input + suggestions → amount + by selector) matching expense UX. Click to edit existing items. Swipe-to-delete on mobile, trash icon on desktop.
+- [x] **BudgetViewMode** — Income section shows actual transactions in collapsible header
+- [x] **Freeze validation** — Checks expenses <= actual income from transactions; refreshes income and updates plan before validation
+- [x] **Simplified edit flow** — Single edit mode with income + expenses together (replaced 3-step income→expenses→view flow)
+- [x] **Edit mode headings** — "Record your income" and "Plan your expenses" (removed "Editing Mode" banner)
+- [x] **Mobile-responsive headings** — Full sentence titles on mobile with compact amount (text-xs, "/mo")
+- [x] **Unplanned income in view mode** — Shown as subtext under Expenses header (green if surplus, red if over-planned)
 
 ### Transactions Tab (NEW)
 - [x] **TransactionsTab.tsx** → `app/src/modules/transactions/components/`
@@ -208,13 +235,24 @@
 ---
 
 ## In Progress
-- Nothing currently in progress
+- [ ] **Deploy and test income-as-transactions flow** — Deploy and verify on https://beta-test-five.vercel.app
+  - New user: Budget tab → edit mode with Income + Expenses sections → Record income inline → Allocate expenses → Freeze → View mode
+  - Existing user: Budget tab → should show frozen view with income from transactions
+  - Edit mode: Income section editable inline (click to edit amount, delete, add new) alongside expenses
+  - Freeze validation: expenses > actual income should be blocked
+  - Draft persistence: sign out → sign back in → income transactions + expense draft should persist
 
 ---
 
 ## Next Up (in order)
 
-### 1. UI Polish & Fixes
+### 1. Near-Term Tasks (User's List)
+- [x] **Filter by member on budget tab** — AI and AE update to show only that member's contributions. Pill buttons ("All" + member names) in view mode header. Expense actuals recomputed from raw transactions per member; income items filtered by loggedBy.
+- [ ] **Onboarding income and expense flow test** — End-to-end test of new user flow through income recording + expense planning + freeze
+- [ ] **FAB income flow improvement** — Add inline sub-category creation for income in QuickAdd (DEFERRED — user wants to live with current behavior first)
+- [ ] **Voice-based budget setup** — Simplify budget setup through voice instructions (future exploration)
+
+### 2. UI Polish & Fixes
 - [ ] Review and fix any UI inconsistencies across screens
 - [ ] Ensure mobile responsiveness is perfect on all screens
 - [ ] Add proper loading states where missing
@@ -257,6 +295,10 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 ## Blocked / Waiting
 - Nothing currently blocked
 
+## Deferred Decisions (User to revisit after living with the app)
+- **FAB income flow:** Currently FAB can only add income against existing sub-categories. User wants Option 2 (inline sub-category creation for income in QuickAdd) but deferred the UX decision (how to distinguish income vs expense input). Revisit after daily usage.
+- **Voice-based budget setup:** Simplify budget setup through voice instructions. User mentioned as future task.
+
 ---
 
 ## Known Issues
@@ -276,6 +318,12 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-15 | **Session 20 (member filter on budget tab):** Added member filter pills ("All" + member names) to budget view mode header — desktop: after edit pencil, mobile: below month selector row. Added `filterMemberId` state to BudgetTab, `rawTransactions` passthrough from `getActualsBySubCategory` → `getBudgetViewData` → BudgetViewMode. When filtered: expense actuals recomputed from raw transactions per member, income items filtered by `loggedBy`, totals recalculated. Planned amounts unchanged (household-level). Type check passes clean. |
+| 2026-02-15 | **Session 19 (dashboard card renames + income date fix):** Renamed "Budget Health" → "Left to Spend" (removed redundant "Left this month" subtitle). Renamed "Combined Cash Balance" → "Total Cash in Hand" (added subtitle "Total income v/s actual expense"). Fixed "Split by Members" button alignment to top-right (`items-center` → `items-start`). Fixed income transaction date from hardcoded 1st-of-month to actual recording date (`new Date().toISOString().split('T')[0]`). Analyzed FAB income flow limitations — deferred improvement decision. All type checks pass. |
+| 2026-02-15 | **Session 18 (section header styling + unplanned income wording):** Applied `bg-purple-100` to all 4 section headers (edit mode income/expense, view mode income/expense) with progressive hierarchy (section=`bg-purple-100`, category=`bg-purple-50`). Moved unplanned income indicator to left-aligned subtitle under Expenses heading ("₹X left to plan" green / "₹X over income" red). Updated column label colors to `text-purple-400`. |
+| 2026-02-15 | **Session 17 (two-step add income + fixes + mobile layout):** Rewrote "Add income" flow to match expense UX: Step 1 = text input + suggestion chips (not dropdown), Step 2 = amount input + "By" selector. Custom names create sub-categories on the fly. Removed "Editing Mode" banner (wastes space). Changed headings: "Income" → "Record your income", "Expenses" → "Plan your expenses". Fixed critical freeze bug: `handleFreezePlan` was calling `upsertMonthlyPlan` with stale income from React state, causing ceiling error. Fixed mobile heading wrapping: kept full sentences, used compact amount (text-xs + "/mo"). Added unplanned income (AI-PE) as subtext under Expenses header in view mode (green=surplus, red=over-planned). All type checks pass. |
+| 2026-02-15 | **Session 16 (inline income editing):** Redesigned budget edit mode based on user feedback. Previous step-based flow (separate IncomeRecordingForm → expense planner) was "very convoluted" for repeat edits. Created `InlineIncomeSection.tsx` — collapsible section mirroring BudgetSection pattern with inline amount editing, delete, "+ Add income" with source dropdown/suggestions/member selector. Simplified BudgetTab flow from 3-step (`income → expenses → view`) to 2-step (`edit \| view`). In edit mode, Income + Expenses sections appear together — both editable in the same view. Deleted dead `IncomeRecordingForm.tsx`. All type checks pass. Tested on desktop and mobile. |
+| 2026-02-14 | **Session 15 (remove planned income):** Major architectural change — removed Planned Income (PI) from budget model. Income is now ONLY recorded as actual transactions, not plan allocations. 5-phase implementation: (1) Added `getActualIncomeForMonth()` to transactions.ts, modified `getBudgetViewData()` to return income from transactions + expenses only from allocations. (2) Created new `IncomeRecordingForm.tsx` component for recording income as transactions. (3) Refactored BudgetTab.tsx with step-based flow (`income → expenses → view`), removed all income allocation state/handlers, freeze validation checks actual income from transactions. (4) Updated BudgetViewMode.tsx — income section shows actual transactions in collapsible header. (5) Cleaned ~560 lines of dead code: removed `saveIncomeProgress()`, `loadIncomeProgress()`, `completeBudgetSetup()` from budget.ts; removed `getIncomeTemplates()`, `getDefaultIncomeSelections()` from defaultCategories.ts; deleted dead IncomeSelectionScreen.tsx and IncomeAmountsScreen.tsx. Also in prior portion of session: fixed fund transfer modal, pre-loaded household users, added fund transfer support to Budget tab, multi-select type filter, performance optimization (parallelized Supabase calls), deployed. All type checks pass clean. |
 | 2026-02-14 | **Session 14 (documentation audit):** Compared entire codebase against all documentation and fixed every discrepancy found. Updated 13 files total: database-schema.md (added transactions/household_categories tables, updated categories 7→9), finny-user-journey-onboarding.md (OTP 4→6 digits, Finny→My2cents, Inter→Poppins, added status banner), finny-solution-doc-foundation-pillar.md (added build status to all 8 sections, fixed auth method, updated categories), finny-design-system.md (marked DEPRECATED), my2cents-design-system.md (primary purple-600→purple-800), finny-foundations.md (Finny→My2cents, noted app is live), finny-roadmap.md (Finny→My2cents, added progress annotations), settings-registry.md (noted household_settings table not built), skills-developer.md (updated code organization tree & TS conventions to match reality), skills-design.md (updated navigation description), DEPLOYMENT.md (updated migrations list, actual URLs, phone auth details), archived DEPLOYMENT_STEPS.md/DEPLOYMENT_CHECKLIST.md/NEXT-STEPS-DEV-SETUP.md. Removed stale Next Up items. Updated CLAUDE.md branding. |
 | 2026-02-13 | **Session 13 (new categories & critical fixes):** Added Family & Investment expense categories (9 total categories now). Fixed critical suggestion click bug across all categories using onMouseDown + preventDefault pattern. Implemented responsive font sizing (26px for 6+ digits) in budget health card. Fixed stale data bug by flushing pending saves before plan freeze. Fixed subcategory creation for custom categories with dual table lookup (categories + household_categories tables). Updated migrations: ADD_CUSTOM_CATEGORIES.sql (household_categories table), ADD_FAMILY_INVESTMENT_CATEGORIES.sql (new categories). Deployed to production successfully (commit b1a727a). Verified with existing production users - all data preserved. Custom category creation temporarily disabled (commented out) pending better UX design. |
 | 2026-02-12 | **Session 12 (dev/prod separation & deployment):** Deployed to Vercel, debugged auth errors, set up dev/prod database separation. Deployed My2cents to Vercel (beta-test project, URL: https://beta-test-five.vercel.app). Fixed "unsupported phone provider" and "invalid API key" errors (missing Vercel env vars). Created separate Supabase databases: renamed "My2Cents" → "My2Cents-prod" (production, qybzttjbjxmqdhcstuif), "My2Cents-prod" → "My2Cents-dev" (development, vcbmazhfcmchbswdcwqr). Updated local `.env.local` to use DEV database. Vercel prod uses PROD database. Created setup guide. Still need to: copy schema to DEV, configure phone auth on DEV, test local with DEV database. |

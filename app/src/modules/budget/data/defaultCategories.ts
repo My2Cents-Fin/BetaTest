@@ -173,13 +173,6 @@ export function getCategoryById(id: string): CategoryWithTemplates | undefined {
 }
 
 /**
- * Get all income templates
- */
-export function getIncomeTemplates() {
-  return INCOME_CATEGORY.sub_category_templates;
-}
-
-/**
  * Get all expense templates grouped by category
  */
 export function getExpenseTemplatesByCategory() {
@@ -191,13 +184,6 @@ export function getExpenseTemplatesByCategory() {
     },
     templates: cat.sub_category_templates,
   }));
-}
-
-/**
- * Get default selected income templates
- */
-export function getDefaultIncomeSelections() {
-  return INCOME_CATEGORY.sub_category_templates.filter(t => t.is_default_selected);
 }
 
 /**

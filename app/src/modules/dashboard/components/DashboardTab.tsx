@@ -40,6 +40,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
+  const [totalActualIncome, setTotalActualIncome] = useState(0);
   const [variablePlanned, setVariablePlanned] = useState(0);
   const [variableSpent, setVariableSpent] = useState(0);
   const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([]);
@@ -49,7 +50,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [planStatus, setPlanStatus] = useState<'draft' | 'frozen'>('draft');
   const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [showAllBalances, setShowAllBalances] = useState(false);
   const [showOtherMembers, setShowOtherMembers] = useState(false);
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
   const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
@@ -146,6 +146,12 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         .filter(t => t.transaction_type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       setTotalSpent(spent);
+
+      // Calculate total actual income (AI)
+      const actualIncome = transactions
+        .filter(t => t.transaction_type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+      setTotalActualIncome(actualIncome);
 
       // Calculate spending by sub-category
       const spendingBySubCat = new Map<string, number>();
@@ -258,6 +264,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
   const remaining = totalPlanned - totalSpent;
   const percentUsed = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
+  const unallocated = totalActualIncome - totalPlanned; // AI - PE
+  const combinedBalance = userBalances.reduce((sum, u) => sum + u.expectedBalance, 0);
 
   // Calculate spending velocity metrics based on VARIABLE expenses only (day-to-day spending)
   const daysElapsed = today.getDate();
@@ -341,27 +349,68 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             <span className="text-sm text-gray-500">{daysRemaining} days left</span>
           </div>
 
-          {/* 1. Budget Health & Daily Spending - Side by side */}
+          {/* Row 1: Income Summary — Total Income with budgeted/unbudgeted bar */}
+          <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-700">Total Income</h3>
+              <p className={`text-xl font-bold text-green-600`}>
+                ₹{formatNumber(totalActualIncome)}
+              </p>
+            </div>
+
+            {/* Stacked bar: Budgeted | Unbudgeted */}
+            {totalActualIncome > 0 && (
+              <>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                  <div
+                    className="h-full bg-purple-500 rounded-l-full"
+                    style={{ width: `${Math.min((totalPlanned / totalActualIncome) * 100, 100)}%` }}
+                  />
+                  {unallocated > 0 && (
+                    <div
+                      className="h-full bg-green-300"
+                      style={{ width: `${(unallocated / totalActualIncome) * 100}%` }}
+                    />
+                  )}
+                </div>
+
+                {/* Legend */}
+                <div className="flex justify-between items-center mt-1.5">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span className="text-[10px] text-gray-500">Budgeted</span>
+                    <span className="text-[10px] font-semibold text-gray-700">₹{formatNumber(totalPlanned)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`w-2 h-2 rounded-full ${unallocated >= 0 ? 'bg-green-300' : 'bg-red-400'}`} />
+                    <span className="text-[10px] text-gray-500">Unbudgeted</span>
+                    <span className={`text-[10px] font-semibold ${unallocated >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {unallocated >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(unallocated))}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Row 2: Budget Health & Daily Spending - Side by side */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Budget Health */}
+            {/* Left to Spend */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              {/* Header */}
               <div className="mb-3">
-                <h3 className="text-xs font-semibold text-gray-700">Budget Health</h3>
+                <h3 className="text-xs font-semibold text-gray-700">Left to Spend</h3>
                 <p className="text-[9px] text-gray-500 mt-0.5">Planned vs actual expenses</p>
               </div>
 
-              {/* Main amount */}
               <div className="mb-3">
                 <p className={`font-bold ${Math.abs(remaining) >= 100000 ? 'text-[26px]' : 'text-3xl'} ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {remaining >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(remaining))}
                 </p>
-                <p className="text-[10px] text-gray-500 mt-1">
-                  {remaining >= 0 ? 'Left this month' : 'Over budget'}
-                </p>
+                {remaining < 0 && (
+                  <p className="text-[10px] text-red-500 mt-1">Over budget</p>
+                )}
               </div>
 
-              {/* Progress bar */}
               <div>
                 <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
                   <div
@@ -370,7 +419,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                   />
                 </div>
 
-                {/* Budget/Spent breakdown */}
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-[9px] text-gray-500 uppercase">Budget</p>
@@ -386,13 +434,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
             {/* Daily Spending */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              {/* Header */}
               <div className="mb-3">
                 <h3 className="text-xs font-semibold text-gray-700">Daily Spending</h3>
                 <p className="text-[9px] text-gray-500 mt-0.5">Based on variable expenses</p>
               </div>
 
-              {/* Daily average */}
               <div className="mb-3 text-center">
                 <p className="text-3xl font-bold text-purple-600">
                   ₹{formatNumber(dailyAverage)}
@@ -400,7 +446,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                 <p className="text-[10px] text-gray-500 mt-1">Average/day</p>
               </div>
 
-              {/* Alert or guidance */}
               {projectedOverspend > 0 ? (
                 <div className="px-2 py-2 bg-red-50 border border-red-200 rounded-lg text-center">
                   <p className="text-[10px] text-red-700 flex items-center justify-center gap-1 mb-1">
@@ -425,93 +470,24 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             </div>
           </div>
 
-          {/* Expected Balance */}
-          {userBalances.length > 0 && currentUserId && (() => {
-            const currentUserBalance = userBalances.find(u => u.userId === currentUserId);
-            const otherUsers = userBalances.filter(u => u.userId !== currentUserId);
-
-            // Hide card if current user doesn't exist or has no income and no expenses
-            if (!currentUserBalance || (currentUserBalance.income === 0 && currentUserBalance.spent === 0 && currentUserBalance.netTransfer === 0)) {
-              return null;
-            }
-
-            return (
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                {/* Current user's balance */}
-                {currentUserBalance && (
-                  <>
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-gray-700">Your Expected Cash Balance</h3>
-                        <p className="text-[9px] text-gray-500">Actual income vs expenses</p>
-                      </div>
-
-                      {/* Member Balances button - only show if other members exist */}
-                      {otherUsers.length > 0 && (
-                        <button
-                          onClick={() => setShowOtherMembers(true)}
-                          className="text-[10px] text-purple-600 hover:text-purple-700 font-medium whitespace-nowrap pt-[0.95px]"
-                        >
-                          Member Balances
-                        </button>
-                      )}
-                    </div>
-                    <div className="mb-3 flex items-end justify-between">
-                      <p className={`text-3xl font-bold ${currentUserBalance.expectedBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {currentUserBalance.expectedBalance >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(currentUserBalance.expectedBalance))}
-                      </p>
-
-                      <button
-                        onClick={() => setShowAllBalances(!showAllBalances)}
-                        className="flex items-center gap-1 pb-1"
-                      >
-                        <span className="text-[10px] text-gray-400">
-                          {showAllBalances ? 'Hide' : 'View'} details
-                        </span>
-                        <svg
-                          className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${showAllBalances ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {showAllBalances && (
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between text-[10px]">
-                          {/* Income */}
-                          <div className="flex-1 text-center">
-                            <p className="text-gray-400 uppercase mb-0.5">Income</p>
-                            <p className="text-gray-900 font-medium">₹{formatNumber(currentUserBalance.income)}</p>
-                          </div>
-
-                          {/* Net Transfer - Only show if non-zero */}
-                          {currentUserBalance.netTransfer !== 0 && !isNaN(currentUserBalance.netTransfer) && (
-                            <div className="flex-1 text-center">
-                              <p className="text-gray-400 uppercase mb-0.5">Net Transfer</p>
-                              <p className="text-gray-900 font-medium">
-                                {currentUserBalance.netTransfer > 0 ? '+' : '-'}₹{formatNumber(Math.abs(currentUserBalance.netTransfer))}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Spent */}
-                          <div className="flex-1 text-center">
-                            <p className="text-gray-400 uppercase mb-0.5">Spent</p>
-                            <p className="text-gray-900 font-medium">₹{formatNumber(currentUserBalance.spent)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-              </div>
-            );
-          })()}
+          {/* Row 3: Total Cash in Hand — compact full width */}
+          <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 flex items-start justify-between">
+            <div>
+              <h3 className="text-xs font-semibold text-gray-700">Total Cash in Hand</h3>
+              <p className="text-[9px] text-gray-500 mt-0.5">Total income v/s actual expense</p>
+              <p className={`text-xl font-bold mt-0.5 ${combinedBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {combinedBalance >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(combinedBalance))}
+              </p>
+            </div>
+            {userBalances.length > 1 && (
+              <button
+                onClick={() => setShowOtherMembers(true)}
+                className="text-[11px] text-purple-600 hover:text-purple-700 font-medium whitespace-nowrap"
+              >
+                Split by Members
+              </button>
+            )}
+          </div>
 
           {/* 3a. Variable Categories At-Risk (>=75%) */}
           {variableAtRisk.length > 0 && (

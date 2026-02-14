@@ -148,23 +148,25 @@ export function BudgetSection({
       {/* Section Header - Clickable to collapse */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors border-l-4 border-purple-400"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           {/* Chevron */}
           <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+            className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isCollapsed ? '' : 'rotate-90'}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <span className="text-xl">{icon}</span>
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <div>
+            <h2 className="text-base md:text-lg font-semibold text-gray-900 truncate">{icon} {title}</h2>
+            {type === 'expense' && <p className="text-[11px] text-gray-400">These are your targets</p>}
+          </div>
         </div>
-        <span className="text-sm text-gray-500 font-medium">
-          ₹{formatNumber(total)} / month
+        <span className="text-base md:text-lg text-gray-500 font-semibold shrink-0">
+          ₹{formatNumber(total)}<span className="md:hidden">/mo</span><span className="hidden md:inline"> / month</span>
         </span>
       </button>
 
@@ -262,7 +264,7 @@ export function BudgetSection({
                   {/* Category Header - clickable to collapse */}
                   <button
                     onClick={() => toggleCategory(catName)}
-                    className="w-full px-4 py-2.5 bg-purple-50 flex items-center gap-2 border-t border-purple-100 hover:bg-purple-100 transition-colors"
+                    className="w-full px-4 py-2.5 bg-purple-50/50 flex items-center gap-2 border-t border-purple-100/50 hover:bg-purple-50 transition-colors"
                   >
                     {/* Chevron */}
                     <svg
