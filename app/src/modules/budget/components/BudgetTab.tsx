@@ -18,6 +18,7 @@ import {
   getBudgetViewData,
   createCustomCategory,
 } from '../services/budget';
+import { getHouseholdUsers } from '../services/transactions';
 import { calculateMonthlyAmount, EXPENSE_CATEGORIES, INCOME_CATEGORY } from '../data/defaultCategories';
 import { formatNumber } from './AmountInput';
 import { MonthSelector, formatMonthOption, getCurrentMonth } from './MonthSelector';
@@ -25,6 +26,7 @@ import { BudgetViewMode } from './BudgetViewMode';
 import { WelcomeCard } from '../../dashboard/components/WelcomeCard';
 import { BudgetSection } from '../../dashboard/components/BudgetSection';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
+import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
 import { useBudget } from '../../../app/providers/BudgetProvider';
 import type { AddingState } from '../../dashboard/components/BudgetSection';
 import type { HouseholdSubCategory, BudgetAllocation, Period, PlanStatus, MonthlyPlan } from '../types';
@@ -33,6 +35,9 @@ interface BudgetTabProps {
   onOpenMenu: () => void;
   sidebarCollapsed?: boolean;
   quickAddTrigger?: number;
+  fundTransferTrigger?: number;
+  onFundTransferConsumed?: () => void;
+  onHasOtherMembersChange?: (hasOthers: boolean) => void;
 }
 
 interface BudgetItem {
@@ -54,7 +59,7 @@ interface Household {
 
 type ViewMode = 'view' | 'edit';
 
-export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger }: BudgetTabProps) {
+export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<Household | null>(null);
@@ -96,9 +101,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const [incompleteItemIds, setIncompleteItemIds] = useState<Set<string>>(new Set());
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
 
-  // Quick add transaction
+  // Quick add transaction & fund transfer
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showFundTransfer, setShowFundTransfer] = useState(false);
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
+  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [hasOtherMembers, setHasOtherMembers] = useState(false);
 
   // Auto-save debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -133,10 +142,25 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     }
   }, [quickAddTrigger]);
 
+  // Respond to fund transfer trigger from bottom nav
+  useEffect(() => {
+    if (fundTransferTrigger && fundTransferTrigger > 0 && household && hasOtherMembers) {
+      setShowFundTransfer(true);
+      onFundTransferConsumed?.();
+    }
+  }, [fundTransferTrigger]);
+
+  // Notify parent when hasOtherMembers changes
+  useEffect(() => {
+    if (onHasOtherMembersChange) {
+      onHasOtherMembersChange(hasOtherMembers);
+    }
+  }, [hasOtherMembers, onHasOtherMembersChange]);
+
   async function loadInitialData() {
     setIsLoading(true);
     try {
-      // Get household
+      // Step 1: Get household (sequential — needs user internally)
       const householdData = await getUserHousehold();
       if (!householdData) {
         console.error('[Budget] No household found');
@@ -144,24 +168,39 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       }
       setHousehold(householdData);
 
-      // Get available budget months
-      const monthsResult = await getAvailableBudgetMonths(householdData.id);
-      let months = monthsResult.months || [];
+      // Step 2: All independent — run in parallel
+      const [authResult, usersResult, monthsResult, categoriesResult, subCategoriesResult] = await Promise.all([
+        supabase.auth.getUser(),
+        getHouseholdUsers(householdData.id),
+        getAvailableBudgetMonths(householdData.id),
+        getCategoryList(householdData.id),
+        getHouseholdSubCategories(householdData.id),
+      ]);
 
-      // Ensure current month is in the list
+      // Process auth + household users
+      const user = authResult.data?.user;
+      if (user) {
+        setCurrentUserId(user.id);
+        if (usersResult.success && usersResult.users) {
+          setHouseholdUsers(usersResult.users);
+          const otherMembers = usersResult.users.filter(u => u.id !== user.id);
+          setHasOtherMembers(otherMembers.length > 0);
+        }
+      }
+
+      // Process available months
+      let months = monthsResult.months || [];
       if (!months.includes(currentMonth)) {
         months = [currentMonth, ...months];
       }
       setAvailableMonths(months);
 
-      // Get categories for adding new items (includes custom categories)
-      const categoriesResult = await getCategoryList(householdData.id);
+      // Process categories
       if (categoriesResult.categories) {
         setCategories(categoriesResult.categories);
       }
 
-      // Check if we have any data - if not, create default template
-      let subCategoriesResult = await getHouseholdSubCategories(householdData.id);
+      // Process sub-categories
       let subCategories = subCategoriesResult.subCategories || [];
 
       // Build sub-categories list for quick add
@@ -964,6 +1003,8 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         <QuickAddTransaction
           householdId={household.id}
           subCategories={allSubCategories}
+          householdUsers={householdUsers}
+          currentUserId={currentUserId}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={() => {
             // Refresh view data after adding transaction
@@ -972,6 +1013,38 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             }
           }}
         />
+      )}
+
+      {/* Fund Transfer Modal */}
+      {showFundTransfer && household && (
+        <FundTransferModal
+          householdId={household.id}
+          householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+          currentUserId={currentUserId}
+          onClose={() => setShowFundTransfer(false)}
+          onSuccess={() => {
+            if (mode === 'view') {
+              loadViewData();
+            }
+          }}
+        />
+      )}
+
+      {/* Desktop - Secondary FAB for Fund Transfer (only visible if there are other household members) */}
+      {hasOtherMembers && mode === 'view' && (
+        <div className="hidden md:block fixed bottom-24 right-4 z-30 group">
+          <button
+            onClick={() => setShowFundTransfer(true)}
+            className="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center justify-center"
+            aria-label="Record fund transfer"
+          >
+            <span className="text-2xl">💸</span>
+          </button>
+          {/* Tooltip */}
+          <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Record Fund Transfer
+          </div>
+        </div>
       )}
 
       {/* Success Message for First Freeze */}

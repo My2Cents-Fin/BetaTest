@@ -1,120 +1,57 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, getTodayDate, getHouseholdUsers } from '../../budget/services/transactions';
-import { supabase } from '../../../lib/supabase';
+import { createTransaction, getTodayDate } from '../../budget/services/transactions';
 
 interface HouseholdMember {
   id: string;
-  display_name: string;
+  displayName: string;
 }
 
 interface FundTransferModalProps {
   householdId: string;
+  householdUsers: HouseholdMember[];
+  currentUserId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function FundTransferModal({ householdId, onClose, onSuccess }: FundTransferModalProps) {
+export function FundTransferModal({ householdId, householdUsers, currentUserId, onClose, onSuccess }: FundTransferModalProps) {
+  // Initialize with pre-loaded data — no async fetch needed
   const [amount, setAmount] = useState('');
-  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(null);
+  const [paidBy, setPaidBy] = useState<string>(currentUserId);
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string>(() => {
+    // Auto-default "Paid to" for 2-member households
+    const otherMembers = householdUsers.filter(u => u.id !== currentUserId);
+    return otherMembers.length === 1 ? otherMembers[0].id : '';
+  });
   const [transactionDate, setTransactionDate] = useState(getTodayDate());
   const [remarks, setRemarks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([]);
-  const [allHouseholdUsers, setAllHouseholdUsers] = useState<HouseholdMember[]>([]); // All users for "Paid by"
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [paidBy, setPaidBy] = useState<string>('');
 
   const amountInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadHouseholdMembers();
-    loadAllUsers();
     setTimeout(() => amountInputRef.current?.focus(), 100);
   }, []);
 
-  async function loadAllUsers() {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // When "Paid by" changes, update "Paid to" intelligently
+  const handlePaidByChange = (newPaidBy: string) => {
+    setPaidBy(newPaidBy);
 
-      setCurrentUserId(user.id);
-      setPaidBy(user.id); // Default to current user
+    const otherMembers = householdUsers.filter(u => u.id !== newPaidBy);
 
-      // Get all household users using the new function
-      const result = await getHouseholdUsers(householdId);
-      if (result.success && result.users) {
-        const users: HouseholdMember[] = result.users.map(u => ({
-          id: u.id,
-          display_name: u.displayName,
-        }));
-        setAllHouseholdUsers(users);
-      }
-    } catch (e) {
-      console.error('Error loading all household users:', e);
+    if (otherMembers.length === 1) {
+      // 2-member household: auto-switch "Paid to" to the other person
+      setSelectedRecipientId(otherMembers[0].id);
+    } else if (selectedRecipientId === newPaidBy) {
+      // >2 members: if "Paid to" was the same person, clear it
+      setSelectedRecipientId('');
     }
-  }
+  };
 
-  async function loadHouseholdMembers() {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No authenticated user found');
-        return;
-      }
-      setCurrentUserId(user.id);
-
-      console.log('Loading household members for household:', householdId);
-      console.log('Current user ID:', user.id);
-
-      // Get all household members except current user
-      const { data: membersData, error: membersError } = await supabase
-        .from('household_members')
-        .select('user_id')
-        .eq('household_id', householdId)
-        .neq('user_id', user.id);
-
-      if (membersError) {
-        console.error('Supabase error loading household members:', membersError);
-        throw membersError;
-      }
-
-      console.log('Raw household members data:', membersData);
-
-      if (!membersData || membersData.length === 0) {
-        console.log('No other household members found');
-        setHouseholdMembers([]);
-        return;
-      }
-
-      // Get user details for all member user_ids
-      const userIds = membersData.map(m => m.user_id);
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('id, display_name')
-        .in('id', userIds);
-
-      if (usersError) {
-        console.error('Supabase error loading user details:', usersError);
-        throw usersError;
-      }
-
-      console.log('User details data:', usersData);
-
-      const members: HouseholdMember[] = (usersData || []).map((u: any) => ({
-        id: u.id,
-        display_name: u.display_name || 'Unknown',
-      }));
-
-      console.log('Processed household members:', members);
-      setHouseholdMembers(members);
-    } catch (e) {
-      console.error('Error loading household members:', e);
-    }
-  }
+  // Get available recipients for "Paid to" dropdown (everyone except "Paid by")
+  const availableRecipients = householdUsers.filter(u => u.id !== paidBy);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '');
@@ -131,7 +68,7 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
     }
   };
 
-  const handleFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (e.key === 'Enter' && amount && selectedRecipientId && !isSubmitting) {
       e.preventDefault();
       handleSubmit();
@@ -149,6 +86,11 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
 
     if (!selectedRecipientId) {
       setError('Select recipient');
+      return;
+    }
+
+    if (!paidBy) {
+      setError('Please select who paid');
       return;
     }
 
@@ -202,7 +144,7 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 pb-3 pt-4">
-          {/* Amount Input */}
+          {/* 1. Amount */}
           <div className="mb-5">
             <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
               <span>💵</span> Amount (in ₹)
@@ -219,36 +161,56 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
             />
           </div>
 
-          {/* Recipient Selection */}
+          {/* 2. Paid By */}
+          {householdUsers.length > 1 && (
+            <div className="mb-5">
+              <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+                <span>💳</span> Paid by
+              </label>
+              <select
+                value={paidBy}
+                onChange={(e) => handlePaidByChange(e.target.value)}
+                onKeyDown={handleFieldKeyDown}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
+              >
+                {householdUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.displayName}{user.id === currentUserId ? ' (You)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 3. Paid To */}
           <div className="mb-5">
             <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
-              <span>👤</span> Paying To
+              <span>👤</span> Paid to
             </label>
-            {householdMembers.length === 0 ? (
+            {availableRecipients.length === 0 ? (
               <div className="text-sm text-gray-400 py-2">
                 No other household members
               </div>
             ) : (
-              <div className="space-y-2">
-                {householdMembers.map(member => (
-                  <button
-                    key={member.id}
-                    type="button"
-                    onClick={() => setSelectedRecipientId(member.id)}
-                    className={`w-full px-3 py-2.5 border rounded-lg text-sm text-left transition-colors ${
-                      selectedRecipientId === member.id
-                        ? 'border-purple-400 bg-purple-50 text-purple-700'
-                        : 'border-gray-200 bg-white text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    {member.display_name}
-                  </button>
+              <select
+                value={selectedRecipientId}
+                onChange={(e) => setSelectedRecipientId(e.target.value)}
+                onKeyDown={handleFieldKeyDown}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
+              >
+                {availableRecipients.length > 1 && (
+                  <option value="" disabled>Select recipient</option>
+                )}
+                {availableRecipients.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.displayName}{member.id === currentUserId ? ' (You)' : ''}
+                  </option>
                 ))}
-              </div>
+              </select>
             )}
           </div>
 
-          {/* Date */}
+          {/* 4. Date */}
           <div className="mb-4">
             <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
               <span>📅</span> Date
@@ -263,28 +225,7 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
             />
           </div>
 
-          {/* Paid By */}
-          {allHouseholdUsers.length > 1 && (
-            <div className="mb-4">
-              <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
-                <span>💳</span> Paid by
-              </label>
-              <select
-                value={paidBy}
-                onChange={(e) => setPaidBy(e.target.value)}
-                onKeyDown={handleFieldKeyDown}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
-              >
-                {allHouseholdUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.display_name}{user.id === currentUserId ? ' (You)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Notes */}
+          {/* 5. Notes */}
           <div className="mb-4">
             <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
               <span>📝</span> Notes
@@ -307,10 +248,10 @@ export function FundTransferModal({ householdId, onClose, onSuccess }: FundTrans
         <div className="px-4 py-3">
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !amount || !selectedRecipientId}
+            disabled={isSubmitting || !amount || !selectedRecipientId || !paidBy}
             className={`
               w-full py-2.5 rounded-xl text-sm font-semibold transition-colors
-              ${isSubmitting || !amount || !selectedRecipientId
+              ${isSubmitting || !amount || !selectedRecipientId || !paidBy
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-blue-600 text-white active:bg-blue-700'}
             `}

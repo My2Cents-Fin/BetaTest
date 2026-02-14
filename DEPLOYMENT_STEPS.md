@@ -1,5 +1,7 @@
 # Quick Deployment Steps
 
+> **ARCHIVED (Feb 2026):** Deployment is complete. This was a one-time quick-start guide. See `DEPLOYMENT.md` for the main deployment guide and `DEV-PROD-REFERENCE.md` for current environment details.
+
 Your code is ready! Follow these steps to deploy:
 
 ## ✅ Step 1: Git Initialized (DONE)

@@ -1,10 +1,20 @@
-# Finny 2.0 — User Journeys for onboarding (Foundation Pillar)
+# My2cents — User Journeys for Onboarding (Foundation Pillar)
 
 ## About This Document
 
 This document describes the user journeys for onboarding in the Foundation pillar. Each journey maps the screens, interactions, and decisions the user encounters.
 
-For the feature definitions and priorities, refer to **Finny Solution - Foundation.md**.
+For the feature definitions and priorities, refer to **My2cents Solution - Foundation.md**.
+
+> **Implementation Status (Feb 2026):** The core onboarding flow is BUILT and deployed. Key differences from the original spec:
+> - Brand is **My2cents** (not Finny), tagline is "Money, together"
+> - OTP is **6 digits** (not 4 as originally specified)
+> - Font is **Poppins** (not Inter or JetBrains Mono)
+> - **Category Template is part of the Budget Tab**, not a separate onboarding screen
+> - **WhisperFlow (Option 2 chat-based onboarding) is NOT BUILT** — planned for future
+> - **Savings preference screen is NOT BUILT** — deferred (decision: ask when user first needs bucket features)
+> - **Account/bank registration is NOT BUILT** — deferred to P1
+> - The actual onboarding flow is: Phone → OTP → Success → Name → Household → (optional Invite) → Budget Tab
 
 ### Core Design Rules
 
@@ -36,7 +46,7 @@ Scan QR → Phone + OTP → Name → In
 **Design Preview:** [14-onboarding-flow.html](../../design-previews/14-onboarding-flow.html) → Screen "1. Phone"
 
 **What the user sees:**
-- App logo + tagline ("Family finances, simplified")
+- App logo + tagline ("Money, together")
 - Phone number field with country code pre-set to +91 (flag + code displayed)
 - "Send OTP" button
 - Footer with Terms of Service & Privacy Policy links
@@ -62,8 +72,8 @@ Scan QR → Phone + OTP → Name → In
 **What the user sees:**
 - Back arrow to return to phone entry
 - "Verify OTP" title
-- Subtitle showing masked phone: "Enter the 4-digit code sent to +91 98765 43210"
-- 4 individual OTP input boxes (auto-focus to next on entry)
+- Subtitle showing masked phone: "Enter the 6-digit code sent to +91 98765 43210"
+- 6 individual OTP input boxes (auto-focus to next on entry)
 - Resend timer: "Didn't receive code? Resend in 0:28"
 - "Verify" button
 
@@ -73,8 +83,8 @@ Scan QR → Phone + OTP → Name → In
 |--------|----------|
 | Enter digit | Auto-advance cursor to next box |
 | Backspace on empty box | Move cursor to previous box |
-| Paste 4-digit code | Auto-fill all boxes, auto-submit |
-| All 4 digits entered | Enable "Verify" button |
+| Paste 6-digit code | Auto-fill all boxes, auto-submit |
+| All 6 digits entered | Enable "Verify" button |
 | Tap "Verify" | Validate OTP with Supabase |
 | OTP correct | Show success screen → route based on user status |
 | OTP incorrect | Show error state (see below) |
@@ -82,7 +92,7 @@ Scan QR → Phone + OTP → Name → In
 | Tap "Back" | Return to phone entry screen |
 
 **Error State:**
-- All 4 OTP boxes turn red with shake animation (0.5s)
+- All 6 OTP boxes turn red with shake animation (0.5s)
 - Error alert appears above inputs: "⚠️ Incorrect code. Please try again."
 - Resend link becomes active immediately
 - User can re-enter code
@@ -364,9 +374,11 @@ A scrollable list of pre-populated categories and sub-categories with amount fie
 
 ---
 
-#### Option 2: Chat-Based Template (AI-First with WhisperFlow)
+#### Option 2: Chat-Based Template (AI-First with WhisperFlow) — NOT YET BUILT
 
-Instead of a form, Finny guides the user through a conversation. Voice-first via WhisperFlow integration, with keyboard fallback.
+> **Status: PLANNED — Not yet implemented.** Only Option 1 (form-based) is currently built. The Category Template is now integrated into the Budget Tab rather than being a separate onboarding screen. Users go through onboarding (Phone → OTP → Name → Household) and then set up their first budget in the Budget tab.
+
+Instead of a form, My2cents guides the user through a conversation. Voice-first via WhisperFlow integration, with keyboard fallback.
 
 **Why this approach:**
 - Less intimidating than a 20-field form
@@ -758,10 +770,10 @@ function validatePhone(phone: string): ValidationResult {
 
 | Property | Value |
 |----------|-------|
-| Field ID | `otp_digit_1` through `otp_digit_4` |
+| Field ID | `otp_digit_1` through `otp_digit_6` |
 | Type | `text` (with `inputmode="numeric"`) |
 | Max Length | 1 character per box |
-| Total Boxes | 4 |
+| Total Boxes | 6 |
 | Keyboard | Numeric keypad |
 | Font | JetBrains Mono, 28px, font-weight 600 |
 
@@ -771,7 +783,7 @@ function validatePhone(phone: string): ValidationResult {
 |------|-----------|---------------|
 | Required | Any box is empty | "Please enter the complete code" |
 | Numeric only | Contains non-numeric | Prevent input |
-| Complete | All 4 boxes filled | Enable "Verify" button |
+| Complete | All 6 boxes filled | Enable "Verify" button |
 
 **Input Behavior:**
 
@@ -785,8 +797,8 @@ On backspace:
   → If current box empty, move focus to previous box
   → If current box has value, clear it
 
-On paste (4 digits):
-  → Distribute digits across all 4 boxes
+On paste (6 digits):
+  → Distribute digits across all 6 boxes
   → Auto-focus last box
   → Auto-submit after 300ms delay
 ```
@@ -795,7 +807,7 @@ On paste (4 digits):
 
 ```typescript
 function handleOTPComplete(otp: string) {
-  if (otp.length === 4 && /^\d{4}$/.test(otp)) {
+  if (otp.length === 6 && /^\d{6}$/.test(otp)) {
     // Brief delay for UX (user sees all boxes filled)
     setTimeout(() => {
       submitOTP(otp);
@@ -807,7 +819,7 @@ function handleOTPComplete(otp: string) {
 **Error State:**
 
 ```css
-/* Apply to all 4 boxes on error */
+/* Apply to all 6 boxes on error */
 .otp-input.error {
   border-color: #ef4444;
   background: rgba(239, 68, 68, 0.05);
@@ -901,7 +913,7 @@ function canResend(state: ResendState): boolean {
 | Keyboard | Default (alphabetic) |
 | Autocapitalize | `words` |
 | Placeholder | "e.g., Varshi" |
-| Font | Inter, 16px |
+| Font | Poppins, 16px |
 
 **Validation Rules:**
 
@@ -969,7 +981,7 @@ function validateName(name: string): ValidationResult {
 | Autocapitalize | `words` |
 | Placeholder | "e.g., Sharma Family" |
 | Helper Text | "You can change this later in settings" |
-| Font | Inter, 16px |
+| Font | Poppins, 16px |
 
 **Validation Rules:**
 
@@ -1251,7 +1263,7 @@ All primary action buttons follow these states:
 | Screen | Button Enabled When |
 |--------|---------------------|
 | Phone Entry | Phone number is 10 valid digits |
-| OTP Entry | All 4 digits entered |
+| OTP Entry | All 6 digits entered |
 | Your Name | Name ≥ 2 characters, valid format |
 | Household Name | Name ≥ 2 characters, valid format |
 | Category Template | Income > 0 AND Allocated ≤ Income |

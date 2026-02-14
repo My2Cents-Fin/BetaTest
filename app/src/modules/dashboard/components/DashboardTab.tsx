@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories, getAllocations, getMonthlyPlan } from '../../budget/services/budget';
-import { getCurrentMonthTransactions } from '../../budget/services/transactions';
+import { getCurrentMonthTransactions, getHouseholdUsers } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from './QuickAddTransaction';
 import { FundTransferModal } from './FundTransferModal';
@@ -12,6 +12,7 @@ interface DashboardTabProps {
   onOpenMenu: () => void;
   quickAddTrigger?: number;
   fundTransferTrigger?: number;
+  onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
 }
 
@@ -34,11 +35,13 @@ interface UserBalance {
   expectedBalance: number;
 }
 
-export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onHasOtherMembersChange }: DashboardTabProps) {
+export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: DashboardTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
+  const [variablePlanned, setVariablePlanned] = useState(0);
+  const [variableSpent, setVariableSpent] = useState(0);
   const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
@@ -49,6 +52,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [showAllBalances, setShowAllBalances] = useState(false);
   const [showOtherMembers, setShowOtherMembers] = useState(false);
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
+  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
 
   const hasLoadedRef = useRef(false);
 
@@ -78,8 +82,9 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   useEffect(() => {
     if (fundTransferTrigger && fundTransferTrigger > 0 && household && hasOtherMembers) {
       setShowFundTransfer(true);
+      onFundTransferConsumed?.();
     }
-  }, [fundTransferTrigger, household, hasOtherMembers]);
+  }, [fundTransferTrigger]);
 
   // Notify parent when hasOtherMembers changes
   useEffect(() => {
@@ -91,33 +96,36 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   async function loadDashboardData() {
     setIsLoading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      // Step 1: Get auth user and household in parallel
+      const [authResult, householdData] = await Promise.all([
+        supabase.auth.getUser(),
+        getUserHousehold(),
+      ]);
+
+      const user = authResult.data?.user;
       if (user) {
         setCurrentUserId(user.id);
       }
-
-      // Get household
-      const householdData = await getUserHousehold();
       if (!householdData) return;
       setHousehold(householdData);
 
-      // Get monthly plan status
-      const planResult = await getMonthlyPlan(householdData.id, currentMonth);
+      // Step 2: All these only need householdData.id — run in parallel
+      const [planResult, subCategoriesResult, allocationsResult, transactionsResult, usersResult] = await Promise.all([
+        getMonthlyPlan(householdData.id, currentMonth),
+        getHouseholdSubCategories(householdData.id),
+        getAllocations(householdData.id, currentMonth),
+        getCurrentMonthTransactions(householdData.id),
+        getHouseholdUsers(householdData.id),
+      ]);
+
+      // Process plan
       if (planResult.plan) {
         setPlanStatus(planResult.plan.status);
         setTotalPlanned(planResult.plan.total_allocated || 0);
       }
 
-      // Get sub-categories
-      const subCategoriesResult = await getHouseholdSubCategories(householdData.id);
+      // Process sub-categories
       const subCategories = subCategoriesResult.subCategories || [];
-
-      // Get allocations
-      const allocationsResult = await getAllocations(householdData.id, currentMonth);
-      const allocations = allocationsResult.allocations || [];
-
-      // Build sub-categories list for quick add
       const subCatList = subCategories.map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
         id: sc.id,
         name: sc.name,
@@ -127,8 +135,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       }));
       setAllSubCategories(subCatList);
 
-      // Get transactions
-      const transactionsResult = await getCurrentMonthTransactions(householdData.id);
+      // Process allocations
+      const allocations = allocationsResult.allocations || [];
+
+      // Process transactions
       const transactions = transactionsResult.transactions || [];
 
       // Calculate total spent
@@ -165,12 +175,23 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           percentUsed,
           categoryName: sc.categories?.name || 'Other',
         };
-      }).filter(c => c.planned > 0 || c.actual > 0) // Only show categories with budgets or spending
-        .sort((a, b) => b.percentUsed - a.percentUsed); // Sort by usage (highest first)
+      }).filter(c => c.planned > 0 || c.actual > 0)
+        .sort((a, b) => b.percentUsed - a.percentUsed);
 
       setCategorySpending(categoryList);
 
-      // Calculate user balances
+      // Calculate variable-only spending for daily spending card
+      const varSpent = categoryList
+        .filter(c => c.categoryName === 'Variable')
+        .reduce((sum, c) => sum + c.actual, 0);
+      setVariableSpent(varSpent);
+
+      const varPlanned = categoryList
+        .filter(c => c.categoryName === 'Variable')
+        .reduce((sum, c) => sum + c.planned, 0);
+      setVariablePlanned(varPlanned);
+
+      // Calculate user balances — use display names from transactions themselves
       const userIds = [...new Set(transactions.map(t => t.logged_by).filter(Boolean))];
 
       // Fetch user display names
@@ -194,7 +215,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           .filter(t => t.transaction_type === 'expense' && t.logged_by === userId)
           .reduce((sum, t) => sum + t.amount, 0);
 
-        // Calculate fund transfers
         const transfersReceived = transactions
           .filter(t => t.transaction_type === 'transfer' && t.transfer_to === userId)
           .reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -205,8 +225,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
         const netTransfer = (transfersReceived || 0) - (transfersSent || 0);
 
-        console.log(`User ${userId} transfers: received=${transfersReceived}, sent=${transfersSent}, net=${netTransfer}`);
-
         return {
           userId,
           userName: userMap.get(userId) || 'Unknown',
@@ -215,19 +233,15 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           netTransfer,
           expectedBalance: userIncome - userSpent + netTransfer,
         };
-      }).sort((a, b) => a.userName.localeCompare(b.userName)); // Sort alphabetically
+      }).sort((a, b) => a.userName.localeCompare(b.userName));
 
       setUserBalances(balances);
 
-      // Check if there are other household members for fund transfer feature
-      if (user) {
-        const { data: membersData } = await supabase
-          .from('household_members')
-          .select('user_id')
-          .eq('household_id', householdData.id)
-          .neq('user_id', user.id);
-
-        setHasOtherMembers((membersData || []).length > 0);
+      // Process household users (already loaded in parallel above)
+      if (user && usersResult.success && usersResult.users) {
+        setHouseholdUsers(usersResult.users);
+        const otherMembers = usersResult.users.filter(u => u.id !== user.id);
+        setHasOtherMembers(otherMembers.length > 0);
       }
 
     } catch (e) {
@@ -245,12 +259,13 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const remaining = totalPlanned - totalSpent;
   const percentUsed = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
 
-  // Calculate spending velocity metrics (rounded UP to next integer)
+  // Calculate spending velocity metrics based on VARIABLE expenses only (day-to-day spending)
   const daysElapsed = today.getDate();
-  const dailyAverage = daysElapsed > 0 ? Math.ceil(totalSpent / daysElapsed) : 0;
+  const dailyAverage = daysElapsed > 0 ? Math.ceil(variableSpent / daysElapsed) : 0;
   const totalDaysInMonth = lastDayOfMonth.getDate();
   const projectedSpend = Math.ceil(dailyAverage * totalDaysInMonth);
-  const projectedOverspend = Math.ceil(projectedSpend - totalPlanned);
+  const variableRemaining = variablePlanned - variableSpent;
+  const projectedOverspend = Math.ceil(projectedSpend - variablePlanned);
 
   // Filter Variable categories at-risk (>=75% of budget)
   const variableAtRisk = categorySpending.filter(cat =>
@@ -374,7 +389,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               {/* Header */}
               <div className="mb-3">
                 <h3 className="text-xs font-semibold text-gray-700">Daily Spending</h3>
-                <p className="text-[9px] text-gray-500 mt-0.5">Based on actual expenses</p>
+                <p className="text-[9px] text-gray-500 mt-0.5">Based on variable expenses</p>
               </div>
 
               {/* Daily average */}
@@ -393,7 +408,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     <span className="font-semibold">Alert</span>
                   </p>
                   <p className="text-[9px] text-red-600 leading-relaxed">
-                    Reduce to ₹{formatNumber(Math.ceil(remaining / daysRemaining))}/day
+                    Reduce to ₹{formatNumber(daysRemaining > 0 ? Math.ceil(variableRemaining / daysRemaining) : 0)}/day
                   </p>
                 </div>
               ) : (
@@ -403,7 +418,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     <span className="font-semibold">On Track</span>
                   </p>
                   <p className="text-[9px] text-green-600 leading-relaxed">
-                    Keep under ₹{formatNumber(Math.ceil(remaining / daysRemaining))}/day
+                    Keep under ₹{formatNumber(daysRemaining > 0 ? Math.ceil(variableRemaining / daysRemaining) : 0)}/day
                   </p>
                 </div>
               )}
@@ -588,6 +603,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         <QuickAddTransaction
           householdId={household.id}
           subCategories={allSubCategories}
+          householdUsers={householdUsers}
+          currentUserId={currentUserId || ''}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={handleTransactionAdded}
         />
@@ -597,6 +614,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       {showFundTransfer && household && (
         <FundTransferModal
           householdId={household.id}
+          householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+          currentUserId={currentUserId || ''}
           onClose={() => setShowFundTransfer(false)}
           onSuccess={handleTransactionAdded}
         />

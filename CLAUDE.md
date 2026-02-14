@@ -1,8 +1,8 @@
-# CLAUDE.md — Finny 2.0
+# CLAUDE.md — My2cents
 
-## What is Finny
+## What is My2cents
 
-Finny is a household financial management PWA for Indian families. Users plan monthly budgets (savings-first, top-down allocation), record daily transactions, and track budget vs actuals. Built for one household (2 users), architected for multi-household scale.
+My2cents is a household financial management PWA for Indian families. Users plan monthly budgets (savings-first, top-down allocation), record daily transactions, and track budget vs actuals. Built for one household (2 users), architected for multi-household scale. Live at https://beta-test-five.vercel.app.
 
 ## ⚠️ NON-NEGOTIABLE: Progress Tracking
 
@@ -22,7 +22,7 @@ Finny is a household financial management PWA for Indian families. Users plan mo
 ## Repo Structure
 
 ```
-/finny
+/my2cents
 ├── CLAUDE.md                 ← You are here. Read every session.
 ├── progress.md               ← READ FIRST. Current state of work. Update every session.
 ├── .claude/                  ← Persona skill files. Read based on task.
@@ -39,10 +39,9 @@ Finny is a household financial management PWA for Indian families. Users plan mo
 │   └── Finny-Foundation-Pillar/      ← Foundation pillar docs
 │       ├── finny-solution-doc-foundation-pillar.md   ← Features, priorities, accounting model
 │       ├── finny-user-journey-onboarding.md          ← 7.1 Onboarding
-│       ├── finny-user-journey-planning.md            ← 7.3 Planning (future)
-│       ├── finny-user-journey-transactions.md        ← 7.4 Transactions (future)
+│       ├── finny-user-journey-transactions.md        ← 7.4 Transactions
 │       └── ...                                        ← More user journeys as created
-├── src/                      ← Application source code
+├── app/                      ← Application source code (Vite + React + TypeScript)
 ├── supabase/                 ← Migrations, seed data, RLS policies
 └── public/                   ← PWA manifest, icons, service worker
 ```
@@ -90,32 +89,54 @@ CC purchases = expenses. CC payments = fund transfers. Never mix them.
 
 ## Feature Toggle Pattern
 
-Every household has a `household_settings` table. Features check settings before rendering. New features get a new key with a default value. No feature flag service — just a settings table + conditional rendering.
+> **Note:** The `household_settings` table does NOT exist yet. Currently, app-wide settings are hardcoded in `app/src/config/app.config.ts`. The plan is for each household to have a settings table, with features checking settings before rendering. New features get a new key with a default value. No feature flag service — just a settings table + conditional rendering.
 
 ## Category Hierarchy
 
 ```
 Income → sub-categories (salaries, opening balance, bonuses)
-EMIs → Insurance → Savings → Fixed → Variable → One-time
+EMIs → Insurance → Savings → Fixed → Variable → Family → Investment → One-time
   └ each sub-category has: name, amount, period, start/end dates
 ```
 
+**System Categories (9):**
+- Income (💰)
+- EMI (🏦)
+- Insurance (🛡️)
+- Savings (🐷)
+- Fixed (📌)
+- Variable (🔄)
+- Family (👨‍👩‍👧‍👦) - *No default suggestions*
+- Investment (📈) - *No default suggestions*
+- One-time (📅) - *No default suggestions*
+
+**Custom Categories:**
+- Stored in `household_categories` table (per household)
+- Feature currently disabled (commented out in code)
+- Pending better UX design for inline category creation
+
 ## Starter Template (New Users)
 
+Suggestion tiles shown during onboarding. Items marked with * are pre-selected by default (`is_default_selected: true`).
+
 ```
-Income:     Salary 1, Opening Balance
-EMIs:       Education Loan, Car Loan, Home Loan
-Insurance:  Health Insurance, Life Insurance
-Savings:    General Savings, Trip, Wedding
-Fixed:      Rent, Maid/Help, Internet, Phone Bill
-Variable:   Groceries, Fuel, Food Ordering, Leisure, Miscellaneous
-One-time:   (empty)
+Income:      Salary*, Business Income, Rental Income, Freelance, Investments, Other Income
+EMIs:        Home Loan EMI, Car Loan EMI, Education Loan, Personal Loan
+Insurance:   Health Insurance, Life Insurance, Vehicle Insurance
+Savings:     General Savings*, Emergency Fund, Investment/SIP, Vacation Fund
+Fixed:       Rent*, Internet*, Phone Bill*, Maid/Help, Society Maintenance, Subscriptions
+Variable:    Groceries*, Electricity, Water, Fuel, Food Ordering*, Dining Out, Shopping, Entertainment, Personal Care, Medical, Transport, Miscellaneous*
+Family:      (empty - user adds custom items)
+Investment:  (empty - user adds custom items)
+One-time:    (empty - user adds custom items)
 ```
+
+> Source: `app/src/modules/budget/data/defaultCategories.ts`
 
 ## Key Decisions
 
 - Auth: Phone + OTP via Supabase. No email, no passwords.
-- Partner invite: QR code → phone camera scan → Finny link → auth.
+- Partner invite: QR code → phone camera scan → My2cents link → auth.
 - Income: A category in the plan template, not a separate setup step.
 - Opening balance: Sub-category under Income, defaults to ₹0.
 - Savings preference: Deferred to when user first needs bucket features.

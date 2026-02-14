@@ -1,6 +1,8 @@
 # Settings Registry
 
-Central registry of all configurable parameters in Finny. This is the source of truth for what can be configured per household.
+Central registry of all configurable parameters in My2cents. This is the source of truth for what can be configured per household.
+
+> **Implementation Status (Feb 2026):** The `household_settings` table defined below does **NOT yet exist** in the database. Currently, app-wide settings are hardcoded in `app/src/config/app.config.ts` (auth, invite, and display configs only). Per-household settings will be implemented when features that need them are built (notifications, savings buckets, etc.).
 
 ---
 

@@ -1,28 +1,30 @@
-# Finny 2.0 — Product Roadmap
+# My2cents — Product Roadmap
 
-## 1. Why Finny Exists
+> **Status (Feb 2026):** Foundation pillar is partially built and deployed. See `progress.md` for current state.
+
+## 1. Why My2cents Exists
 
 Most Indian households operate without a structured financial system. Money comes in, money goes out, and the gap between intent and reality grows silently. Savings targets are missed not because of insufficient income but because spending is untracked and uncontrolled. When a large expense hits — a wedding, a medical emergency, a car repair — it derails months of progress because there was no buffer, no forecast, no plan.
 
 The households that do try to manage their finances face a different problem: the tools are either too simple (a notebook, a WhatsApp message to yourself) or too complex (spreadsheets that require an hour of setup every month). The result is the same — the system breaks down because the effort to maintain it exceeds the perceived benefit.
 
-Finny exists to close this gap. It is a household financial management system built for Indian families who want to spend wisely, save intentionally, and make financial decisions with full visibility into their money. The core belief is simple: **if you can see where every rupee goes, you will naturally make better decisions about where it should go.**
+My2cents exists to close this gap. It is a household financial management system built for Indian families who want to spend wisely, save intentionally, and make financial decisions with full visibility into their money. The core belief is simple: **if you can see where every rupee goes, you will naturally make better decisions about where it should go.**
 
 ---
 
-## 2. How Finny Is Different
+## 2. How My2cents Is Different
 
 There is no shortage of expense tracking apps — Walnut, Money Manager, YNAB, Splitwise, even bank apps with built-in spending summaries. They all do some version of the same thing: categorize past transactions and show pie charts of where money went. The problem is, knowing that 30% of your income went to food last month does not help you spend better this month. These tools are retrospective and generic — they tell you what happened but not what should happen.
 
-Finny is different because it starts with a plan, not a report. Before the month begins, the household decides how every rupee will be allocated — and the system holds them accountable to that decision throughout the month. The categories, the budgets, the allocation priorities are all defined by the household based on how they actually manage their money. There is no pre-built template that forces a family paying four EMIs, supporting two sets of parents, and saving for a trip into the same structure as a single person tracking coffee expenses.
+My2cents is different because it starts with a plan, not a report. Before the month begins, the household decides how every rupee will be allocated — and the system holds them accountable to that decision throughout the month. The categories, the budgets, the allocation priorities are all defined by the household based on how they actually manage their money. There is no pre-built template that forces a family paying four EMIs, supporting two sets of parents, and saving for a trip into the same structure as a single person tracking coffee expenses.
 
-The core gap Finny fills is between intent and action. Most households have a rough sense of what they want to spend — but no mechanism to enforce it in real time. Finny provides that mechanism: assign budgets to specific activities, track the delta between planned and actual as it happens, and surface behavioral patterns the household did not know existed (chronic overspending in "miscellaneous," seasonal spikes they didn't anticipate, savings goals quietly falling behind). The insight isn't "you spent ₹15K on food" — it's "you've been overspending on food by ₹3K every month for six months, and that's exactly the gap in your savings target."
+The core gap My2cents fills is between intent and action. Most households have a rough sense of what they want to spend — but no mechanism to enforce it in real time. My2cents provides that mechanism: assign budgets to specific activities, track the delta between planned and actual as it happens, and surface behavioral patterns the household did not know existed (chronic overspending in "miscellaneous," seasonal spikes they didn't anticipate, savings goals quietly falling behind). The insight isn't "you spent ₹15K on food" — it's "you've been overspending on food by ₹3K every month for six months, and that's exactly the gap in your savings target."
 
 ---
 
-## 3. Who Finny Is For
+## 3. Who My2cents Is For
 
-Finny is for Indian households — primarily dual-income couples and young families — who:
+My2cents is for Indian households — primarily dual-income couples and young families — who:
 
 - Earn enough to save but struggle to actually save consistently
 - Have multiple financial obligations running simultaneously (EMIs, insurance, family support, rent, savings goals)
@@ -30,13 +32,13 @@ Finny is for Indian households — primarily dual-income couples and young famil
 - Use multiple bank accounts, credit cards, and savings instruments and lose track of money across them
 - Want a shared system where both partners have equal visibility and control
 
-Finny is not for people looking for investment advice platforms, stock trading tools, or enterprise accounting software. It is a household operations tool — closer to a family budget than a balance sheet.
+My2cents is not for people looking for investment advice platforms, stock trading tools, or enterprise accounting software. It is a household operations tool — closer to a family budget than a balance sheet.
 
 ---
 
-## 4. What Finny Does
+## 4. What My2cents Does
 
-At its core, Finny does three things:
+At its core, My2cents does three things:
 
 1. **Plans money** — Before a month begins, the household decides how every rupee of income will be allocated: which EMIs to pay, how much to save, what to set aside for groceries, fuel, and leisure. This plan follows a savings-first philosophy — mandatory commitments and savings are allocated before discretionary spending.
 
@@ -44,7 +46,7 @@ At its core, Finny does three things:
 
 3. **Reveals money** — Dashboards, alerts, and reconciliation tools surface the truth about where money went, where it's going, and where the gaps are. Over time, the system builds a financial history that enables smarter planning, earlier warnings, and better decisions.
 
-As Finny matures, it will expand into a fourth capability: **advising on money** — using AI and accumulated data to recommend budgets, optimize debt repayment, forecast cash flow, and help households reach their financial goals faster.
+As My2cents matures, it will expand into a fourth capability: **advising on money** — using AI and accumulated data to recommend budgets, optimize debt repayment, forecast cash flow, and help households reach their financial goals faster.
 
 ---
 
@@ -60,17 +62,19 @@ As Finny matures, it will expand into a fourth capability: **advising on money**
 
 ## 6. Product Pillars
 
-Finny's evolution is organized into six pillars. Each pillar represents a strategic direction for the product. The Foundation pillar is built first and in detail. The remaining five pillars are future expansions — defined at the vision level, to be detailed and prioritized when the Foundation is stable.
+My2cents' evolution is organized into six pillars. Each pillar represents a strategic direction for the product. The Foundation pillar is built first and in detail. The remaining five pillars are future expansions — defined at the vision level, to be detailed and prioritized when the Foundation is stable.
 
 ---
 
-### Pillar 0: Foundation
+### Pillar 0: Foundation — IN PROGRESS
 
 **Build the core system that replaces the current manual financial tracking process.**
 
+> **Status (Feb 2026):** Partially built. Onboarding, budget planning, transaction recording, dashboard, and 3-tab navigation are DEPLOYED. Savings buckets, CC accounting, notifications, and reconciliation are NOT YET BUILT.
+
 The Foundation pillar covers everything needed for a household to plan their month, record daily transactions, track budget vs actuals, reconcile bank balances, manage savings buckets, and stay in sync through notifications. It is the minimum viable product — not in the sense of being incomplete, but in the sense of being the essential system that all future pillars build upon. Without a reliable Foundation, none of the advanced capabilities (AI, automation, forecasting) have a data layer to operate on.
 
-The Foundation pillar is detailed in a separate document: **Finny Solution - Foundation.md**
+The Foundation pillar is detailed in a separate document: **My2cents Solution - Foundation.md**
 
 ---
 
@@ -144,7 +148,7 @@ Monthly budgets handle the routine. But life isn't routine — trips, weddings, 
 
 ### Pillar 5: Platform
 
-**Scale Finny from a single-household tool to a multi-household product.**
+**Scale My2cents from a single-household tool to a multi-household product.**
 
 The Foundation pillar proves the model with one household. The Platform pillar makes it available to many. This involves tenant isolation (every household's data is completely separate), onboarding flows that get a new household from signup to first transaction in under 10 minutes, configurable templates that give users a starting point without forcing a one-size-fits-all structure, and a monetization model that sustains the product. The assumption is that the core financial model — savings-first, top-down allocation, daily tracking — resonates with a broad segment of Indian households, but each household needs the flexibility to define their own categories, income structures, and tracking preferences.
 
@@ -177,9 +181,9 @@ The Foundation pillar proves the model with one household. The Platform pillar m
 
 ---
 
-## 8. What Finny Is Not
+## 8. What My2cents Is Not
 
-- **Finny is not an investment platform.** It does not execute trades, manage portfolios, or provide regulated financial advice. It may advise on allocation strategy in later pillars, but all actions are taken by the user outside the system.
-- **Finny is not a banking app.** It does not hold money, initiate transfers, or connect to bank accounts for transactions. All money movement happens in the user's banking apps.
-- **Finny is not an accounting tool.** It does not generate P&L statements, balance sheets, or comply with any accounting standards. It is a household budgeting and tracking tool.
-- **Finny is not for businesses.** It is designed for household finances. Business expense tracking, invoicing, payroll, and GST compliance are out of scope.
+- **My2cents is not an investment platform.** It does not execute trades, manage portfolios, or provide regulated financial advice. It may advise on allocation strategy in later pillars, but all actions are taken by the user outside the system.
+- **My2cents is not a banking app.** It does not hold money, initiate transfers, or connect to bank accounts for transactions. All money movement happens in the user's banking apps.
+- **My2cents is not an accounting tool.** It does not generate P&L statements, balance sheets, or comply with any accounting standards. It is a household budgeting and tracking tool.
+- **My2cents is not for businesses.** It is designed for household finances. Business expense tracking, invoicing, payroll, and GST compliance are out of scope.

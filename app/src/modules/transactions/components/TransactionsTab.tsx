@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories } from '../../budget/services/budget';
-import { getCurrentMonthTransactions, deleteTransaction } from '../../budget/services/transactions';
+import { getCurrentMonthTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
@@ -11,6 +11,7 @@ import { supabase } from '../../../lib/supabase';
 interface TransactionsTabProps {
   quickAddTrigger?: number;
   fundTransferTrigger?: number;
+  onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
 }
 
@@ -20,9 +21,9 @@ interface GroupedTransactions {
   transactions: TransactionWithDetails[];
 }
 
-type TransactionTypeFilter = 'all' | 'income' | 'expense';
+type TransactionType = 'income' | 'expense' | 'transfer';
 
-export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOtherMembersChange }: TransactionsTabProps) {
+export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: TransactionsTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
@@ -31,12 +32,14 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithDetails | null>(null);
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
+  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
 
   // Filter states
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [filterRecordedBy, setFilterRecordedBy] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState<TransactionTypeFilter>('all');
+  const [filterTypes, setFilterTypes] = useState<TransactionType[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [uniqueRecorders, setUniqueRecorders] = useState<{ id: string; name: string }[]>([]);
 
@@ -82,8 +85,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
   useEffect(() => {
     if (fundTransferTrigger && fundTransferTrigger > 0 && household && hasOtherMembers) {
       setShowFundTransfer(true);
+      onFundTransferConsumed?.();
     }
-  }, [fundTransferTrigger, household, hasOtherMembers]);
+  }, [fundTransferTrigger]);
 
   // Notify parent when hasOtherMembers changes
   useEffect(() => {
@@ -95,14 +99,21 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
   async function loadTransactions() {
     setIsLoading(true);
     try {
+      // Step 1: Get household (sequential — needs user internally)
       const householdData = await getUserHousehold();
       if (!householdData) return;
       setHousehold(householdData);
 
-      // Get sub-categories for quick add
-      const subCategoriesResult = await getHouseholdSubCategories(householdData.id);
-      const subCategories = subCategoriesResult.subCategories || [];
+      // Step 2: All independent — run in parallel
+      const [subCategoriesResult, transactionsResult, authResult, usersResult] = await Promise.all([
+        getHouseholdSubCategories(householdData.id),
+        getCurrentMonthTransactions(householdData.id),
+        supabase.auth.getUser(),
+        getHouseholdUsers(householdData.id),
+      ]);
 
+      // Process sub-categories
+      const subCategories = subCategoriesResult.subCategories || [];
       const subCatList = subCategories.map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
         id: sc.id,
         name: sc.name,
@@ -112,8 +123,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
       }));
       setAllSubCategories(subCatList);
 
-      // Get transactions
-      const transactionsResult = await getCurrentMonthTransactions(householdData.id);
+      // Process transactions
       const txns = transactionsResult.transactions || [];
       setTransactions(txns);
 
@@ -126,16 +136,15 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
       });
       setUniqueRecorders(Array.from(recordersMap.entries()).map(([id, name]) => ({ id, name })));
 
-      // Check if there are other household members for fund transfer feature
-      const { data: { user } } = await supabase.auth.getUser();
+      // Process auth + household users
+      const user = authResult.data?.user;
       if (user) {
-        const { data: membersData } = await supabase
-          .from('household_members')
-          .select('user_id')
-          .eq('household_id', householdData.id)
-          .neq('user_id', user.id);
-
-        setHasOtherMembers((membersData || []).length > 0);
+        setCurrentUserId(user.id);
+        if (usersResult.success && usersResult.users) {
+          setHouseholdUsers(usersResult.users);
+          const otherMembers = usersResult.users.filter(u => u.id !== user.id);
+          setHasOtherMembers(otherMembers.length > 0);
+        }
       }
 
     } catch (e) {
@@ -186,13 +195,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
       if (filterRecordedBy.length > 0 && !filterRecordedBy.includes(t.logged_by)) {
         return false;
       }
-      // Filter by type
-      if (filterType !== 'all' && t.transaction_type !== filterType) {
+      // Filter by type (multi-select: empty array = all)
+      if (filterTypes.length > 0 && !filterTypes.includes(t.transaction_type as TransactionType)) {
         return false;
       }
       return true;
     });
-  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterType]);
+  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterTypes]);
 
   // Group filtered transactions by date
   const filteredGroupedTransactions = useMemo(() => {
@@ -200,20 +209,20 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
   }, [filteredTransactions]);
 
   // Check if any filter is active
-  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterType !== 'all');
+  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterTypes.length > 0);
 
   // Count active filters
   const activeFilterCount = [
     filterDateFrom || filterDateTo ? 1 : 0,
     filterRecordedBy.length > 0 ? 1 : 0,
-    filterType !== 'all' ? 1 : 0,
+    filterTypes.length > 0 ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
     setFilterDateFrom('');
     setFilterDateTo('');
     setFilterRecordedBy([]);
-    setFilterType('all');
+    setFilterTypes([]);
   };
 
   const toggleRecorder = (recorderId: string) => {
@@ -221,6 +230,14 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
       prev.includes(recorderId)
         ? prev.filter(id => id !== recorderId)
         : [...prev, recorderId]
+    );
+  };
+
+  const toggleType = (type: TransactionType) => {
+    setFilterTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
     );
   };
 
@@ -297,14 +314,14 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
                 filterDateFrom={filterDateFrom}
                 filterDateTo={filterDateTo}
                 filterRecordedBy={filterRecordedBy}
-                filterType={filterType}
+                filterTypes={filterTypes}
                 uniqueRecorders={uniqueRecorders}
                 hasActiveFilters={hasActiveFilters}
                 maxDate={today}
                 setFilterDateFrom={setFilterDateFrom}
                 setFilterDateTo={setFilterDateTo}
                 toggleRecorder={toggleRecorder}
-                setFilterType={setFilterType}
+                toggleType={toggleType}
                 clearFilters={clearFilters}
                 onClose={() => setShowFilters(false)}
               />
@@ -343,14 +360,14 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
                 filterDateFrom={filterDateFrom}
                 filterDateTo={filterDateTo}
                 filterRecordedBy={filterRecordedBy}
-                filterType={filterType}
+                filterTypes={filterTypes}
                 uniqueRecorders={uniqueRecorders}
                 hasActiveFilters={hasActiveFilters}
                 maxDate={today}
                 setFilterDateFrom={setFilterDateFrom}
                 setFilterDateTo={setFilterDateTo}
                 toggleRecorder={toggleRecorder}
-                setFilterType={setFilterType}
+                toggleType={toggleType}
                 clearFilters={clearFilters}
                 onClose={() => setShowFilters(false)}
               />
@@ -504,6 +521,8 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
         <QuickAddTransaction
           householdId={household.id}
           subCategories={allSubCategories}
+          householdUsers={householdUsers}
+          currentUserId={currentUserId}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={handleTransactionAdded}
         />
@@ -514,6 +533,8 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
         <QuickAddTransaction
           householdId={household.id}
           subCategories={allSubCategories}
+          householdUsers={householdUsers}
+          currentUserId={currentUserId}
           onClose={handleCloseEdit}
           onSuccess={handleTransactionAdded}
           transaction={selectedTransaction}
@@ -525,6 +546,8 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onHasOth
       {showFundTransfer && household && (
         <FundTransferModal
           householdId={household.id}
+          householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+          currentUserId={currentUserId}
           onClose={() => setShowFundTransfer(false)}
           onSuccess={handleTransactionAdded}
         />
@@ -555,14 +578,14 @@ interface FilterContentProps {
   filterDateFrom: string;
   filterDateTo: string;
   filterRecordedBy: string[];
-  filterType: TransactionTypeFilter;
+  filterTypes: TransactionType[];
   uniqueRecorders: { id: string; name: string }[];
   hasActiveFilters: boolean;
   maxDate: string;
   setFilterDateFrom: (date: string) => void;
   setFilterDateTo: (date: string) => void;
   toggleRecorder: (id: string) => void;
-  setFilterType: (type: TransactionTypeFilter) => void;
+  toggleType: (type: TransactionType) => void;
   clearFilters: () => void;
   onClose: () => void;
 }
@@ -571,14 +594,14 @@ function FilterContent({
   filterDateFrom,
   filterDateTo,
   filterRecordedBy,
-  filterType,
+  filterTypes,
   uniqueRecorders,
   hasActiveFilters,
   maxDate,
   setFilterDateFrom,
   setFilterDateTo,
   toggleRecorder,
-  setFilterType,
+  toggleType,
   clearFilters,
   onClose,
 }: FilterContentProps) {
@@ -586,11 +609,15 @@ function FilterContent({
     <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-        <span className="text-sm font-semibold text-gray-900">Filters</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        <div>
+          <span className="text-sm font-semibold text-gray-900">Filters</span>
+          <p className="text-[9px] text-gray-400 mt-0.5">Changes apply instantly</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+        >
+          Done
         </button>
       </div>
 
@@ -644,24 +671,14 @@ function FilterContent({
         </div>
       )}
 
-      {/* Type Filter */}
+      {/* Type Filter (multi-select) */}
       <div>
         <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type</label>
         <div className="mt-2 flex gap-2">
           <button
-            onClick={() => setFilterType('all')}
+            onClick={() => toggleType('income')}
             className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
-              filterType === 'all'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilterType('income')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
-              filterType === 'income'
+              filterTypes.includes('income')
                 ? 'bg-green-500 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -669,25 +686,38 @@ function FilterContent({
             Income
           </button>
           <button
-            onClick={() => setFilterType('expense')}
+            onClick={() => toggleType('expense')}
             className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
-              filterType === 'expense'
+              filterTypes.includes('expense')
                 ? 'bg-red-500 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             Expense
           </button>
+          <button
+            onClick={() => toggleType('transfer')}
+            className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+              filterTypes.includes('transfer')
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Transfer
+          </button>
         </div>
       </div>
 
-      {/* Clear Filters */}
+      {/* Reset Filters */}
       {hasActiveFilters && (
         <button
           onClick={clearFilters}
-          className="w-full py-2 text-xs font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors border border-purple-200"
+          className="w-full py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
         >
-          Clear All Filters
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Reset Filters
         </button>
       )}
     </div>

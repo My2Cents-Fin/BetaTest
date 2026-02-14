@@ -44,6 +44,11 @@ export function AppLayout() {
     setFundTransferTrigger(prev => prev + 1);
   }, []);
 
+  // Reset fund transfer trigger after it's been consumed
+  const handleFundTransferConsumed = useCallback(() => {
+    setFundTransferTrigger(0);
+  }, []);
+
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Web: Sidebar */}
@@ -63,6 +68,7 @@ export function AppLayout() {
             onOpenMenu={() => setIsMenuOpen(true)}
             quickAddTrigger={quickAddTrigger}
             fundTransferTrigger={fundTransferTrigger}
+            onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
           />
         )}
@@ -71,12 +77,16 @@ export function AppLayout() {
             onOpenMenu={() => setIsMenuOpen(true)}
             sidebarCollapsed={sidebarCollapsed}
             quickAddTrigger={quickAddTrigger}
+            fundTransferTrigger={fundTransferTrigger}
+            onFundTransferConsumed={handleFundTransferConsumed}
+            onHasOtherMembersChange={setHasOtherMembers}
           />
         )}
         {activeTab === 'transactions' && (
           <TransactionsTab
             quickAddTrigger={quickAddTrigger}
             fundTransferTrigger={fundTransferTrigger}
+            onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
           />
         )}

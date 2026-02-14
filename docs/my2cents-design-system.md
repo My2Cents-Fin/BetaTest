@@ -42,9 +42,9 @@
 
 | Purpose | Tailwind Class | Hex | Usage |
 |---------|----------------|-----|-------|
-| Primary | `purple-600` | #9333ea | Primary buttons, active states, FAB |
-| Primary Hover | `purple-700` | #7e22ce | Button hover states |
-| Primary Dark | `purple-800` | #6b21a8 | Headers, strong emphasis |
+| Primary | `purple-800` | #6b21a8 | Primary buttons, active states, FAB, headers |
+| Primary Hover | `purple-900` | #581c87 | Button hover states |
+| Primary Medium | `purple-600` | #9333ea | Secondary accents |
 | Primary Soft | `purple-100` | #f3e8ff | Selected items, soft highlights |
 | Primary Muted | `purple-50` | #faf5ff | Subtle backgrounds |
 

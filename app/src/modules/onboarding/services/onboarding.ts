@@ -212,29 +212,30 @@ export async function getUserHousehold(): Promise<HouseholdInfo | null> {
       return null;
     }
 
-    // Get household details
-    const { data: household, error: hError } = await supabase
-      .from('households')
-      .select('id, name, invite_code')
-      .eq('id', membership.household_id)
-      .single();
+    // Get household details and member count in parallel
+    const [householdResult, countResult] = await Promise.all([
+      supabase
+        .from('households')
+        .select('id, name, invite_code')
+        .eq('id', membership.household_id)
+        .single(),
+      supabase
+        .from('household_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('household_id', membership.household_id),
+    ]);
 
+    const { data: household, error: hError } = householdResult;
     if (hError || !household) {
       return null;
     }
-
-    // Get member count
-    const { count } = await supabase
-      .from('household_members')
-      .select('id', { count: 'exact', head: true })
-      .eq('household_id', household.id);
 
     return {
       id: household.id,
       name: household.name,
       inviteCode: household.invite_code,
       role: membership.role as 'owner' | 'member',
-      memberCount: count || 1,
+      memberCount: countResult.count || 1,
     };
   } catch (e) {
     console.error('getUserHousehold error:', e);

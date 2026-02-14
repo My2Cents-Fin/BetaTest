@@ -153,12 +153,17 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
               expenseCategories.map(category => {
                 const isCategoryExpanded = expandedCategories.has(category.id);
                 const categoryPercentUsed = category.totalPlanned > 0 ? (category.totalActual / category.totalPlanned) * 100 : 0;
-                const isCategoryOverBudget = categoryPercentUsed >= 100;
-                const isCategoryHighRisk = categoryPercentUsed >= 90 && categoryPercentUsed < 100;
-                const isCategoryMediumRisk = categoryPercentUsed >= 75 && categoryPercentUsed < 90;
 
                 // Apply color gradient only for Variable category
                 const isVariableCategory = category.name === 'Variable';
+
+                // Variable: red at >=100%, orange/yellow for approaching
+                // Non-Variable: red only when strictly exceeding (>100%), not at exactly 100%
+                const isCategoryOverBudget = isVariableCategory
+                  ? categoryPercentUsed >= 100
+                  : categoryPercentUsed > 100;
+                const isCategoryHighRisk = categoryPercentUsed >= 90 && categoryPercentUsed < 100;
+                const isCategoryMediumRisk = categoryPercentUsed >= 75 && categoryPercentUsed < 90;
 
                 // Determine category actual color
                 let categoryActualColor = 'text-purple-600'; // default
@@ -171,7 +176,7 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
                     categoryActualColor = 'text-yellow-700';
                   }
                 } else {
-                  // For non-Variable categories, only show red if over budget
+                  // For non-Variable categories, only show red if strictly over budget (>100%)
                   if (isCategoryOverBudget) {
                     categoryActualColor = 'text-red-600';
                   }
@@ -234,13 +239,18 @@ export function BudgetViewMode({ plan: _plan, items, onEdit: _onEdit, canEdit: _
 
 function BudgetRow({ item, indented = false }: { item: BudgetItem; indented?: boolean }) {
   const percentUsed = item.planned > 0 ? (item.actual / item.planned) * 100 : 0;
-  const isOverBudget = percentUsed >= 100;
-  const isHighRisk = percentUsed >= 90 && percentUsed < 100;
-  const isMediumRisk = percentUsed >= 75 && percentUsed < 90;
 
   // Apply color gradient only for Variable category
   const isVariable = item.categoryName === 'Variable';
   const isIncome = item.categoryType === 'income';
+
+  // Variable: red at >=100%, orange/yellow for approaching
+  // Non-Variable: red only when strictly exceeding (>100%), not at exactly 100%
+  const isOverBudget = isVariable || isIncome
+    ? percentUsed >= 100
+    : percentUsed > 100;
+  const isHighRisk = percentUsed >= 90 && percentUsed < 100;
+  const isMediumRisk = percentUsed >= 75 && percentUsed < 90;
 
   // Determine text color based on percentage
   let textColor = 'text-gray-700'; // default
@@ -258,7 +268,7 @@ function BudgetRow({ item, indented = false }: { item: BudgetItem; indented?: bo
       textColor = 'text-yellow-700';
     }
   } else {
-    // For non-Variable expense categories, only show red if over budget
+    // For non-Variable expense categories, only show red if strictly over budget (>100%)
     if (isOverBudget) {
       textColor = 'text-red-600';
     }

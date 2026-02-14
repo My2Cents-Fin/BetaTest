@@ -1,12 +1,14 @@
-# Deployment Guide - Finny 2.0
+# Deployment Guide — My2cents
 
-This guide will help you deploy Finny to production and set up a test environment.
+> **Status (Feb 2026):** Production deployment is COMPLETE. The app is live at https://beta-test-five.vercel.app. Dev/prod database separation is done. See `DEV-PROD-REFERENCE.md` for environment details.
+
+This guide documents how My2cents was deployed. Use it if you need to redeploy or set up a new environment.
 
 ## Prerequisites
 
 - GitHub account (for code hosting)
 - Vercel account (free tier is fine - sign up at vercel.com)
-- Two Supabase projects (one for test, one for production)
+- Two Supabase projects (one for dev, one for production)
 
 ## Step 1: Create Supabase Projects
 
@@ -14,7 +16,7 @@ This guide will help you deploy Finny to production and set up a test environmen
 
 1. Go to [supabase.com](https://supabase.com)
 2. Click "New Project"
-3. Name it: `finny-test` (or `my2cents-staging`)
+3. Name it: `My2Cents-dev` (or `my2cents-staging`)
 4. Set a strong database password (save it securely)
 5. Choose a region close to your users (e.g., Mumbai for India)
 6. Click "Create new project"
@@ -23,7 +25,7 @@ This guide will help you deploy Finny to production and set up a test environmen
 ### Production Environment
 
 1. Repeat the above steps
-2. Name it: `finny-prod` (or `my2cents-production`)
+2. Name it: `My2Cents-prod` (or `my2cents-production`)
 3. Use a **different** database password
 4. Same region as test
 
@@ -48,24 +50,32 @@ For **each** Supabase project (test and prod), run these SQL scripts in order:
 
 Copy the contents of each file and run in SQL Editor:
 
-1. `supabase/migrations/001_budget_tables.sql`
-2. `supabase/migrations/003_add_fund_transfer_support.sql`
-3. `supabase/migrations/004_add_household_members_user_fk.sql`
-4. `supabase/migrations/005_enforce_single_household_per_user.sql`
+1. `supabase/migrations/000_create_base_tables.sql` — Core tables (users, households, etc.)
+2. `supabase/migrations/001_budget_tables.sql` — Budget schema (categories, plans, allocations) with 9 system categories
+3. `supabase/migrations/002_transactions_table.sql` — Transactions table
+4. `supabase/migrations/003_add_fund_transfer_support.sql` — Fund transfer fields
+5. `supabase/migrations/004_add_household_members_user_fk.sql` — FK constraints
+6. `supabase/migrations/005_enforce_single_household_per_user.sql` — Single household constraint
+7. `supabase/migrations/FIX_INVITE_CODE_RLS.sql` — RLS for invite code joining
+8. `supabase/migrations/FIX_DUPLICATE_SUBCATEGORIES.sql` — Unique index on subcategories
+9. `supabase/migrations/ADD_CUSTOM_CATEGORIES.sql` — household_categories table
+10. `supabase/migrations/ADD_FAMILY_INVESTMENT_CATEGORIES.sql` — Family & Investment categories (for existing DBs)
 
-**Important:** Run ALL migrations on BOTH projects (test and prod).
+> **Shortcut for fresh DEV setup:** Use `supabase/migrations/DEV_COMPLETE_SCHEMA.sql` which contains the full schema in one file.
+
+**Important:** Run ALL migrations on BOTH projects (dev and prod).
 
 ### Verify Migrations
 
 After running migrations, check Table Editor. You should see these tables:
-- `categories`
-- `sub_category_templates`
-- `household_sub_categories`
-- `budget_allocations`
-- `monthly_plans`
+- `users`
 - `households`
 - `household_members`
-- `users`
+- `categories` (9 system categories)
+- `household_categories` (custom per-household categories)
+- `household_sub_categories`
+- `monthly_plans`
+- `budget_allocations`
 - `transactions`
 
 ## Step 3: Set Up GitHub Repository
@@ -160,16 +170,14 @@ These files are in the repo template.
 
 ## Step 6: Set Up Phone Authentication in Supabase
 
+> **Current setup:** Both PROD and DEV use Supabase's built-in phone auth with **test mode** (no SMS provider needed). Test phone numbers are hardcoded in each project's auth settings. See `DEV-PROD-REFERENCE.md` for test numbers.
+
 For **each** Supabase project:
 
 1. Go to Authentication → Providers
 2. Enable "Phone" provider
-3. Configure SMS provider (choose one):
-   - **Twilio** (recommended for India)
-   - **MessageBird**
-   - **Vonage**
-
-4. Get SMS provider credentials and add to Supabase settings
+3. Enable "Phone test OTP" and add test phone numbers
+4. For real SMS (future): Configure SMS provider (Twilio recommended for India)
 
 ## Step 7: Test Your Deployment
 
@@ -195,8 +203,8 @@ After deployment, you'll have:
 
 | Environment | URL | Supabase Project |
 |------------|-----|------------------|
-| Test/Preview | `https://finny-xxx-test.vercel.app` | finny-test |
-| Production | `https://finny-xxx.vercel.app` | finny-prod |
+| Development | `http://localhost:5173` | My2Cents-dev (`vcbmazhfcmchbswdcwqr`) |
+| Production | `https://beta-test-five.vercel.app` | My2Cents-prod (`qybzttjbjxmqdhcstuif`) |
 
 ## Continuous Deployment Workflow
 
@@ -261,3 +269,5 @@ Before going live with real users:
 ---
 
 **Need help?** Check Vercel docs or Supabase docs, or reach out to your dev team.
+
+> **Related docs:** `DEV-PROD-REFERENCE.md` (environment quick reference with URLs, phone numbers, and quick links).

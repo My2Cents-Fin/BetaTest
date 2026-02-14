@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, updateTransaction, getTodayDate, getHouseholdUsers } from '../../budget/services/transactions';
+import { createTransaction, updateTransaction, getTodayDate } from '../../budget/services/transactions';
 import type { TransactionType, TransactionWithDetails } from '../../budget/types';
-import { supabase } from '../../../lib/supabase';
 
 interface SubCategoryOption {
   id: string;
@@ -15,6 +14,8 @@ interface SubCategoryOption {
 interface QuickAddTransactionProps {
   householdId: string;
   subCategories: SubCategoryOption[];
+  householdUsers?: { id: string; displayName: string }[];
+  currentUserId?: string;
   recentSubCategoryIds?: string[];
   onClose: () => void;
   onSuccess: () => void;
@@ -26,6 +27,8 @@ interface QuickAddTransactionProps {
 export function QuickAddTransaction({
   householdId,
   subCategories,
+  householdUsers = [],
+  currentUserId = '',
   onClose,
   onSuccess,
   transaction,
@@ -33,7 +36,7 @@ export function QuickAddTransaction({
 }: QuickAddTransactionProps) {
   const isEditMode = mode === 'edit' && transaction;
 
-  // Initialize state with transaction values if editing
+  // Initialize state with transaction values if editing, using pre-loaded data
   const [amount, setAmount] = useState(() =>
     isEditMode ? String(transaction.amount) : ''
   );
@@ -57,10 +60,8 @@ export function QuickAddTransaction({
   });
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [paidBy, setPaidBy] = useState<string>(() =>
-    isEditMode ? (transaction.logged_by || '') : ''
+    isEditMode ? (transaction.logged_by || '') : currentUserId
   );
 
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -69,24 +70,7 @@ export function QuickAddTransaction({
 
   useEffect(() => {
     setTimeout(() => amountInputRef.current?.focus(), 100);
-
-    // Load household users and current user
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        // Set default paidBy to current user if not editing
-        if (!isEditMode) {
-          setPaidBy(user.id);
-        }
-      }
-
-      const result = await getHouseholdUsers(householdId);
-      if (result.success && result.users) {
-        setHouseholdUsers(result.users);
-      }
-    })();
-  }, [householdId, isEditMode]);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {

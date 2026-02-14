@@ -1,10 +1,12 @@
-# Finny 2.0 — Solution Document: Pillar 0 (Foundation)
+# My2cents — Solution Document: Pillar 0 (Foundation)
+
+> **Implementation Status (Feb 2026):** The Foundation pillar is partially built and deployed to production (https://beta-test-five.vercel.app). See `progress.md` for detailed status. Key items BUILT: onboarding, budget planning, transaction recording, dashboard, 3-tab navigation. Key items NOT YET BUILT: savings buckets, CC accounting, bank account registration, notifications, reconciliation, batch mode. Features marked with status annotations below.
 
 ## 1. Purpose of This Document
 
-This document details the Foundation pillar of Finny 2.0 — the core system that replaces the current manual financial tracking process. It covers what will be built, how transactions are treated in the ledger, internal prioritization, assumptions, constraints, and non-functional requirements.
+This document details the Foundation pillar of My2cents — the core system that replaces the current manual financial tracking process. It covers what will be built, how transactions are treated in the ledger, internal prioritization, assumptions, constraints, and non-functional requirements.
 
-For the overall product vision, philosophy, and future pillars, refer to **Finny Roadmap.md**. For the as-is state of the current system, refer to **Finny Foundations.md**.
+For the overall product vision, philosophy, and future pillars, refer to **My2cents Roadmap.md**. For the as-is state of the current system, refer to **My2cents Foundations.md**.
 
 ---
 
@@ -28,13 +30,13 @@ This means three things must be true before Foundation is considered complete:
 |------|-----------|
 | Household | A financial unit — typically a family or couple — that shares income, expenses, and financial plans. The top-level tenant in the system. |
 | Member | An individual user within a household. Each member has their own login and can record transactions. |
-| Category | A top-level grouping of expenses by type: EMI, Insurance, Family, Savings, Investment, Fixed, Variable, One-time. |
+| Category | A top-level grouping of expenses by type. **9 system categories:** Income (💰), EMI (🏦), Insurance (🛡️), Savings (🐷), Fixed (📌), Variable (🔄), Family (👨‍👩‍👧‍👦), Investment (📈), One-time (📅). |
 | Sub-category | A specific expense line item within a category. E.g., "Groceries" under "Variable," "Donda Car Loan" under "EMI." |
 | Plan | The monthly budget — a set of sub-categories with allocated amounts for a given month. |
 | Plan Freeze | The act of finalizing a month's plan. After freezing, changes are tracked as revisions. |
 | Transaction | A single financial event: an expense, a fund transfer, or an income entry. |
 | Expense | A transaction where money is spent on goods or services. Reduces available budget. |
-| Fund Transfer | A transaction where money moves between the user's own accounts (bank to bucket, bank to CC payment, bank to bank). Not an expense — does not reduce budget. |
+| Fund Transfer | A transaction where money moves between accounts or household members. Not an expense — does not reduce budget. **Current implementation:** fund transfers between household members (not bank accounts, which are deferred to P1). |
 | Income | Money received into the system — salaries, bonuses, refunds, reimbursements. |
 | Savings Bucket | A ring-fenced pool of money earmarked for a specific future expense or goal. Can be mapped to any external instrument (bank pot, separate account, FD, cash envelope). Optional feature. |
 | Reconciliation | The process of comparing the system's calculated bank balance against the actual bank balance to identify discrepancies. |
@@ -152,9 +154,11 @@ Features are prioritized within the Foundation pillar:
 
 ---
 
-### 7.1 Household Setup & Onboarding
+### 7.1 Household Setup & Onboarding — BUILT (partial)
 
 The entry point for any user — new or migrating.
+
+> **Status:** Core flow BUILT (phone OTP → name → household → budget). Account registration (7.1.4) and savings preference (7.1.5) are DEFERRED.
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
@@ -168,7 +172,9 @@ The entry point for any user — new or migrating.
 
 ---
 
-### 7.2 Income & Account Management
+### 7.2 Income & Account Management — NOT YET BUILT
+
+> **Status:** Income is handled as a category in the budget plan. Account registration, multi-account tracking, opening balance per account, and CC lifecycle are all DEFERRED to P1. Opening balance is a sub-category under Income.
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
@@ -179,7 +185,9 @@ The entry point for any user — new or migrating.
 
 ---
 
-### 7.3 Financial Planning
+### 7.3 Financial Planning — BUILT (partial)
+
+> **Status:** Category/sub-category management BUILT. Monthly plan with edit/freeze BUILT. Period-based allocations (monthly/quarterly/yearly/one-time) BUILT. Smart copy, annual view, waterfall visualization, and amortization engine NOT YET BUILT.
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
@@ -193,7 +201,9 @@ The entry point for any user — new or migrating.
 
 ---
 
-### 7.4 Transaction Recording
+### 7.4 Transaction Recording — BUILT
+
+> **Status:** Quick entry BUILT (add/edit/delete). Classification (expense/income/transfer) BUILT. Transaction filters (date, member, type) BUILT. Fund transfers between members BUILT. Batch mode, recurring templates, and CC-bucket auto-linking NOT YET BUILT.
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
@@ -207,7 +217,9 @@ The entry point for any user — new or migrating.
 
 ---
 
-### 7.5 Budget Tracking & Reconciliation
+### 7.5 Budget Tracking & Reconciliation — BUILT (partial)
+
+> **Status:** Budget vs actual (live) BUILT in Budget view mode with smart color coding. Category rollup BUILT. Daily spending guidance BUILT in Dashboard. Reconciliation engine, discrepancy journal, and month-end close NOT YET BUILT.
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
@@ -221,7 +233,9 @@ The entry point for any user — new or migrating.
 
 ---
 
-### 7.6 Savings Buckets
+### 7.6 Savings Buckets — NOT YET BUILT
+
+> **Status:** Entire savings bucket module is DEFERRED. No `savings_buckets` table, no bucket UI. Savings preference question during onboarding is also deferred.
 
 An optional module — enabled or disabled based on savings management preference (7.1.5). Users who selected Option C during onboarding will not see any bucket-related features.
 
@@ -235,7 +249,9 @@ An optional module — enabled or disabled based on savings management preferenc
 
 ---
 
-### 7.7 Dashboard & Analytics
+### 7.7 Dashboard & Analytics — BUILT (partial)
+
+> **Status:** Month overview BUILT (Budget Health, Daily Spending, Expected Cash Balance cards). Category-wise remaining BUILT (Variable at-risk, overspent categories). Progressive disclosure pattern BUILT. Spending by person, trends, anomaly detection, data export NOT YET BUILT.
 
 The dashboard evolves over time — starting with essential operational metrics and progressively adding deeper analytical views.
 
@@ -252,7 +268,9 @@ The dashboard evolves over time — starting with essential operational metrics 
 
 ---
 
-### 7.8 Notifications & Reminders
+### 7.8 Notifications & Reminders — NOT YET BUILT
+
+> **Status:** No notifications implemented. PWA manifest and service worker not yet added. All notification features are DEFERRED.
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
@@ -345,7 +363,7 @@ The dashboard evolves over time — starting with essential operational metrics 
 
 | Requirement | Detail |
 |-------------|--------|
-| Authentication | Supabase Auth with email + password. Google OAuth as optional convenience. |
+| Authentication | Supabase Auth with phone + OTP. No email, no passwords. |
 | Authorization | Row-level security (RLS) in Supabase. Users can only access data belonging to their household. |
 | Data isolation | Household data is completely isolated. No cross-household data access under any circumstance. |
 | Data encryption | Supabase provides encryption at rest and in transit (TLS). No additional application-level encryption needed. |

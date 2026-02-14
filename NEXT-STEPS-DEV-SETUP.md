@@ -1,11 +1,16 @@
 # Next Steps: Complete DEV Database Setup
 
+> **ARCHIVED (Feb 2026):** DEV setup is COMPLETE. Schema has been copied to DEV, phone auth configured, local dev tested. See `DEV-PROD-REFERENCE.md` for current environment details.
+
 ## Current Status ✅
 - ✅ DEV Supabase project created: `vcbmazhfcmchbswdcwqr.supabase.co`
 - ✅ Local `.env.local` updated to use DEV database
 - ✅ Vercel production uses PROD database
+- ✅ Full schema copied to DEV database
+- ✅ Phone auth configured on DEV with test numbers
+- ✅ Local development tested and working
 
-## What's Left to Do ⏳
+## What Was Left to Do (NOW DONE) ✅
 
 ### Quick Setup (Recommended - 5 minutes)
 

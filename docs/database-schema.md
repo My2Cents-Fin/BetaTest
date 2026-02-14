@@ -1,7 +1,7 @@
 # My2Cents Database Schema
 
 **Database:** Supabase (PostgreSQL)
-**Last Updated:** February 2025
+**Last Updated:** February 2026
 
 ---
 
@@ -239,7 +239,7 @@ CREATE TABLE public.categories (
 );
 ```
 
-**Pre-defined Categories:**
+**Pre-defined Categories (9 total):**
 
 | Name | Type | Icon | Display Order |
 |------|------|------|---------------|
@@ -249,7 +249,9 @@ CREATE TABLE public.categories (
 | Savings | expense | 🐷 | 4 |
 | Fixed | expense | 📌 | 5 |
 | Variable | expense | 🔄 | 6 |
-| One-time | expense | 📅 | 7 |
+| Family | expense | 👨‍👩‍👧‍👦 | 7 |
+| Investment | expense | 📈 | 8 |
+| One-time | expense | 📅 | 9 |
 
 ---
 
@@ -792,24 +794,68 @@ const { data } = await supabase
 
 ---
 
-## Future Tables (Planned)
+---
 
-These tables will be added as features are built:
+### 10. transactions (BUILT)
 
-| Table | Purpose | Phase |
-|-------|---------|-------|
-| `transactions` | Income, expense, and fund transfer records | P0 |
-| `accounts` | Bank account information | P0 |
-| `credit_cards` | Credit card accounts | P0 |
-| `savings_buckets` | Goal-based savings tracking | P1 |
-| `recurring_templates` | Auto-generated transaction templates | P1 |
+Records income, expenses, and fund transfers.
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| id | UUID | PRIMARY KEY | gen_random_uuid() | Transaction ID |
+| household_id | UUID | REFERENCES households(id) ON DELETE CASCADE | — | Household reference |
+| sub_category_id | UUID | REFERENCES household_sub_categories(id) | — | Tagged sub-category |
+| amount | DECIMAL(12,2) | NOT NULL | — | Transaction amount |
+| transaction_type | TEXT | NOT NULL, CHECK | — | 'expense', 'income', or 'transfer' |
+| transaction_date | DATE | NOT NULL | — | When the transaction occurred |
+| payment_method | TEXT | DEFAULT 'cash' | 'cash' | 'cash', 'upi', 'card', 'netbanking', 'other' |
+| remarks | TEXT | | NULL | Optional notes |
+| logged_by | UUID | REFERENCES auth.users(id) | — | User who recorded this |
+| transfer_to | UUID | REFERENCES auth.users(id) | NULL | Recipient for fund transfers |
+| created_at | TIMESTAMPTZ | | now() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | | now() | Last update |
+
+**RLS Policies:** Same household-scoped pattern as other tables (members can view/insert/update/delete their household's transactions).
+
+---
+
+### 11. household_categories (BUILT)
+
+Custom user-created categories (per household). Currently disabled in UI pending better UX design.
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| id | UUID | PRIMARY KEY | gen_random_uuid() | Category ID |
+| household_id | UUID | REFERENCES households(id) ON DELETE CASCADE | — | Household reference |
+| name | TEXT | NOT NULL | — | Custom category name |
+| type | TEXT | NOT NULL, CHECK | — | 'income' or 'expense' |
+| icon | TEXT | | NULL | Emoji icon |
+| display_order | INT | | NULL | Display order |
+| created_at | TIMESTAMPTZ | | now() | Creation timestamp |
+
+---
+
+## Future Tables (Planned — Not Yet Built)
+
+These tables are intentionally deferred and will be added when their features are built:
+
+| Table | Purpose | Phase | Status |
+|-------|---------|-------|--------|
+| `accounts` | Bank account information | Deferred (was P0, moved to P1) | Not started — opening balance is handled as a sub-category under Income for now |
+| `credit_cards` | Credit card accounts with running balance | Deferred (was P0, moved to P1) | Not started — CC purchases use the `payment_method` field on transactions |
+| `savings_buckets` | Goal-based savings tracking | P1 | Not started |
+| `recurring_templates` | Auto-generated transaction templates | P1 | Not started |
+| `household_settings` | Per-household configurable settings (key-value) | P0 | Not started — settings are currently hardcoded in `app/src/config/app.config.ts` |
 
 ---
 
 ## Notes
 
 1. **Supabase Dashboard**: Schema can be managed via Supabase Dashboard SQL Editor
-2. **Migrations**: SQL files are in `docs/migrations/`. Run in Supabase SQL Editor:
-   - `001_budget_tables.sql` — Budget categories, templates, allocations, and plans
+2. **Migrations**: SQL files are in `supabase/migrations/`. Run in Supabase SQL Editor:
+   - `001_budget_tables.sql` — Base schema with 9 categories (including Family & Investment)
+   - `002_transactions_table.sql` — Transactions table
+   - `ADD_CUSTOM_CATEGORIES.sql` — household_categories table for user-created categories
+   - `ADD_FAMILY_INVESTMENT_CATEGORIES.sql` — Adds Family & Investment to existing databases
 3. **Backups**: Supabase provides automatic daily backups on paid plans
 4. **RLS Testing**: Use Supabase Dashboard "SQL Editor" with different user contexts to test policies

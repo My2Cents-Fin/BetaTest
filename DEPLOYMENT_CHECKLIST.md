@@ -1,6 +1,8 @@
 # Deployment Checklist
 
-Use this checklist to deploy Finny to production.
+> **ARCHIVED (Feb 2026):** Initial deployment is complete. The pending migrations listed below have all been run on PROD. See `DEPLOYMENT.md` for the main guide and `DEV-PROD-REFERENCE.md` for environment details.
+
+Use this checklist to deploy My2cents to production.
 
 ## Pre-Deployment
 

@@ -280,14 +280,17 @@ export async function getHouseholdUsers(
   householdId: string
 ): Promise<{ success: boolean; error?: string; users?: { id: string; displayName: string }[] }> {
   try {
-    // Get current user to get their display name from auth metadata
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    // Run auth check and members query in parallel
+    const [authResult, membersResult] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase
+        .from('household_members')
+        .select('user_id')
+        .eq('household_id', householdId),
+    ]);
 
-    // Get all household members
-    const { data: members, error } = await supabase
-      .from('household_members')
-      .select('user_id')
-      .eq('household_id', householdId);
+    const currentUser = authResult.data?.user;
+    const { data: members, error } = membersResult;
 
     if (error) {
       console.error('getHouseholdUsers error:', error);

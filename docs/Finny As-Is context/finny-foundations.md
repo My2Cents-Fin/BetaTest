@@ -1,10 +1,12 @@
-# Finny Foundations — Context Document
+# My2cents Foundations — Context Document
+
+> **Note (Feb 2026):** This document describes the **legacy manual system** that My2cents (formerly Finny) was built to replace. The My2cents app is now live at https://beta-test-five.vercel.app and partially replaces the workflows described here. The Google Sheets system may still be used in parallel during the transition period.
 
 ## 1. Overview
 
-Finny is a household financial management system used by a married couple (Varshi and Donda) to plan, track, and control their combined finances across an entire financial year. The core philosophy is **savings first, expenses later** — all mandatory outflows and savings targets are earmarked before any discretionary spending is allowed.
+My2cents (formerly Finny) is a household financial management system used by a married couple (Varshi and Donda) to plan, track, and control their combined finances across an entire financial year. The core philosophy is **savings first, expenses later** — all mandatory outflows and savings targets are earmarked before any discretionary spending is allowed.
 
-The system currently runs on **Google Sheets** (as the database) with an **AppSheets** frontend (mobile app called "Finny") for daily transaction recording. This document captures the complete as-is state to inform the design of a replacement system.
+The system previously ran on **Google Sheets** (as the database) with an **AppSheets** frontend (mobile app called "Finny") for daily transaction recording. It has since been replaced by the **My2cents PWA** (React + TypeScript + Supabase). This document captures the original as-is state that informed the design of the replacement system.
 
 ---
 

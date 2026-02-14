@@ -3,16 +3,17 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-12
+2026-02-14
 
 ## Last Session Summary
-**Dev/Prod database separation COMPLETE.** Successfully set up separate development and production environments. Created My2Cents-dev and My2Cents-prod Supabase projects. Copied complete schema to DEV database (all 9 tables + RLS policies). Configured phone auth on DEV with test numbers (918888888888, 919999999999). Updated local `.env.local` to use DEV database. Vercel production uses PROD database. Established test phone number strategy: PROD uses 918130944414/918056031046, DEV uses 918888888888/919999999999. Created reference guide at `DEV-PROD-REFERENCE.md`. Local development now fully functional with isolated DEV database.
+**Comprehensive documentation audit COMPLETE.** Compared entire codebase against all docs and updated every file with discrepancies. Renamed Finny → My2cents across docs. Fixed OTP from 4→6 digits in onboarding journey. Updated database-schema.md with transactions and household_categories tables. Added build status annotations to solution doc. Fixed primary color (purple-600→purple-800) in design system. Updated code organization in skills-developer.md to match actual codebase. Consolidated 4 overlapping deployment docs (archived 3, updated main DEPLOYMENT.md). Removed stale "Complete Production Deployment" items from Next Up. Updated migration file references throughout.
 
 ---
 
 ## Completed
 
 ### Documentation
+- [x] **Documentation audit (Feb 2026):** All docs compared against codebase and updated to reflect reality. Finny→My2cents renamed throughout. Build status annotations added. Stale deployment docs archived.
 - [x] As-is context document → `docs/Finny As-Is context/finny-foundations.md`
 - [x] Product roadmap with 6 pillars → `docs/Finny To-Be context/finny-roadmap.md`
 - [x] Foundation solution document (features, priorities P0/P1/P2, accounting model, assumptions, constraints, NFRs) → `docs/Finny-Foundation-Pillar/finny-solution-doc-foundation-pillar.md`
@@ -32,7 +33,7 @@
 - Over-allocation: Blocked — cannot freeze plan if allocated > income
 - Plan required: Cannot record transactions without a frozen plan
 - Feature toggles: household_settings table from day one
-- Starter template: Income, EMIs (3), Insurance (2), Savings (3), Fixed (4), Variable (5), One-time (empty)
+- Starter template: Income (6 suggestions, Salary pre-selected), EMIs (4), Insurance (3), Savings (4), Fixed (6), Variable (12), Family (empty), Investment (empty), One-time (empty)
 - Configurability: Flexible key-value settings table, central registry at `docs/settings-registry.md`
 - Simplicity: Every screen/flow must be understandable by a layman without instructions
 
@@ -66,7 +67,8 @@
   - `users` (id, display_name, phone, onboarding_complete)
   - `households` (id, name, invite_code, created_by)
   - `household_members` (id, household_id, user_id, role)
-  - `categories` (id, name, type, icon)
+  - `categories` (id, name, type, icon) - **9 categories: Income, EMI, Insurance, Savings, Fixed, Variable, Family, Investment, One-time**
+  - `household_categories` (id, household_id, name, type, icon) - **For custom user-created categories (disabled for now)**
   - `household_sub_categories` (id, household_id, category_id, name, icon)
   - `monthly_plans` (id, household_id, month, status, planned_income, planned_expense)
   - `budget_allocations` (id, plan_id, sub_category_id, monthly_amount)
@@ -113,6 +115,7 @@
 ### Dashboard Tab
 - [x] **DashboardTab.tsx** → `app/src/modules/dashboard/components/`
 - [x] **Budget Health card** - Shows remaining budget with color coding, progress bar, expandable Spent/Budget breakdown
+  - **Responsive font sizing:** 26px for 6+ digit amounts (₹1,00,000+), 30px for smaller amounts
 - [x] **Daily Spending card** - Shows average daily spend with alert/on-track guidance
 - [x] **Expected Cash Balance card** - User-specific income minus expenses with expandable details and other members view
 - [x] **Variable At-Risk categories** - Shows Variable categories at >=75% usage
@@ -131,12 +134,13 @@
   - Other expenses: Gray (0-99%) → Red (100%+) with dotted underline
   - Income: Gray (normal) → Green (exceeds planned, no underline)
 - [x] Edit mode for modifying allocations
-- [x] Category sections (Income, EMIs, Insurance, Savings, Fixed, Variable, One-time)
+- [x] **Category sections:** Income, EMI, Insurance, Savings, Fixed, Variable, **Family**, **Investment**, One-time
 - [x] Inline editing of amounts
-- [x] Add/remove sub-categories
-- [x] Freeze/unfreeze plan functionality
+- [x] Add/remove sub-categories with **suggestion clicking fix** (onMouseDown + preventDefault)
+- [x] Freeze/unfreeze plan functionality with **pending saves flush** (prevents stale data in view)
 - [x] Month selector for viewing different months
 - [x] Fixed column alignment (removed warning icon, using dotted underline instead)
+- [x] **Subcategory creation supports custom categories** (dual table lookup: categories + household_categories)
 
 ### Transactions Tab (NEW)
 - [x] **TransactionsTab.tsx** → `app/src/modules/transactions/components/`
@@ -195,7 +199,11 @@
 - [x] **Separated test phone numbers** (PROD: 918130944414/918056031046, DEV: 918888888888/919999999999)
 - [x] **Local development** isolated from production data
 - [x] **Reference documentation** created → `DEV-PROD-REFERENCE.md`
-- [x] **Migration scripts** created → `supabase/migrations/DEV_SCHEMA_FINAL.sql`
+- [x] **Migration scripts** organized → `supabase/migrations/`
+  - `001_budget_tables.sql` - Base schema with 9 categories (including Family & Investment)
+  - `002_transactions_table.sql` - Transactions table
+  - `ADD_CUSTOM_CATEGORIES.sql` - household_categories table for user-created categories
+  - `ADD_FAMILY_INVESTMENT_CATEGORIES.sql` - Adds Family & Investment to existing databases
 
 ---
 
@@ -206,24 +214,18 @@
 
 ## Next Up (in order)
 
-### 1. Complete Production Deployment
-- [ ] Redeploy Vercel after environment variables are added
-- [ ] Test phone auth on production URL (https://beta-test-five.vercel.app)
-- [ ] Verify full onboarding flow works in production
-- [ ] Test all features (budget, transactions, dashboard) in production
-
-### 2. UI Polish & Fixes
+### 1. UI Polish & Fixes
 - [ ] Review and fix any UI inconsistencies across screens
 - [ ] Ensure mobile responsiveness is perfect on all screens
 - [ ] Add proper loading states where missing
 - [ ] Error handling improvements
 
-### 3. Supporting Auth Flows
+### 2. Supporting Auth Flows
 - [ ] **Existing user flow** - returning user goes directly to dashboard (not onboarding)
 - [ ] **Sign out flow** - logout button, clear session, redirect to login
 - [ ] **Join household flow** - `/join/:inviteCode` route for partner joining via invite link
 
-### 4. User Journeys (remaining) → `docs/Finny-Foundation-Pillar/`
+### 3. User Journeys (remaining) → `docs/Finny-Foundation-Pillar/`
 Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 - [ ] 7.2 Income & Account Management (thin — mostly absorbed into template)
 - [ ] 7.3 Financial Planning (smart copy, plan freeze/versioning, annual view, waterfall, amortization)
@@ -233,18 +235,18 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 - [ ] 7.7 Dashboard & Analytics (month overview, category bars, balance card, trends)
 - [ ] 7.8 Notifications & Reminders (transaction alerts, recording reminders, overspend)
 
-### 5. Frontend - Remaining Scaffolding
+### 4. Frontend - Remaining Scaffolding
 - [ ] PWA manifest + service worker
 - [ ] Feature toggle hook
 
-### 6. Build P0 Features (remaining)
+### 5. Build P0 Features (remaining)
 - [x] Category template selection screen - DONE
 - [x] Plan creation/editing - DONE
 - [x] Transaction recording - DONE
 - [x] Dashboard - DONE
 - [ ] Notifications (transaction alerts, reminders, overspend)
 
-### 7. Data Migration
+### 6. Data Migration
 - [ ] Export Google Sheets to CSV
 - [ ] Write migration script
 - [ ] Test on staging
@@ -262,7 +264,11 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 - [x] ~~Pre-existing TypeScript errors in BudgetTab.tsx, BudgetViewMode.tsx, DashboardScreen.tsx (icon type mismatches)~~ - FIXED
 - [x] ~~Existing users go through onboarding again (need to check onboarding_complete flag)~~ - FIXED (now checks database instead of auth metadata)
 - [x] ~~Vercel production deployment missing environment variables~~ - FIXED (added VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY)
+- [x] ~~Suggestion clicks not working (EMI and other categories)~~ - FIXED (onMouseDown + preventDefault pattern)
+- [x] ~~Frozen plan showing stale data without refresh~~ - FIXED (flush pending saves before freeze)
+- [x] ~~Budget health card cramped with 6-digit amounts~~ - FIXED (responsive font sizing: 26px for ₹1,00,000+)
 - [ ] PWA manifest/service worker not yet added
+- [ ] Custom category creation disabled (commented out, needs proper UX design)
 
 ---
 
@@ -270,6 +276,8 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-14 | **Session 14 (documentation audit):** Compared entire codebase against all documentation and fixed every discrepancy found. Updated 13 files total: database-schema.md (added transactions/household_categories tables, updated categories 7→9), finny-user-journey-onboarding.md (OTP 4→6 digits, Finny→My2cents, Inter→Poppins, added status banner), finny-solution-doc-foundation-pillar.md (added build status to all 8 sections, fixed auth method, updated categories), finny-design-system.md (marked DEPRECATED), my2cents-design-system.md (primary purple-600→purple-800), finny-foundations.md (Finny→My2cents, noted app is live), finny-roadmap.md (Finny→My2cents, added progress annotations), settings-registry.md (noted household_settings table not built), skills-developer.md (updated code organization tree & TS conventions to match reality), skills-design.md (updated navigation description), DEPLOYMENT.md (updated migrations list, actual URLs, phone auth details), archived DEPLOYMENT_STEPS.md/DEPLOYMENT_CHECKLIST.md/NEXT-STEPS-DEV-SETUP.md. Removed stale Next Up items. Updated CLAUDE.md branding. |
+| 2026-02-13 | **Session 13 (new categories & critical fixes):** Added Family & Investment expense categories (9 total categories now). Fixed critical suggestion click bug across all categories using onMouseDown + preventDefault pattern. Implemented responsive font sizing (26px for 6+ digits) in budget health card. Fixed stale data bug by flushing pending saves before plan freeze. Fixed subcategory creation for custom categories with dual table lookup (categories + household_categories tables). Updated migrations: ADD_CUSTOM_CATEGORIES.sql (household_categories table), ADD_FAMILY_INVESTMENT_CATEGORIES.sql (new categories). Deployed to production successfully (commit b1a727a). Verified with existing production users - all data preserved. Custom category creation temporarily disabled (commented out) pending better UX design. |
 | 2026-02-12 | **Session 12 (dev/prod separation & deployment):** Deployed to Vercel, debugged auth errors, set up dev/prod database separation. Deployed My2cents to Vercel (beta-test project, URL: https://beta-test-five.vercel.app). Fixed "unsupported phone provider" and "invalid API key" errors (missing Vercel env vars). Created separate Supabase databases: renamed "My2Cents" → "My2Cents-prod" (production, qybzttjbjxmqdhcstuif), "My2Cents-prod" → "My2Cents-dev" (development, vcbmazhfcmchbswdcwqr). Updated local `.env.local` to use DEV database. Vercel prod uses PROD database. Created setup guide. Still need to: copy schema to DEV, configure phone auth on DEV, test local with DEV database. |
 | 2026-02-11 | **Session 11 (dashboard redesign & UI polish):** Redesigned dashboard with 3 clean cards (Budget Health, Daily Spending, Expected Cash Balance) using progressive disclosure. Fixed transaction amount input - changed from inline rupee symbol to standard boxed input field like other form fields. Implemented smart color gradients in Budget view: Variable category shows yellow→orange→red gradient (75-89-100%+), other expenses only red when >100%, income green when exceeding planned. Added red dotted underline for over-budget items (not for income). Fixed column alignment by removing warning icon. Added negative amount display with (-) prefix for deficits in Dashboard. Implemented Enter key submit throughout transaction form. Renamed "Your Cash Balance" to "Your Expected Cash Balance". |
 | 2026-02-10 | **Session 10 (bug fixes):** Fixed confetti not showing - changed first-freeze detection to query DB for existing frozen plans instead of relying on availableMonths state. Fixed tabs not unlocking - corrected BudgetProvider month format from YYYY-MM to YYYY-MM-01, added 500ms delay before refetch. Changed sidebar default to collapsed. Mobile access: use `npm run dev -- --host` to expose on local network. |
