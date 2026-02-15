@@ -9,12 +9,16 @@ import { FundTransferModal } from '../../dashboard/components/FundTransferModal'
 import type { TransactionWithDetails, HouseholdSubCategory } from '../../budget/types';
 import { supabase } from '../../../lib/supabase';
 import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
+import { CategoryMultiSelect } from '../../../shared/components/CategoryMultiSelect';
 
 interface TransactionsTabProps {
   quickAddTrigger?: number;
   fundTransferTrigger?: number;
   onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
+  /** Pre-apply a sub-category filter (drill-down from Dashboard) */
+  drillDownSubCategoryId?: string | null;
+  onDrillDownConsumed?: () => void;
 }
 
 interface GroupedTransactions {
@@ -23,9 +27,7 @@ interface GroupedTransactions {
   transactions: TransactionWithDetails[];
 }
 
-type TransactionType = 'income' | 'expense' | 'transfer';
-
-export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: TransactionsTabProps) {
+export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, onDrillDownConsumed }: TransactionsTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
@@ -41,13 +43,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [filterRecordedBy, setFilterRecordedBy] = useState<string[]>([]);
-  const [filterTypes, setFilterTypes] = useState<TransactionType[]>([]);
+  // Category filter (replaces previous filterTypes toggle buttons — see commit 71d3c01 for revert)
+  const [filterSubCategoryIds, setFilterSubCategoryIds] = useState<Set<string>>(new Set());
+  const [filterIncludeTransfers, setFilterIncludeTransfers] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [uniqueRecorders, setUniqueRecorders] = useState<{ id: string; name: string }[]>([]);
 
   const hasLoadedRef = useRef(false);
-  const mobileFilterRef = useRef<HTMLDivElement>(null);
-  const desktopFilterRef = useRef<HTMLDivElement>(null);
 
   // Today's date for max date constraint
   const today = new Date().toISOString().split('T')[0];
@@ -60,21 +62,18 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     loadTransactions();
   }, []);
 
-  // Close filters when clicking outside
+  // Apply drill-down filter from Dashboard (pre-filter by sub-category)
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      const isOutsideMobile = mobileFilterRef.current && !mobileFilterRef.current.contains(target);
-      const isOutsideDesktop = desktopFilterRef.current && !desktopFilterRef.current.contains(target);
+    if (drillDownSubCategoryId) {
+      setFilterSubCategoryIds(new Set([drillDownSubCategoryId]));
+      setFilterIncludeTransfers(false);
+      onDrillDownConsumed?.();
+    }
+  }, [drillDownSubCategoryId]);
 
-      // Close if click is outside both filter containers
-      if (isOutsideMobile && isOutsideDesktop) {
-        setShowFilters(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Note: click-outside-to-close is handled by the portal backdrop's onClick.
+  // The old document mousedown listener was removed — it conflicted with the portal
+  // (refs pointed to header buttons, not the portal-rendered panel).
 
   // Respond to quick add trigger from bottom nav
   useEffect(() => {
@@ -197,13 +196,18 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       if (filterRecordedBy.length > 0 && !filterRecordedBy.includes(t.logged_by)) {
         return false;
       }
-      // Filter by type (multi-select: empty array = all)
-      if (filterTypes.length > 0 && !filterTypes.includes(t.transaction_type as TransactionType)) {
-        return false;
+      // Filter by sub-category / transfer (replaces old type filter)
+      const hasSubCatFilter = filterSubCategoryIds.size > 0 || filterIncludeTransfers;
+      if (hasSubCatFilter) {
+        if (t.transaction_type === 'transfer') {
+          if (!filterIncludeTransfers) return false;
+        } else {
+          if (!filterSubCategoryIds.has(t.sub_category_id)) return false;
+        }
       }
       return true;
     });
-  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterTypes]);
+  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterSubCategoryIds, filterIncludeTransfers]);
 
   // Group filtered transactions by date
   const filteredGroupedTransactions = useMemo(() => {
@@ -211,20 +215,21 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   }, [filteredTransactions]);
 
   // Check if any filter is active
-  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterTypes.length > 0);
+  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterSubCategoryIds.size > 0 || filterIncludeTransfers);
 
   // Count active filters
   const activeFilterCount = [
     filterDateFrom || filterDateTo ? 1 : 0,
     filterRecordedBy.length > 0 ? 1 : 0,
-    filterTypes.length > 0 ? 1 : 0,
+    filterSubCategoryIds.size > 0 || filterIncludeTransfers ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
     setFilterDateFrom('');
     setFilterDateTo('');
     setFilterRecordedBy([]);
-    setFilterTypes([]);
+    setFilterSubCategoryIds(new Set());
+    setFilterIncludeTransfers(false);
   };
 
   const toggleRecorder = (recorderId: string) => {
@@ -235,12 +240,25 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     );
   };
 
-  const toggleType = (type: TransactionType) => {
-    setFilterTypes(prev =>
-      prev.includes(type)
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
+  const toggleSubCategory = (id: string) => {
+    setFilterSubCategoryIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleTransfers = () => setFilterIncludeTransfers(prev => !prev);
+
+  const toggleAllOfType = (type: 'income' | 'expense' | 'transfer') => {
+    if (type === 'transfer') { toggleTransfers(); return; }
+    const idsOfType = allSubCategories.filter(sc => sc.categoryType === type).map(sc => sc.id);
+    const allSelected = idsOfType.every(id => filterSubCategoryIds.has(id));
+    setFilterSubCategoryIds(prev => {
+      const next = new Set(prev);
+      idsOfType.forEach(id => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
   };
 
   const handleTransactionAdded = () => {
@@ -290,7 +308,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       {/* Header - Mobile */}
       <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden">
         <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
-        <div className="relative" ref={mobileFilterRef}>
+        <div className="relative">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]`}
@@ -310,7 +328,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       {/* Header - Desktop */}
       <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header">
         <h1 className="text-lg font-semibold text-gray-900">Transactions • {monthDisplay}</h1>
-        <div className="relative" ref={desktopFilterRef}>
+        <div className="relative">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]"
@@ -339,14 +357,19 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               filterDateFrom={filterDateFrom}
               filterDateTo={filterDateTo}
               filterRecordedBy={filterRecordedBy}
-              filterTypes={filterTypes}
+              allSubCategories={allSubCategories}
+              filterSubCategoryIds={filterSubCategoryIds}
+              filterIncludeTransfers={filterIncludeTransfers}
+              hasTransfers={transactions.some(t => t.transaction_type === 'transfer')}
               uniqueRecorders={uniqueRecorders}
               hasActiveFilters={hasActiveFilters}
               maxDate={today}
               setFilterDateFrom={setFilterDateFrom}
               setFilterDateTo={setFilterDateTo}
               toggleRecorder={toggleRecorder}
-              toggleType={toggleType}
+              toggleSubCategory={toggleSubCategory}
+              toggleTransfers={toggleTransfers}
+              toggleAllOfType={toggleAllOfType}
               clearFilters={clearFilters}
               onClose={() => setShowFilters(false)}
             />
@@ -577,14 +600,19 @@ interface FilterContentProps {
   filterDateFrom: string;
   filterDateTo: string;
   filterRecordedBy: string[];
-  filterTypes: TransactionType[];
+  allSubCategories: { id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[];
+  filterSubCategoryIds: Set<string>;
+  filterIncludeTransfers: boolean;
+  hasTransfers: boolean;
   uniqueRecorders: { id: string; name: string }[];
   hasActiveFilters: boolean;
   maxDate: string;
   setFilterDateFrom: (date: string) => void;
   setFilterDateTo: (date: string) => void;
   toggleRecorder: (id: string) => void;
-  toggleType: (type: TransactionType) => void;
+  toggleSubCategory: (id: string) => void;
+  toggleTransfers: () => void;
+  toggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
   clearFilters: () => void;
   onClose: () => void;
 }
@@ -593,14 +621,19 @@ function FilterContent({
   filterDateFrom,
   filterDateTo,
   filterRecordedBy,
-  filterTypes,
+  allSubCategories,
+  filterSubCategoryIds,
+  filterIncludeTransfers,
+  hasTransfers,
   uniqueRecorders,
   hasActiveFilters,
   maxDate,
   setFilterDateFrom,
   setFilterDateTo,
   toggleRecorder,
-  toggleType,
+  toggleSubCategory,
+  toggleTransfers,
+  toggleAllOfType,
   clearFilters,
   onClose,
 }: FilterContentProps) {
@@ -660,42 +693,17 @@ function FilterContent({
         />
       )}
 
-      {/* Type Filter (multi-select) */}
-      <div>
-        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type</label>
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={() => toggleType('income')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-xl transition-colors ${
-              filterTypes.includes('income')
-                ? 'bg-[var(--color-success)] text-white'
-                : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
-            }`}
-          >
-            Income
-          </button>
-          <button
-            onClick={() => toggleType('expense')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-xl transition-colors ${
-              filterTypes.includes('expense')
-                ? 'bg-[var(--color-danger)] text-white'
-                : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
-            }`}
-          >
-            Expense
-          </button>
-          <button
-            onClick={() => toggleType('transfer')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-xl transition-colors ${
-              filterTypes.includes('transfer')
-                ? 'bg-blue-500 text-white'
-                : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
-            }`}
-          >
-            Transfer
-          </button>
-        </div>
-      </div>
+      {/* Category Filter (unified sub-category multiselect — replaces old Type pills) */}
+      <CategoryMultiSelect
+        label="Category"
+        subCategories={allSubCategories}
+        selectedIds={filterSubCategoryIds}
+        includeTransfers={filterIncludeTransfers}
+        hasTransfers={hasTransfers}
+        onToggleSubCategory={toggleSubCategory}
+        onToggleTransfers={toggleTransfers}
+        onToggleAllOfType={toggleAllOfType}
+      />
 
       {/* Reset Filters */}
       {hasActiveFilters && (

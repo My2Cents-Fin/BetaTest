@@ -35,6 +35,19 @@ export function AppLayout() {
   const [fundTransferTrigger, setFundTransferTrigger] = useState(0);
   // Track if household has other members
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
+  // Drill-down: initial sub-category filter when navigating from Dashboard → Transactions
+  const [drillDownSubCategoryId, setDrillDownSubCategoryId] = useState<string | null>(null);
+
+  // Dashboard drill-down: navigate to Transactions tab with a pre-applied sub-category filter
+  const handleCategoryDrillDown = useCallback((subCategoryId: string) => {
+    setDrillDownSubCategoryId(subCategoryId);
+    setActiveTab('transactions');
+  }, []);
+
+  // Called by TransactionsTab after it consumes the drill-down filter
+  const handleDrillDownConsumed = useCallback(() => {
+    setDrillDownSubCategoryId(null);
+  }, []);
 
   const handleAddTransaction = useCallback(() => {
     setQuickAddTrigger(prev => prev + 1);
@@ -70,6 +83,7 @@ export function AppLayout() {
             fundTransferTrigger={fundTransferTrigger}
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
+            onCategoryDrillDown={handleCategoryDrillDown}
           />
         )}
         {activeTab === 'budget' && (
@@ -88,6 +102,8 @@ export function AppLayout() {
             fundTransferTrigger={fundTransferTrigger}
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
+            drillDownSubCategoryId={drillDownSubCategoryId}
+            onDrillDownConsumed={handleDrillDownConsumed}
           />
         )}
       </div>

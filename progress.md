@@ -6,7 +6,27 @@
 2026-02-15
 
 ## Last Session Summary
-**Session 26: Filter Overlay Fix (React Portal) + Glass Design Completion**
+**Session 27: Unified Sub-Category Filter (Replaces Type Filter)**
+
+### Category/Sub-Category Filter in Transactions Tab
+Replaced the 3 toggle buttons (Income/Expense/Transfer) in the Transactions filter panel with a unified sub-category multiselect dropdown. Use case: RCA for overflowing categories ("show me all transactions under Groceries or Food Ordering").
+
+**New component:** `app/src/shared/components/CategoryMultiSelect.tsx`
+- Grouped dropdown with sub-categories organized by parent category (Income, EMI, Savings, Variable, etc.)
+- "Quick Select" shortcuts at top: "All Income", "All Expenses", "All Transfers"
+- Indeterminate checkbox state when some items of a type are selected
+- Fund transfers handled as special entry (sub_category_id = null)
+- Click-outside-to-close, max-h scroll, glass design styling
+- OR logic: selecting sub-cats from different categories shows all matching transactions
+
+**State changes in TransactionsTab.tsx:**
+- Removed: `filterTypes: TransactionType[]`
+- Added: `filterSubCategoryIds: Set<string>` + `filterIncludeTransfers: boolean`
+- New handlers: `toggleSubCategory`, `toggleTransfers`, `toggleAllOfType`
+- Filter logic: Set.has() for sub-category ID matching, separate boolean for transfers
+- Revert: git commit `71d3c01` has the old Type filter implementation
+
+**Previous Session 26: Filter Overlay Fix (React Portal) + Glass Design Completion**
 
 ### Filter Overlay Fix (Critical Bug)
 The filter dropdowns in TransactionsTab and BudgetTab were appearing as "orphaned modals" on the left side of the screen instead of overlaying near the filter button. Root cause: CSS `backdrop-filter` on ancestor elements (`.glass-header`, `.glass-card`) creates containing blocks that trap `fixed` positioned descendants.
@@ -241,7 +261,7 @@ Applied a comprehensive "dreamy glass" design language across the entire My2cent
 - [x] Filter dropdown with:
   - Date range filter (From/To with max date constraint)
   - Recorded By multiselect (pill buttons for each member)
-  - Type filter (All/Income/Expense)
+  - ~~Type filter (All/Income/Expense)~~ → Replaced with unified CategoryMultiSelect dropdown (Session 27)
   - Clear All Filters button
 - [x] "Showing X of Y transactions" indicator when filtered
 - [x] Summary card updates based on filtered transactions
@@ -292,7 +312,7 @@ Applied a comprehensive "dreamy glass" design language across the entire My2cent
 ### 1. Near-Term Tasks (User's List)
 - [x] **Filter by member on budget tab** — Filter icon + MemberMultiSelect dropdown in view mode header. Expense actuals recomputed from raw transactions per selected members; income items filtered by loggedBy.
 - [ ] **Dashboard → Transactions drill-down** — Click on a dashboard category/card to navigate to Transactions tab pre-filtered for those transactions
-- [ ] **Category & subcategory filters in Transactions tab** — Add category and sub-category as filter options alongside Members and date range
+- [x] **Category & subcategory filters in Transactions tab** — Replaced Type filter with unified `CategoryMultiSelect` dropdown. Sub-categories grouped by parent category, "Quick Select" shortcuts for All Income/Expenses/Transfers, OR logic across categories.
 - [ ] **Onboarding income and expense flow test** — End-to-end test of new user flow through income recording + expense planning + freeze
 - [ ] **Voice-based budget setup** — Simplify budget setup through voice instructions (future exploration)
 
@@ -364,6 +384,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-15 | **Session 27 (unified sub-category filter):** Replaced the Type filter (Income/Expense/Transfer toggle buttons) in Transactions tab with a unified sub-category multiselect dropdown (`CategoryMultiSelect.tsx`). Sub-categories grouped by parent category with "Quick Select" shortcuts at top (All Income, All Expenses, All Transfers). Indeterminate checkbox state for partial selections. Fund transfers as special entry (sub_category_id = null). OR logic across categories. State changed from `filterTypes: TransactionType[]` to `filterSubCategoryIds: Set<string>` + `filterIncludeTransfers: boolean`. TypeScript passes clean. Revert available via git commit `71d3c01`. |
 | 2026-02-15 | **Session 25 (UI polish from testing):** Fixed 7 issues from real-device screenshots: (1) Transactions filter overlay — changed from `absolute` to `fixed` positioning, (2) Budget filter overlay — same fix for mobile, (3) Transactions summary card widened — more padding, larger icons, left-aligned text, (4) Budget edit income amounts red — changed semi-transparent `bg-white/40` to opaque `bg-white` so swipe-to-delete red bg doesn't bleed through, (5) Reduced icon-header padding in InlineIncomeSection + BudgetSection (`gap-1.5`→`gap-1`, icon `w-7`→`w-6`), (6) Removed notification bell icon from DashboardTab mobile header, (7) Overspent Categories moved outside card to match "Daily Expenses to Watch" pattern (heading+icon outside, items in separate card). TypeScript passes clean. |
 | 2026-02-15 | **Sessions 22-24 (dreamy glass design language):** Full app reskin with glass morphism design language. Built CSS foundation (custom properties, utility classes like `.glass-card`, `.glass-header`, `.bg-primary-gradient`, NoiseOverlay/GlassCard components). Systematically converted 30+ components across all screens: Dashboard (DashboardScreen, WelcomeCard, BudgetSection, BudgetItem, InlineAddItem, QuickAddTransaction, FundTransferModal), Budget (BudgetTab, BudgetViewMode, InlineIncomeSection, MonthSelector, CategoryTile, AmountInput, InlineAddCategory, ExpenseSelectionScreen), Transactions (TransactionsTab), Auth (PhoneEntryScreen, OTPScreen, SuccessScreen, OTPInput, PhoneInput), Onboarding (YourNameScreen, HouseholdScreen, InviteScreen), Shared (ProfilePanel, Toast, MemberMultiSelect, ErrorAlert, Input, NavItem, ProgressDots), App (Router LoadingScreen). Replaced all emojis in modal headers with SVG line icons. Zero hardcoded purple/indigo references remain. TypeScript passes clean. |
 | 2026-02-15 | **Session 21 (multiselect filter + deploy):** Iterated member filter UI 3x based on user feedback: pills → filter icon + pills → filter icon + multiselect dropdown. Created shared `MemberMultiSelect` component (`app/src/shared/components/MemberMultiSelect.tsx`) — select-like input with checkboxes dropdown, max-h scroll for large lists, click-outside-to-close. Applied to both BudgetTab (filter icon + dropdown panel) and TransactionsTab (renamed "Recorded By" → "Members"). Changed `filterMemberId` (single) → `filterMemberIds` (array). Fixed budget filter panel: removed `overflow-hidden` (was clipping dropdown), increased spacing (`mb-1` → `mb-4`). Deployed commit `71d3c01`. Updated deferred decisions (income date). Added new near-term tasks (dashboard drill-down, category/subcategory filters in trx tab). |

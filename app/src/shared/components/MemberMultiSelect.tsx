@@ -46,7 +46,11 @@ export function MemberMultiSelect({ label, members, selectedIds, onToggle }: Mem
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 top-full mt-1 bg-white/90 backdrop-blur-xl border border-[rgba(124,58,237,0.1)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 py-1 max-h-48 overflow-y-auto">
+          <div
+            className="absolute left-0 right-0 top-full mt-1 bg-white/90 backdrop-blur-xl border border-[rgba(124,58,237,0.1)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 py-1 max-h-48 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             {members.map(m => (
               <label
                 key={m.id}

@@ -14,6 +14,7 @@ interface DashboardTabProps {
   fundTransferTrigger?: number;
   onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
+  onCategoryDrillDown?: (subCategoryId: string) => void;
 }
 
 interface CategorySpending {
@@ -35,7 +36,7 @@ interface UserBalance {
   expectedBalance: number;
 }
 
-export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: DashboardTabProps) {
+export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown }: DashboardTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
@@ -522,7 +523,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               </div>
               <div className="glass-card px-4 py-2">
                 {variableAtRisk.map((cat, i) => (
-                  <div key={cat.id} className={`flex items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
+                  <div
+                    key={cat.id}
+                    className={`flex items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-black/[0.04]' : ''} ${onCategoryDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors' : ''}`}
+                    onClick={() => onCategoryDrillDown?.(cat.id)}
+                  >
                     <div className={`w-[3px] h-9 rounded-sm ${cat.percentUsed > 100 ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-warning)]'}`} />
                     <div className="icon-container icon-container-md" style={{
                       background: cat.percentUsed > 100 ? 'rgba(220,38,38,0.06)' : 'rgba(217,119,6,0.06)'
@@ -533,15 +538,22 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                       <span className="text-[13px] font-medium text-[var(--color-text-primary)]">{cat.name}</span>
                       <span className="block text-[10px] text-[var(--color-text-tertiary)]">Variable</span>
                     </div>
-                    <div className="text-right">
-                      <span className={`text-sm font-bold ${
-                        cat.percentUsed > 100 ? 'text-[var(--color-danger)]' : 'text-[var(--color-warning)]'
-                      }`}>
-                        {Math.ceil(cat.percentUsed)}%
-                      </span>
-                      <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                        ₹{formatNumber(cat.actual)} / ₹{formatNumber(cat.planned)}
-                      </p>
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <span className={`text-sm font-bold ${
+                          cat.percentUsed > 100 ? 'text-[var(--color-danger)]' : 'text-[var(--color-warning)]'
+                        }`}>
+                          {Math.ceil(cat.percentUsed)}%
+                        </span>
+                        <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                          ₹{formatNumber(cat.actual)} / ₹{formatNumber(cat.planned)}
+                        </p>
+                      </div>
+                      {onCategoryDrillDown && (
+                        <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -562,7 +574,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               </div>
               <div className="glass-card px-4 py-2">
                 {nonVariableOverspent.map((cat, i) => (
-                  <div key={cat.id} className={`flex items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-black/[0.04]' : ''}`}>
+                  <div
+                    key={cat.id}
+                    className={`flex items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-black/[0.04]' : ''} ${onCategoryDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors' : ''}`}
+                    onClick={() => onCategoryDrillDown?.(cat.id)}
+                  >
                     <div className="w-[3px] h-9 rounded-sm bg-[var(--color-danger)]" />
                     <div className="icon-container icon-container-md" style={{ background: 'rgba(220,38,38,0.06)' }}>
                       <span className="text-base">{cat.icon}</span>
@@ -571,13 +587,20 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                       <span className="text-[13px] font-medium text-[var(--color-text-primary)]">{cat.name}</span>
                       <span className="block text-[10px] text-[var(--color-text-tertiary)]">{cat.categoryName || 'Fixed'}</span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-[var(--color-danger)]">
-                        {Math.ceil(cat.percentUsed)}%
-                      </span>
-                      <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                        ₹{formatNumber(cat.actual)} / ₹{formatNumber(cat.planned)}
-                      </p>
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <span className="text-sm font-bold text-[var(--color-danger)]">
+                          {Math.ceil(cat.percentUsed)}%
+                        </span>
+                        <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                          ₹{formatNumber(cat.actual)} / ₹{formatNumber(cat.planned)}
+                        </p>
+                      </div>
+                      {onCategoryDrillDown && (
+                        <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                     </div>
                   </div>
                 ))}
