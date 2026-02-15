@@ -51,13 +51,13 @@ export function SideNav({ activeTab, onTabChange, onOpenMenu, onCollapsedChange,
   };
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 flex-col z-40 transition-all duration-200 ${isCollapsed ? 'w-20' : 'w-64'} ${className}`}>
+    <aside className={`fixed left-0 top-0 h-screen bg-white/80 backdrop-blur-xl border-r border-[rgba(124,58,237,0.08)] flex-col z-40 transition-all duration-200 ${isCollapsed ? 'w-20' : 'w-64'} ${className}`}>
       {/* Logo + Toggle */}
-      <div className={`border-b border-gray-200 flex items-center ${isCollapsed ? 'p-3 justify-center' : 'p-4 justify-between'}`}>
+      <div className={`border-b border-[rgba(124,58,237,0.08)] flex items-center ${isCollapsed ? 'p-3 justify-center' : 'p-4 justify-between'}`}>
         {isCollapsed ? (
-          <span className="text-xl font-bold text-purple-800">M2C</span>
+          <span className="text-xl font-bold text-[var(--color-primary)]">M2C</span>
         ) : (
-          <span className="text-xl font-bold text-purple-800">My2Cents</span>
+          <span className="text-xl font-bold text-[var(--color-primary)]">My2Cents</span>
         )}
         <button
           onClick={toggleCollapsed}
@@ -102,7 +102,7 @@ export function SideNav({ activeTab, onTabChange, onOpenMenu, onCollapsedChange,
       </nav>
 
       {/* Profile at bottom */}
-      <div className={`border-t border-gray-200 ${isCollapsed ? 'p-2' : 'p-4'}`}>
+      <div className={`border-t border-[rgba(124,58,237,0.08)] ${isCollapsed ? 'p-2' : 'p-4'}`}>
         {isCollapsed ? (
           <button
             onClick={onOpenMenu}

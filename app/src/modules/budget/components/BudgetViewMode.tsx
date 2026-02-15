@@ -90,10 +90,10 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
   return (
     <div className="space-y-4">
       {/* Income Section — from actual transactions */}
-      <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+      <section className="glass-card overflow-hidden">
         <button
           onClick={() => setIncomeCollapsed(!incomeCollapsed)}
-          className="w-full px-3 md:px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          className="w-full px-3 md:px-4 py-3 flex items-center justify-between hover:bg-white/40 transition-colors"
         >
           <div className="flex items-center gap-1.5">
             <svg
@@ -104,16 +104,21 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <h2 className="text-base md:text-lg font-semibold text-gray-900">💰 Income</h2>
+            <div className="w-7 h-7 rounded-lg bg-[var(--color-success-bg)] flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <h2 className="text-base md:text-lg font-semibold text-gray-900">Income</h2>
           </div>
           <div className="text-right">
-            <span className="font-semibold text-green-600 tabular-nums text-sm md:text-base">
+            <span className="font-semibold text-[var(--color-success)] tabular-nums text-sm md:text-base">
               ₹{formatNumber(totalIncome)}
             </span>
           </div>
         </button>
 
-        {!incomeCollapsed && <div className="h-px bg-gray-100" />}
+        {!incomeCollapsed && <div className="h-px bg-[rgba(124,58,237,0.06)]" />}
 
         {!incomeCollapsed && (
           <div>
@@ -125,7 +130,7 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
               incomeItems.map(item => (
                 <div
                   key={item.id}
-                  className="px-3 md:px-4 py-2 md:py-2.5 flex items-center justify-between hover:bg-gray-50 border-t border-gray-50"
+                  className="px-3 md:px-4 py-2 md:py-2.5 flex items-center justify-between hover:bg-white/30 border-t border-[rgba(124,58,237,0.04)]"
                 >
                   <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
                     <span className="text-base md:text-lg flex-shrink-0">{item.subCategoryIcon}</span>
@@ -134,7 +139,7 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
                       <span className="text-[10px] md:text-xs text-gray-400">by {item.loggedByName}</span>
                     </div>
                   </div>
-                  <span className="font-medium text-green-600 tabular-nums text-xs md:text-sm">
+                  <span className="font-medium text-[var(--color-success)] tabular-nums text-xs md:text-sm">
                     +₹{formatNumber(item.amount)}
                   </span>
                 </div>
@@ -145,10 +150,10 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
       </section>
 
       {/* Expenses Section */}
-      <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+      <section className="glass-card overflow-hidden">
         <button
           onClick={() => setExpenseCollapsed(!expenseCollapsed)}
-          className="w-full px-3 md:px-4 py-3 hover:bg-gray-50 transition-colors"
+          className="w-full px-3 md:px-4 py-3 hover:bg-white/40 transition-colors"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -160,20 +165,27 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-              <div>
-                <h2 className="text-base md:text-lg font-semibold text-gray-900">📤 Expenses</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[var(--color-primary-bg)] flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+                  </svg>
+                </div>
+                <div>
+                <h2 className="text-base md:text-lg font-semibold text-gray-900">Expenses</h2>
                 {(() => {
                   const remaining = totalIncome - totalPlannedExpense;
                   if (remaining >= 0) {
                     return (
-                      <p className="text-[11px] text-green-600">₹{formatNumber(remaining)} left to plan</p>
+                      <p className="text-[11px] text-[var(--color-success)]">₹{formatNumber(remaining)} left to plan</p>
                     );
                   } else {
                     return (
-                      <p className="text-[11px] text-red-600">₹{formatNumber(Math.abs(remaining))} over income</p>
+                      <p className="text-[11px] text-[var(--color-danger)]">₹{formatNumber(Math.abs(remaining))} over income</p>
                     );
                   }
                 })()}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
@@ -183,13 +195,13 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
               </div>
               <div className="w-16 md:w-20 text-right">
                 <span className="text-gray-400 text-[10px] md:text-xs block">Actual</span>
-                <span className="font-medium text-red-600 tabular-nums">₹{formatNumber(totalActualExpense)}</span>
+                <span className="font-medium text-[var(--color-danger)] tabular-nums">₹{formatNumber(totalActualExpense)}</span>
               </div>
             </div>
           </div>
         </button>
 
-        {!expenseCollapsed && <div className="h-px bg-gray-100" />}
+        {!expenseCollapsed && <div className="h-px bg-[rgba(124,58,237,0.06)]" />}
 
         {!expenseCollapsed && (
           <div>
@@ -214,7 +226,7 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
                 const isCategoryMediumRisk = categoryPercentUsed >= 75 && categoryPercentUsed < 90;
 
                 // Determine category actual color
-                let categoryActualColor = 'text-purple-600'; // default
+                let categoryActualColor = 'text-[var(--color-primary)]'; // default
                 if (isVariableCategory) {
                   if (isCategoryOverBudget) {
                     categoryActualColor = 'text-red-600';
@@ -235,10 +247,10 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
                     {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.id)}
-                      className="w-full px-3 md:px-4 py-2.5 bg-purple-50/50 flex items-center gap-2 border-t border-purple-100/50 hover:bg-purple-50 transition-colors"
+                      className="w-full px-3 md:px-4 py-2.5 bg-[var(--color-primary-bg)]/50 flex items-center gap-2 border-t border-[rgba(124,58,237,0.06)] hover:bg-[var(--color-primary-bg)] transition-colors"
                     >
                       <svg
-                        className={`w-3 h-3 text-purple-400 transition-transform ${isCategoryExpanded ? 'rotate-90' : ''}`}
+                        className={`w-3 h-3 text-[var(--color-primary)]/60 transition-transform ${isCategoryExpanded ? 'rotate-90' : ''}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -246,9 +258,9 @@ export function BudgetViewMode({ plan: _plan, items, incomeData, expenseTransact
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                       <span className="text-base md:text-lg">{category.icon || '📁'}</span>
-                      <span className="text-sm md:text-base font-semibold text-purple-800 flex-1 text-left truncate">{category.name}</span>
+                      <span className="text-sm md:text-base font-semibold text-[var(--color-primary)] flex-1 text-left truncate">{category.name}</span>
                       <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
-                        <span className="text-purple-600 font-medium tabular-nums w-16 md:w-20 text-right">
+                        <span className="text-[var(--color-primary)]/80 font-medium tabular-nums w-16 md:w-20 text-right">
                           ₹{formatNumber(category.totalPlanned)}
                         </span>
                         <span className="font-medium tabular-nums w-16 md:w-20 text-right">
@@ -317,7 +329,7 @@ function BudgetRow({ item, indented = false }: { item: BudgetItem; indented?: bo
   }
 
   return (
-    <div className={`px-3 md:px-4 py-2 md:py-2.5 flex items-center justify-between hover:bg-gray-50 border-t border-gray-50 ${indented ? 'pl-8 md:pl-10' : ''}`}>
+    <div className={`px-3 md:px-4 py-2 md:py-2.5 flex items-center justify-between hover:bg-white/30 border-t border-[rgba(124,58,237,0.04)] ${indented ? 'pl-8 md:pl-10' : ''}`}>
       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
         <span className="text-base md:text-lg flex-shrink-0">{item.icon || '📋'}</span>
         <span className="text-xs md:text-sm text-gray-900 truncate">{item.name}</span>

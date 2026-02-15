@@ -240,19 +240,23 @@ export function QuickAddTransaction({
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal - bottom sheet on mobile, centered card on desktop */}
-      <div className="relative w-full md:w-[420px] md:max-w-[90vw] bg-white rounded-t-3xl md:rounded-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-xl">
+      <div className="relative w-full md:w-[420px] md:max-w-[90vw] bg-white/90 backdrop-blur-xl rounded-t-3xl md:rounded-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-[0_8px_40px_rgba(0,0,0,0.12)]">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(124,58,237,0.06)]">
           <div className="flex items-center gap-2">
-            <span className="text-lg">💳</span>
+            <div className="w-7 h-7 rounded-lg bg-[var(--color-primary-bg)] flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
             <h2 className="text-base font-semibold text-gray-900">
               {isEditMode ? 'Edit Transaction' : 'Add Transaction'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-xl hover:bg-white/60">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -274,7 +278,7 @@ export function QuickAddTransaction({
               onChange={handleAmountChange}
               onKeyDown={handleAmountKeyDown}
               placeholder="0"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-400"
+              className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
             />
           </div>
 
@@ -288,8 +292,8 @@ export function QuickAddTransaction({
               {selectedCategory && (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                   selectedCategory.categoryType === 'income'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
+                    : 'bg-red-50 text-[var(--color-danger)]'
                 }`}>
                   {selectedCategory.categoryType === 'income' ? '↑ Income' : '↓ Expense'}
                 </span>
@@ -311,28 +315,28 @@ export function QuickAddTransaction({
               }}
               onKeyDown={handleCategoryKeyDown}
               placeholder="Search or select..."
-              className={`w-full px-3 py-2.5 border rounded-lg text-sm bg-white focus:outline-none ${
+              className={`w-full px-3 py-2.5 border rounded-xl text-sm bg-white/75 focus:outline-none focus:ring-2 focus:ring-[rgba(124,58,237,0.15)] ${
                 selectedCategory?.categoryType === 'income'
-                  ? 'border-green-300 focus:border-green-400'
+                  ? 'border-[var(--color-success)] focus:border-[var(--color-success)]'
                   : selectedCategory?.categoryType === 'expense'
-                    ? 'border-red-300 focus:border-red-400'
-                    : 'border-gray-200 focus:border-purple-400'
+                    ? 'border-[var(--color-danger)]/50 focus:border-[var(--color-danger)]'
+                    : 'border-[rgba(124,58,237,0.15)] focus:border-[var(--color-primary)]'
               }`}
             />
             {/* Dropdown */}
             {showCategoryDropdown && (filteredExpenseCategories.length > 0 || filteredIncomeCategories.length > 0) && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white/90 backdrop-blur-xl border border-[rgba(124,58,237,0.1)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] max-h-40 overflow-y-auto">
                 {filteredExpenseCategories.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase bg-gray-50">Expense</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase bg-[var(--color-primary-bg)]/50">Expense</div>
                     {filteredExpenseCategories.map((cat, idx) => (
                       <button
                         key={cat.id}
                         onClick={() => handleCategorySelect(cat)}
                         className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                          highlightedIndex === idx ? 'bg-purple-100 text-purple-700' :
-                          selectedSubCategoryId === cat.id ? 'bg-purple-50 text-purple-700' :
-                          'text-gray-900 hover:bg-gray-50'
+                          highlightedIndex === idx ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]' :
+                          selectedSubCategoryId === cat.id ? 'bg-[var(--color-primary-bg)]/50 text-[var(--color-primary)]' :
+                          'text-gray-900 hover:bg-white/60'
                         }`}
                       >
                         <span>{cat.icon || '📦'}</span>
@@ -343,7 +347,7 @@ export function QuickAddTransaction({
                 )}
                 {filteredIncomeCategories.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase bg-gray-50">Income</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase bg-[var(--color-success-bg)]/50">Income</div>
                     {filteredIncomeCategories.map((cat, idx) => {
                       const globalIdx = filteredExpenseCategories.length + idx;
                       return (
@@ -351,9 +355,9 @@ export function QuickAddTransaction({
                           key={cat.id}
                           onClick={() => handleCategorySelect(cat)}
                           className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                            highlightedIndex === globalIdx ? 'bg-green-100 text-green-700' :
-                            selectedSubCategoryId === cat.id ? 'bg-green-50 text-green-700' :
-                            'text-gray-900 hover:bg-gray-50'
+                            highlightedIndex === globalIdx ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]' :
+                            selectedSubCategoryId === cat.id ? 'bg-[var(--color-success-bg)]/50 text-[var(--color-success)]' :
+                            'text-gray-900 hover:bg-white/60'
                           }`}
                         >
                           <span>{cat.icon || '💰'}</span>
@@ -378,7 +382,7 @@ export function QuickAddTransaction({
               onChange={(e) => setTransactionDate(e.target.value)}
               onKeyDown={handleFieldKeyDown}
               max={getTodayDate()}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
+              className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
             />
           </div>
 
@@ -392,7 +396,7 @@ export function QuickAddTransaction({
                 value={paidBy}
                 onChange={(e) => setPaidBy(e.target.value)}
                 onKeyDown={handleFieldKeyDown}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-purple-400"
+                className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
               >
                 {householdUsers.map((user) => (
                   <option key={user.id} value={user.id}>
@@ -414,7 +418,7 @@ export function QuickAddTransaction({
               onChange={(e) => setRemarks(e.target.value)}
               onKeyDown={handleFieldKeyDown}
               placeholder="Optional"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-400"
+              className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
             />
           </div>
 
@@ -428,10 +432,10 @@ export function QuickAddTransaction({
             onClick={handleSubmit}
             disabled={isSubmitting || !amount || !selectedSubCategoryId}
             className={`
-              w-full py-2.5 rounded-xl text-sm font-semibold transition-colors
+              w-full py-2.5 rounded-xl text-sm font-semibold transition-all
               ${isSubmitting || !amount || !selectedSubCategoryId
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-purple-600 text-white active:bg-purple-700'}
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                : 'bg-primary-gradient text-white shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 active:translate-y-0'}
             `}
           >
             {isSubmitting

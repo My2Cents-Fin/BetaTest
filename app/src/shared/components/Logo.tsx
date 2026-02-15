@@ -18,7 +18,7 @@ export function Logo({ showTagline = true, size = 'lg', variant = 'light' }: Log
   return (
     <div className="text-center">
       {/* Logo Mark: [ 2. ] */}
-      <div className={`${s.mark} bg-purple-800 rounded-xl flex items-center justify-center mx-auto mb-4 relative shadow-lg`}>
+      <div className={`${s.mark} bg-primary-gradient rounded-xl flex items-center justify-center mx-auto mb-4 relative shadow-[0_4px_16px_rgba(124,58,237,0.3)]`}>
         <span className={`${s.markText} font-semibold text-white`}>2</span>
         {/* Honey Gold dot */}
         <div className={`${s.dot} bg-amber-400 rounded-full absolute bottom-2 right-2`} />

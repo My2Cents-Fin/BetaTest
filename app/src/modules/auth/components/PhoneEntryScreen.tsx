@@ -46,14 +46,18 @@ export function PhoneEntryScreen() {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row overflow-x-hidden">
       {/* Left Panel - Branding */}
-      <div className="bg-gradient-to-br from-purple-800 to-purple-900 w-full lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16 shrink-0">
+      <div className="bg-primary-gradient w-full lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16 shrink-0 relative overflow-hidden">
+        {/* Decorative shapes */}
+        <div className="absolute top-[15%] right-[-8%] w-[200px] h-[200px] bg-white/[0.06] rounded-full" />
+        <div className="absolute bottom-[10%] left-[-10%] w-[160px] h-[160px] bg-white/[0.04] rounded-full" />
+
         {/* Brand Name */}
-        <h1 className="text-2xl text-white font-semibold">
+        <h1 className="text-2xl text-white font-semibold relative z-10">
           My<span className="font-bold">2Cents</span>
         </h1>
 
         {/* Hero Text - vertically centered */}
-        <div className="flex-1 flex flex-col justify-center py-8 lg:py-0">
+        <div className="flex-1 flex flex-col justify-center py-8 lg:py-0 relative z-10">
           <h2 className="text-3xl lg:text-4xl xl:text-5xl text-white leading-tight mb-4">
             <span className="font-bold">Manage money together,</span>{' '}
             <em className="font-light">effortlessly.</em>
@@ -65,7 +69,7 @@ export function PhoneEntryScreen() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 bg-stone-50 flex items-center justify-center p-8 lg:p-12">
+      <div className="flex-1 bg-[var(--color-page-bg)] flex items-center justify-center p-8 lg:p-12">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome!
@@ -89,7 +93,7 @@ export function PhoneEntryScreen() {
             <button
               onClick={handleSubmit}
               disabled={!isValid || isLoading}
-              className="w-full py-3.5 px-6 bg-purple-800 text-white font-semibold rounded-xl hover:bg-purple-900 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -104,9 +108,9 @@ export function PhoneEntryScreen() {
 
           <p className="mt-8 text-center text-sm text-gray-400">
             By continuing, you agree to our{' '}
-            <a href="#" className="text-purple-800 hover:underline">Terms</a>
+            <a href="#" className="text-[var(--color-primary)] hover:underline">Terms</a>
             {' & '}
-            <a href="#" className="text-purple-800 hover:underline">Privacy Policy</a>
+            <a href="#" className="text-[var(--color-primary)] hover:underline">Privacy Policy</a>
           </p>
         </div>
       </div>

@@ -115,7 +115,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -123,12 +123,12 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white z-50 shadow-xl transform transition-transform duration-300 ease-out flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white/90 backdrop-blur-xl z-50 shadow-[0_8px_40px_rgba(0,0,0,0.12)] transform transition-transform duration-300 ease-out flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="bg-purple-800 text-white px-5 py-4 flex-shrink-0">
+        <div className="bg-primary-gradient text-white px-5 py-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold">Profile</h2>
             <button
@@ -198,7 +198,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-5 h-5 border-2 border-purple-800 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
@@ -208,7 +208,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     Household
                   </h3>
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                  <div className="glass-card p-3 space-y-3">
                     {/* Household Name */}
                     <div>
                       {isEditingHouseholdName ? (
@@ -217,14 +217,14 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                             type="text"
                             value={editedHouseholdName}
                             onChange={(e) => setEditedHouseholdName(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-purple-800"
+                            className="w-full px-3 py-2 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
                             autoFocus
                           />
                           <div className="flex items-center gap-3">
                             <button
                               onClick={handleSaveHouseholdName}
                               disabled={isSaving || !editedHouseholdName.trim()}
-                              className="text-sm font-medium text-purple-800 hover:text-purple-900 disabled:opacity-50"
+                              className="text-sm font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)]/80 disabled:opacity-50"
                             >
                               {isSaving ? 'Saving...' : 'Save'}
                             </button>
@@ -280,7 +280,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
 
                           {/* Members accordion */}
                           {isMembersExpanded && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="mt-3 pt-3 border-t border-[rgba(124,58,237,0.06)]">
                               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                                 Members
                               </p>
@@ -288,7 +288,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                                 {members.map((member) => (
                                   <div key={member.id} className="flex items-center justify-between py-1.5">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center text-xs font-semibold text-purple-800">
+                                      <div className="w-7 h-7 bg-[var(--color-primary-bg)] rounded-xl flex items-center justify-center text-xs font-semibold text-[var(--color-primary)]">
                                         {member.displayName.charAt(0).toUpperCase()}
                                       </div>
                                       <div>
@@ -300,7 +300,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                                     </div>
                                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                                       member.role === 'owner'
-                                        ? 'bg-purple-100 text-purple-800'
+                                        ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
                                         : 'bg-gray-100 text-gray-600'
                                     }`}>
                                       {member.role === 'owner' ? 'Owner' : 'Member'}
@@ -323,17 +323,17 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     Invite Others
                   </h3>
-                  <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="glass-card p-3">
                     {/* Invite Code */}
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-white border border-gray-200 rounded-lg py-2 px-3">
-                        <span className="font-mono font-semibold text-sm text-purple-800 tracking-wider">
+                      <div className="flex-1 bg-white/75 border border-[rgba(124,58,237,0.15)] rounded-xl py-2 px-3">
+                        <span className="font-mono font-semibold text-sm text-[var(--color-primary)] tracking-wider">
                           {household.inviteCode}
                         </span>
                       </div>
                       <button
                         onClick={handleCopyCode}
-                        className="px-3 py-2 bg-purple-800 text-white text-xs font-medium rounded-lg hover:bg-purple-900 transition-colors"
+                        className="px-3 py-2 bg-primary-gradient text-white text-xs font-medium rounded-xl shadow-[0_2px_8px_rgba(124,58,237,0.3)] hover:shadow-[0_4px_12px_rgba(124,58,237,0.4)] transition-all"
                       >
                         {copied ? 'Copied!' : 'Copy'}
                       </button>
@@ -343,13 +343,13 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                     {isQREnabled() && (
                       <>
                         <div className="flex items-center gap-3 my-4">
-                          <div className="flex-1 h-px bg-gray-200" />
+                          <div className="flex-1 h-px bg-[rgba(124,58,237,0.06)]" />
                           <span className="text-xs text-gray-400">or</span>
-                          <div className="flex-1 h-px bg-gray-200" />
+                          <div className="flex-1 h-px bg-[rgba(124,58,237,0.06)]" />
                         </div>
 
                         <div className="flex justify-center">
-                          <div className="bg-white p-2 rounded-lg border border-gray-200">
+                          <div className="bg-white/75 p-2 rounded-xl border border-[rgba(124,58,237,0.1)]">
                             <QRCodeSVG
                               value={getInviteUrl()}
                               size={100}
@@ -372,7 +372,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
         </div>
 
         {/* Sign Out - Subtle link */}
-        <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
+        <div className="px-5 py-4 border-t border-[rgba(124,58,237,0.06)] flex-shrink-0">
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
@@ -403,7 +403,7 @@ export function MenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+      className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/60 transition-colors"
       aria-label="Open menu"
     >
       <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">

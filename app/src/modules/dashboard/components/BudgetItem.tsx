@@ -183,7 +183,7 @@ export function BudgetItem({ item, index, onSave, onDelete, onRename, indented =
             <div
               ref={editContainerRef}
               className={`
-                px-4 py-3 flex items-center gap-3 bg-purple-50 border-l-4 border-purple-600
+                px-4 py-3 flex items-center gap-3 bg-[var(--color-primary-bg)] border-l-4 border-[var(--color-primary)]
                 ${indented ? 'pl-10' : ''}
               `}
             >
@@ -214,10 +214,10 @@ export function BudgetItem({ item, index, onSave, onDelete, onRename, indented =
                   placeholder="0"
                   className="
                     w-full pl-6 pr-2 py-1.5
-                    border border-purple-300 rounded-lg
+                    border border-[var(--color-primary)]/30 rounded-xl
                     text-sm text-gray-900 font-medium text-right
                     placeholder:text-gray-300
-                    focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100
+                    focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.1)]
                   "
                 />
               </div>
@@ -231,10 +231,10 @@ export function BudgetItem({ item, index, onSave, onDelete, onRename, indented =
                   className="
                     appearance-none
                     pl-2 pr-7 py-1.5
-                    border border-purple-300 rounded-lg
+                    border border-[var(--color-primary)]/30 rounded-xl
                     text-sm text-gray-700
                     bg-white
-                    focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100
+                    focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.1)]
                     cursor-pointer
                   "
                 >
@@ -309,12 +309,12 @@ export function BudgetItem({ item, index, onSave, onDelete, onRename, indented =
                   onBlur={handleNameSave}
                   onKeyDown={handleNameKeyDown}
                   onClick={(e) => e.stopPropagation()}
-                  className={`flex-1 min-w-0 px-2 py-1 border border-purple-300 rounded text-gray-900 font-medium focus:outline-none focus:border-purple-600 ${indented ? 'text-sm' : ''}`}
+                  className={`flex-1 min-w-0 px-2 py-1 border border-[var(--color-primary)]/30 rounded-lg text-gray-900 font-medium focus:outline-none focus:border-[var(--color-primary)] ${indented ? 'text-sm' : ''}`}
                 />
               ) : (
                 <span
                   onClick={handleNameClick}
-                  className={`flex-1 text-gray-900 truncate ${indented ? 'text-sm' : 'font-medium'} ${onRename ? 'hover:text-purple-700 cursor-text' : ''}`}
+                  className={`flex-1 text-gray-900 truncate ${indented ? 'text-sm' : 'font-medium'} ${onRename ? 'hover:text-[var(--color-primary)] cursor-text' : ''}`}
                   title={onRename ? 'Click to rename' : item.name}
                 >
                   {item.name}

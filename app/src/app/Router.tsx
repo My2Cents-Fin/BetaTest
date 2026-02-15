@@ -19,8 +19,8 @@ import { AppLayout } from './AppLayout';
 // Loading screen
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-purple-800 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-[var(--color-page-bg)] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }

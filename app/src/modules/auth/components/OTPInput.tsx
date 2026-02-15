@@ -115,14 +115,14 @@ export function OTPInput({
           disabled={disabled}
           className={`
             w-11 h-14 sm:w-12 sm:h-14
-            border rounded-lg sm:rounded-xl
+            border rounded-xl
             text-center text-xl sm:text-2xl font-semibold
-            text-gray-900 bg-white
+            text-gray-900 bg-white/75
             transition-all duration-150
-            focus:outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-200
+            focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]
             disabled:opacity-50 disabled:cursor-not-allowed
-            ${error ? 'border-red-500 bg-red-50 animate-shake' : 'border-gray-200'}
-            ${digit && !error ? 'border-purple-800 bg-purple-50' : ''}
+            ${error ? 'border-[var(--color-danger)] bg-red-50 animate-shake' : 'border-[rgba(124,58,237,0.15)]'}
+            ${digit && !error ? 'border-[var(--color-primary)] bg-[var(--color-primary-bg)]' : ''}
           `}
         />
       ))}

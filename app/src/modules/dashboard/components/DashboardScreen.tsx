@@ -521,16 +521,16 @@ export function DashboardScreen() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-purple-800 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[var(--color-page-bg)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-[var(--color-page-bg)]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <header className="glass-header px-4 py-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">
           My<span className="font-bold">2Cents</span>
         </h1>
@@ -628,7 +628,7 @@ export function DashboardScreen() {
             {/* Freeze button */}
             <button
               onClick={handleFreezePlan}
-              className="px-5 py-2.5 bg-purple-700 text-white text-sm font-semibold rounded-xl hover:bg-purple-800 transition-colors whitespace-nowrap"
+              className="px-5 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] transition-all whitespace-nowrap"
             >
               Freeze Plan
             </button>
@@ -649,7 +649,7 @@ export function DashboardScreen() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Spent</p>
-                  <p className="text-lg font-bold text-purple-700">₹{formatNumber(totalSpent)}</p>
+                  <p className="text-lg font-bold text-[var(--color-primary)]">₹{formatNumber(totalSpent)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Remaining</p>
@@ -661,7 +661,7 @@ export function DashboardScreen() {
               {/* Progress bar */}
               <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-purple-600 transition-all duration-300"
+                  className="h-full bg-[var(--color-primary)] transition-all duration-300"
                   style={{ width: `${totalBudgeted > 0 ? Math.min((totalSpent / totalBudgeted) * 100, 100) : 0}%` }}
                 />
               </div>
@@ -674,7 +674,7 @@ export function DashboardScreen() {
           {/* Bottom Navigation */}
           <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
             <div className="max-w-2xl mx-auto flex">
-              <button className="flex-1 py-3 flex flex-col items-center gap-1 text-purple-700">
+              <button className="flex-1 py-3 flex flex-col items-center gap-1 text-[var(--color-primary)]">
                 <span className="text-xl">🏠</span>
                 <span className="text-xs font-medium">Home</span>
               </button>
@@ -697,7 +697,7 @@ export function DashboardScreen() {
       {planStatus === 'frozen' && household && (
         <button
           onClick={() => setShowQuickAdd(true)}
-          className="fixed bottom-20 right-4 w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 active:bg-purple-800 transition-colors flex items-center justify-center z-40"
+          className="fixed bottom-20 right-4 w-14 h-14 bg-primary-gradient text-white rounded-2xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 transition-all flex items-center justify-center z-40"
           aria-label="Add transaction"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

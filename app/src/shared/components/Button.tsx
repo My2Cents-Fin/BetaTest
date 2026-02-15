@@ -19,17 +19,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary: `
-        bg-purple-800 text-white shadow-lg
-        hover:bg-purple-900
-        disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none
+        bg-primary-gradient text-white
+        shadow-[0_4px_16px_rgba(124,58,237,0.3)]
+        hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)]
+        hover:-translate-y-0.5
+        disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0
       `,
       secondary: `
-        bg-white text-gray-900 border border-gray-200
-        hover:bg-stone-100
+        bg-white/75 text-gray-900
+        border border-[rgba(124,58,237,0.15)]
+        backdrop-blur-md
+        shadow-[0_2px_12px_rgba(0,0,0,0.04)]
+        hover:bg-white/90
       `,
       ghost: `
-        bg-transparent text-purple-800
-        hover:bg-purple-100
+        bg-transparent text-[var(--color-primary)]
+        hover:bg-[var(--color-primary-bg)]
       `,
     };
 

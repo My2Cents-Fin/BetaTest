@@ -63,20 +63,20 @@ export function InlineAddCategory({ onAdd, onCancel }: InlineAddCategoryProps) {
   };
 
   return (
-    <div data-add-category-container className="px-4 py-3 bg-indigo-50 border-l-4 border-indigo-600">
-      <p className="text-xs text-indigo-600 font-medium mb-2">➕ Add Custom Category</p>
+    <div data-add-category-container className="px-4 py-3 bg-[var(--color-primary-bg)] border-l-4 border-[var(--color-primary)]">
+      <p className="text-xs text-[var(--color-primary)] font-medium mb-2">➕ Add Custom Category</p>
       <div className="flex items-center gap-2">
         {/* Icon selector */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowIconPicker(!showIconPicker)}
-            className="text-lg shrink-0 w-10 h-10 flex items-center justify-center border border-indigo-300 rounded-lg hover:bg-indigo-100 transition-colors"
+            className="text-lg shrink-0 w-10 h-10 flex items-center justify-center border border-[rgba(124,58,237,0.15)] rounded-xl hover:bg-[var(--color-primary-bg)] transition-colors"
           >
             {selectedIcon}
           </button>
           {showIconPicker && (
-            <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-2 grid grid-cols-6 gap-1 z-10">
+            <div className="absolute top-12 left-0 bg-white/90 backdrop-blur-xl border border-[rgba(124,58,237,0.1)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] p-2 grid grid-cols-6 gap-1 z-10">
               {COMMON_ICONS.map((icon) => (
                 <button
                   key={icon}
@@ -85,7 +85,7 @@ export function InlineAddCategory({ onAdd, onCancel }: InlineAddCategoryProps) {
                     setSelectedIcon(icon);
                     setShowIconPicker(false);
                   }}
-                  className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded"
+                  className="w-8 h-8 flex items-center justify-center text-lg hover:bg-white/60 rounded-lg"
                 >
                   {icon}
                 </button>
@@ -103,10 +103,10 @@ export function InlineAddCategory({ onAdd, onCancel }: InlineAddCategoryProps) {
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder="Category name (e.g., Travel, Education)..."
-          className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
+          className={`flex-1 min-w-0 px-2 py-1.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:ring-2 ${
             errorMessage
               ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
-              : 'border-indigo-300 focus:border-indigo-600 focus:ring-indigo-100'
+              : 'border-[rgba(124,58,237,0.15)] focus:border-[var(--color-primary)] focus:ring-[rgba(124,58,237,0.15)]'
           }`}
         />
 
@@ -114,7 +114,7 @@ export function InlineAddCategory({ onAdd, onCancel }: InlineAddCategoryProps) {
         <button
           onClick={handleSubmit}
           disabled={!name.trim()}
-          className="p-1.5 text-green-600 hover:text-green-700 active:text-green-800 disabled:text-gray-300 transition-colors shrink-0"
+          className="p-1.5 text-[var(--color-success)] hover:text-[var(--color-success)] active:text-[var(--color-success)] disabled:text-gray-300 transition-colors shrink-0"
           aria-label="Add"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories } from '../../budget/services/budget';
 import { getCurrentMonthTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
@@ -278,25 +279,21 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-purple-800 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[var(--color-page-bg)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-[var(--color-page-bg)]">
       {/* Header - Mobile */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:hidden">
+      <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden">
         <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
         <div className="relative" ref={mobileFilterRef}>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-              hasActiveFilters
-                ? 'bg-purple-600 text-white'
-                : 'bg-purple-600 text-white'
-            }`}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -307,94 +304,83 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               </span>
             )}
           </button>
-
-          {/* Mobile Filter Dropdown */}
-          {showFilters && (
-            <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-              <FilterContent
-                filterDateFrom={filterDateFrom}
-                filterDateTo={filterDateTo}
-                filterRecordedBy={filterRecordedBy}
-                filterTypes={filterTypes}
-                uniqueRecorders={uniqueRecorders}
-                hasActiveFilters={hasActiveFilters}
-                maxDate={today}
-                setFilterDateFrom={setFilterDateFrom}
-                setFilterDateTo={setFilterDateTo}
-                toggleRecorder={toggleRecorder}
-                toggleType={toggleType}
-                clearFilters={clearFilters}
-                onClose={() => setShowFilters(false)}
-              />
-            </div>
-          )}
         </div>
       </header>
 
       {/* Header - Desktop */}
-      <header className="hidden md:flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header">
         <h1 className="text-lg font-semibold text-gray-900">Transactions • {monthDisplay}</h1>
         <div className="relative" ref={desktopFilterRef}>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              hasActiveFilters
-                ? 'bg-purple-600 text-white'
-                : 'bg-purple-600 text-white hover:bg-purple-700'
-            }`}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             <span className="text-sm font-medium">Filters</span>
             {activeFilterCount > 0 && (
-              <span className="w-5 h-5 bg-white text-purple-600 text-xs font-bold rounded-full flex items-center justify-center">
+              <span className="w-5 h-5 bg-white text-[var(--color-primary)] text-xs font-bold rounded-full flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
           </button>
-
-          {/* Desktop Filter Dropdown */}
-          {showFilters && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-              <FilterContent
-                filterDateFrom={filterDateFrom}
-                filterDateTo={filterDateTo}
-                filterRecordedBy={filterRecordedBy}
-                filterTypes={filterTypes}
-                uniqueRecorders={uniqueRecorders}
-                hasActiveFilters={hasActiveFilters}
-                maxDate={today}
-                setFilterDateFrom={setFilterDateFrom}
-                setFilterDateTo={setFilterDateTo}
-                toggleRecorder={toggleRecorder}
-                toggleType={toggleType}
-                clearFilters={clearFilters}
-                onClose={() => setShowFilters(false)}
-              />
-            </div>
-          )}
         </div>
       </header>
+
+      {/* Filter Dropdown — rendered via portal at document body to escape all containing blocks */}
+      {showFilters && createPortal(
+        <div className="fixed inset-0 z-50" onClick={() => setShowFilters(false)}>
+          <div
+            className="fixed right-4 top-14 md:right-6 md:top-16 w-72 md:w-80 z-50 rounded-2xl border border-[rgba(124,58,237,0.15)] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.15)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <FilterContent
+              filterDateFrom={filterDateFrom}
+              filterDateTo={filterDateTo}
+              filterRecordedBy={filterRecordedBy}
+              filterTypes={filterTypes}
+              uniqueRecorders={uniqueRecorders}
+              hasActiveFilters={hasActiveFilters}
+              maxDate={today}
+              setFilterDateFrom={setFilterDateFrom}
+              setFilterDateTo={setFilterDateTo}
+              toggleRecorder={toggleRecorder}
+              toggleType={toggleType}
+              clearFilters={clearFilters}
+              onClose={() => setShowFilters(false)}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Content */}
       <main className="p-4 pb-24">
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Month Summary */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-green-500">↑</span>
-                <div>
+          <div className="glass-card glass-card-elevated p-4">
+            <div className="grid grid-cols-2 gap-6 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[var(--color-success-bg)] flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                </div>
+                <div className="text-left">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Actual Income</p>
-                  <p className="text-base font-bold text-green-600">₹{formatNumber(totalIncome)}</p>
+                  <p className="text-base font-bold text-[var(--color-success)]">₹{formatNumber(totalIncome)}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-red-500">↓</span>
-                <div>
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[var(--color-danger)]/5 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-[var(--color-danger)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </div>
+                <div className="text-left">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Actual Expenses</p>
-                  <p className="text-base font-bold text-red-600">₹{formatNumber(totalSpent)}</p>
+                  <p className="text-base font-bold text-[var(--color-danger)]">₹{formatNumber(totalSpent)}</p>
                 </div>
               </div>
             </div>
@@ -408,7 +394,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               </p>
               <button
                 onClick={clearFilters}
-                className="text-xs text-purple-600 font-medium hover:text-purple-700"
+                className="text-xs text-[var(--color-primary)] font-medium hover:opacity-80"
               >
                 Clear filters
               </button>
@@ -417,22 +403,32 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
           {/* Transaction List */}
           {filteredGroupedTransactions.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center">
-              <span className="text-4xl mb-4 block">{hasActiveFilters ? '🔍' : '📝'}</span>
+            <div className="glass-card p-8 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-bg)] flex items-center justify-center mx-auto mb-4">
+                {hasActiveFilters ? (
+                  <svg className="w-6 h-6 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                )}
+              </div>
               <p className="text-sm text-gray-500">
                 {hasActiveFilters ? 'No transactions match your filters' : 'No transactions this month'}
               </p>
               {hasActiveFilters ? (
                 <button
                   onClick={clearFilters}
-                  className="mt-4 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg"
+                  className="mt-4 px-4 py-2 bg-primary-gradient text-white text-sm font-medium rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)]"
                 >
                   Clear Filters
                 </button>
               ) : (
                 <button
                   onClick={() => setShowQuickAdd(true)}
-                  className="mt-4 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg"
+                  className="mt-4 px-4 py-2 bg-primary-gradient text-white text-sm font-medium rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)]"
                 >
                   Add First Transaction
                 </button>
@@ -442,17 +438,17 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
             filteredGroupedTransactions.map(group => (
               <div key={group.date}>
                 <h3 className="text-xs font-medium text-gray-400 mb-2 px-1 uppercase tracking-wide">{group.label}</h3>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+                <div className="glass-card divide-y divide-[rgba(124,58,237,0.04)] !p-0 overflow-hidden">
                   {group.transactions.map(txn => (
                     <div
                       key={txn.id}
                       onClick={() => handleTransactionClick(txn)}
-                      className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/40 active:bg-white/60 transition-colors"
                     >
                       {/* Icon */}
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                         txn.transaction_type === 'transfer' ? 'bg-blue-50' :
-                        txn.transaction_type === 'income' ? 'bg-green-50' : 'bg-red-50'
+                        txn.transaction_type === 'income' ? 'bg-[var(--color-success-bg)]' : 'bg-red-50'
                       }`}>
                         <span className="text-base">{txn.sub_category_icon}</span>
                       </div>
@@ -503,7 +499,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
         <div className="hidden md:block fixed bottom-8 right-4 z-30 group">
           <button
             onClick={() => setShowQuickAdd(true)}
-            className="w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 active:bg-purple-800 transition-colors flex items-center justify-center"
+            className="w-14 h-14 bg-primary-gradient text-white rounded-2xl shadow-[0_4px_16px_rgba(124,58,237,0.35)] hover:shadow-[0_6px_24px_rgba(124,58,237,0.45)] hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center"
             aria-label="Add transaction"
           >
             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -511,7 +507,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
             </svg>
           </button>
           {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-800/90 backdrop-blur-sm text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Add Transaction
           </div>
         </div>
@@ -559,13 +555,15 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
         <div className="hidden md:block fixed bottom-24 right-4 z-30 group">
           <button
             onClick={() => setShowFundTransfer(true)}
-            className="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center justify-center"
+            className="w-12 h-12 bg-white/80 backdrop-blur-md text-[var(--color-primary)] rounded-2xl shadow-[var(--glass-shadow)] border border-[rgba(124,58,237,0.15)] hover:shadow-[0_4px_16px_rgba(124,58,237,0.2)] hover:-translate-y-0.5 active:scale-95 transition-all flex items-center justify-center"
             aria-label="Record fund transfer"
           >
-            <span className="text-2xl">💸</span>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
           </button>
           {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-800/90 backdrop-blur-sm text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Record Fund Transfer
           </div>
         </div>
@@ -609,14 +607,14 @@ function FilterContent({
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+      <div className="flex items-center justify-between pb-2 border-b border-[rgba(124,58,237,0.06)]">
         <div>
           <span className="text-sm font-semibold text-gray-900">Filters</span>
           <p className="text-[9px] text-gray-400 mt-0.5">Changes apply instantly</p>
         </div>
         <button
           onClick={onClose}
-          className="px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+          className="px-3 py-1 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-bg)] rounded-xl hover:opacity-80 transition-colors"
         >
           Done
         </button>
@@ -633,7 +631,7 @@ function FilterContent({
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
               max={filterDateTo || maxDate}
-              className="w-[96%] md:w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-purple-400"
+              className="w-[96%] md:w-full px-2 py-1.5 text-xs border border-[rgba(124,58,237,0.15)] rounded-xl bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
               style={{ colorScheme: 'light', fontSize: '12px' }}
             />
           </div>
@@ -645,7 +643,7 @@ function FilterContent({
               onChange={(e) => setFilterDateTo(e.target.value)}
               min={filterDateFrom}
               max={maxDate}
-              className="w-[96%] md:w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-purple-400"
+              className="w-[96%] md:w-full px-2 py-1.5 text-xs border border-[rgba(124,58,237,0.15)] rounded-xl bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
               style={{ colorScheme: 'light', fontSize: '12px' }}
             />
           </div>
@@ -668,30 +666,30 @@ function FilterContent({
         <div className="mt-2 flex gap-2">
           <button
             onClick={() => toggleType('income')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+            className={`flex-1 px-3 py-2 text-xs font-medium rounded-xl transition-colors ${
               filterTypes.includes('income')
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[var(--color-success)] text-white'
+                : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
             }`}
           >
             Income
           </button>
           <button
             onClick={() => toggleType('expense')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+            className={`flex-1 px-3 py-2 text-xs font-medium rounded-xl transition-colors ${
               filterTypes.includes('expense')
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[var(--color-danger)] text-white'
+                : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
             }`}
           >
             Expense
           </button>
           <button
             onClick={() => toggleType('transfer')}
-            className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+            className={`flex-1 px-3 py-2 text-xs font-medium rounded-xl transition-colors ${
               filterTypes.includes('transfer')
                 ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
             }`}
           >
             Transfer
@@ -703,7 +701,7 @@ function FilterContent({
       {hasActiveFilters && (
         <button
           onClick={clearFilters}
-          className="w-full py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+          className="w-full py-2 text-xs font-medium text-gray-500 hover:bg-white/40 rounded-xl transition-colors flex items-center justify-center gap-1.5"
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

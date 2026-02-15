@@ -27,14 +27,14 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
         <div
           className={`
             flex items-center
-            border rounded-xl bg-white
+            border rounded-xl bg-white/75
             transition-all duration-150
-            focus-within:border-purple-800 focus-within:ring-2 focus-within:ring-purple-200
-            ${error ? 'border-red-500' : 'border-gray-200'}
+            focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[rgba(124,58,237,0.15)]
+            ${error ? 'border-[var(--color-danger)]' : 'border-[rgba(124,58,237,0.15)]'}
           `}
         >
           {/* Country Code */}
-          <div className="flex items-center gap-1.5 px-4 py-3 text-base font-medium text-gray-900 border-r border-gray-200 bg-stone-100 rounded-l-xl">
+          <div className="flex items-center gap-1.5 px-4 py-3 text-base font-medium text-gray-900 border-r border-[rgba(124,58,237,0.1)] bg-[var(--color-primary-bg)]/30 rounded-l-xl">
             <span className="text-lg">{AUTH_CONFIG.countryFlag}</span>
             <span>{AUTH_CONFIG.defaultCountryCode}</span>
           </div>

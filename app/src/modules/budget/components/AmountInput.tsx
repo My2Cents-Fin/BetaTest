@@ -99,7 +99,7 @@ export function AmountInput({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 flex items-center gap-3">
+    <div className="bg-white/60 border border-[rgba(124,58,237,0.08)] rounded-xl px-3 py-2.5 flex items-center gap-3">
       {/* Icon */}
       <span className="text-lg flex-shrink-0" role="img" aria-hidden="true">
         {icon || '📋'}
@@ -117,13 +117,13 @@ export function AmountInput({
             if (e.key === 'Escape') cancelNameEdit();
           }}
           onBlur={saveNameEdit}
-          className="flex-1 min-w-0 px-1.5 py-0.5 border border-purple-300 rounded text-sm text-gray-900 font-medium focus:outline-none focus:border-purple-800"
+          className="flex-1 min-w-0 px-1.5 py-0.5 border border-[var(--color-primary)]/50 rounded-lg text-sm text-gray-900 font-medium focus:outline-none focus:border-[var(--color-primary)]"
         />
       ) : (
         <button
           type="button"
           onClick={onNameChange ? startEditingName : undefined}
-          className={`flex-1 min-w-0 text-left text-sm font-medium text-gray-900 truncate ${onNameChange ? 'hover:text-purple-700 cursor-pointer' : ''}`}
+          className={`flex-1 min-w-0 text-left text-sm font-medium text-gray-900 truncate ${onNameChange ? 'hover:text-[var(--color-primary)] cursor-pointer' : ''}`}
           title={onNameChange ? 'Click to rename' : name}
         >
           {name}
@@ -147,10 +147,10 @@ export function AmountInput({
           disabled={disabled}
           className="
             w-full pl-6 pr-2 py-1.5
-            border border-gray-200 rounded
+            border border-[rgba(124,58,237,0.12)] rounded-lg
             text-sm text-gray-900 font-medium text-right
-            placeholder:text-gray-300
-            focus:outline-none focus:border-purple-800 focus:ring-1 focus:ring-purple-100
+            placeholder:text-gray-300 bg-white/75
+            focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[rgba(124,58,237,0.1)]
             disabled:opacity-50 disabled:bg-gray-50
           "
         />
@@ -165,10 +165,10 @@ export function AmountInput({
           className="
             appearance-none
             pl-2 pr-6 py-1.5
-            border border-gray-200 rounded
+            border border-[rgba(124,58,237,0.12)] rounded-lg
             text-sm text-gray-700
-            bg-white
-            focus:outline-none focus:border-purple-800 focus:ring-1 focus:ring-purple-100
+            bg-white/75
+            focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[rgba(124,58,237,0.1)]
             disabled:opacity-50 disabled:bg-gray-50
             cursor-pointer
           "

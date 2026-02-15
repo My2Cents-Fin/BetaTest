@@ -14,12 +14,12 @@ export function NavItem({ icon, label, active, onClick, collapsed = false, locke
         onClick={locked ? undefined : onClick}
         disabled={locked}
         className={`
-          w-full flex flex-col items-center justify-center py-2.5 rounded-lg transition-colors relative
+          w-full flex flex-col items-center justify-center py-2.5 rounded-xl transition-colors relative
           ${locked
             ? 'text-gray-300 cursor-not-allowed'
             : active
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-600 hover:bg-gray-100'}
+              ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
+              : 'text-gray-600 hover:bg-white/60'}
         `}
         title={label}
       >
@@ -37,12 +37,12 @@ export function NavItem({ icon, label, active, onClick, collapsed = false, locke
       onClick={locked ? undefined : onClick}
       disabled={locked}
       className={`
-        w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors
+        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors
         ${locked
           ? 'text-gray-300 cursor-not-allowed'
           : active
-            ? 'bg-purple-100 text-purple-700'
-            : 'text-gray-600 hover:bg-gray-100'}
+            ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
+            : 'text-gray-600 hover:bg-white/60'}
       `}
     >
       <span className="text-xl relative">

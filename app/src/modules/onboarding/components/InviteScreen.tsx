@@ -57,14 +57,18 @@ export function InviteScreen() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Panel - Branding */}
-      <div className="bg-gradient-to-br from-purple-800 to-purple-900 lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
+      <div className="bg-primary-gradient lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16 relative overflow-hidden">
+        {/* Decorative shapes */}
+        <div className="absolute top-[15%] right-[-8%] w-[200px] h-[200px] bg-white/[0.06] rounded-full" />
+        <div className="absolute bottom-[10%] left-[-10%] w-[160px] h-[160px] bg-white/[0.04] rounded-full" />
+
         {/* Brand Name */}
-        <h1 className="text-2xl text-white font-semibold">
+        <h1 className="text-2xl text-white font-semibold relative z-10">
           My<span className="font-bold">2Cents</span>
         </h1>
 
         {/* Hero Text - vertically centered */}
-        <div className="flex-1 flex flex-col justify-center py-8 lg:py-0">
+        <div className="flex-1 flex flex-col justify-center py-8 lg:py-0 relative z-10">
           <div className="text-6xl mb-6">🤝</div>
           <h2 className="text-3xl lg:text-4xl xl:text-5xl text-white leading-tight mb-4">
             <span className="font-bold">Money is better managed together</span>
@@ -76,7 +80,7 @@ export function InviteScreen() {
       </div>
 
       {/* Right Panel - Content */}
-      <div className="flex-1 bg-stone-50 flex items-center justify-center p-8 lg:p-12">
+      <div className="flex-1 bg-[var(--color-page-bg)] flex items-center justify-center p-8 lg:p-12">
         <div className="w-full max-w-md">
           {/* Step indicator */}
           <p className="text-sm text-gray-400 mb-2">Step 3 of 3</p>
@@ -89,12 +93,12 @@ export function InviteScreen() {
           </p>
 
           {/* Invite Code Display */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+          <div className="glass-card p-6 mb-6">
             {/* Show invite code prominently */}
             <div className="text-center mb-4">
               <p className="text-sm text-gray-500 mb-2">Your invite code</p>
-              <div className="bg-purple-50 border-2 border-purple-200 rounded-lg py-3 px-4">
-                <span className="text-2xl font-mono font-bold text-purple-800 tracking-widest">
+              <div className="bg-[var(--color-primary-bg)] border-2 border-[var(--color-primary)]/20 rounded-xl py-3 px-4">
+                <span className="text-2xl font-mono font-bold text-[var(--color-primary)] tracking-widest">
                   {inviteCode || 'DEMO'}
                 </span>
               </div>
@@ -141,7 +145,7 @@ export function InviteScreen() {
 
             <button
               onClick={handleCopyLink}
-              className="w-full py-3 px-4 border border-purple-800 text-purple-800 font-semibold rounded-xl hover:bg-purple-50 transition-colors"
+              className="w-full py-3 px-4 border border-[var(--color-primary)] text-[var(--color-primary)] font-semibold rounded-xl hover:bg-[var(--color-primary-bg)] transition-colors"
             >
               {copied ? '✓ Link Copied!' : 'Copy Invite Link'}
             </button>
@@ -155,7 +159,7 @@ export function InviteScreen() {
           <button
             onClick={handleContinue}
             disabled={isLoading}
-            className="w-full py-3.5 px-6 bg-purple-800 text-white font-semibold rounded-xl hover:bg-purple-900 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">

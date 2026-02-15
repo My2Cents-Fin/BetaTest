@@ -5,7 +5,7 @@ interface WelcomeCardProps {
 
 export function WelcomeCard({ userName, onDismiss }: WelcomeCardProps) {
   return (
-    <div className="bg-gradient-to-br from-purple-800 to-purple-900 rounded-2xl p-6 text-white relative">
+    <div className="bg-primary-gradient rounded-2xl p-6 text-white relative">
       {/* Dismiss button */}
       <button
         onClick={onDismiss}

@@ -16,8 +16,8 @@ export function ProgressDots({ currentStep, totalSteps = 4 }: ProgressDotsProps)
             key={step}
             className={`
               h-2 rounded-full transition-all duration-300
-              ${isActive ? 'w-6 bg-purple-800' : 'w-2'}
-              ${isCompleted ? 'bg-green-600' : ''}
+              ${isActive ? 'w-6 bg-[var(--color-primary)]' : 'w-2'}
+              ${isCompleted ? 'bg-[var(--color-success)]' : ''}
               ${!isActive && !isCompleted ? 'bg-gray-200' : ''}
             `}
           />

@@ -144,13 +144,13 @@ export function BudgetSection({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+    <div className="glass-card overflow-hidden">
       {/* Section Header - Clickable to collapse */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors border-l-4 border-purple-400"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/40 transition-colors border-l-4 border-[var(--color-primary)]"
       >
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
           {/* Chevron */}
           <svg
             className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isCollapsed ? '' : 'rotate-90'}`}
@@ -197,7 +197,7 @@ export function BudgetSection({
               {isEditable && (
                 <button
                   onClick={() => onStartAdd()}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-purple-700 font-medium hover:bg-purple-50 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-[var(--color-primary)] font-medium hover:bg-[var(--color-primary-bg)] rounded-xl transition-colors"
                 >
                   <span className="text-lg">+</span>
                   <span>Add {isIncome ? 'your first income' : 'expense'}</span>
@@ -240,7 +240,7 @@ export function BudgetSection({
               ) : (
                 <button
                   onClick={() => onStartAdd()}
-                  className="w-full px-4 py-3 flex items-center gap-2 text-purple-700 font-medium hover:bg-purple-50 transition-colors border-t border-gray-100"
+                  className="w-full px-4 py-3 flex items-center gap-2 text-[var(--color-primary)] font-medium hover:bg-[var(--color-primary-bg)] transition-colors border-t border-[rgba(124,58,237,0.06)]"
                 >
                   <span className="text-lg">+</span>
                   <span>Add income</span>
@@ -264,11 +264,11 @@ export function BudgetSection({
                   {/* Category Header - clickable to collapse */}
                   <button
                     onClick={() => toggleCategory(catName)}
-                    className="w-full px-4 py-2.5 bg-purple-50/50 flex items-center gap-2 border-t border-purple-100/50 hover:bg-purple-50 transition-colors"
+                    className="w-full px-4 py-2.5 bg-[var(--color-primary-bg)]/50 flex items-center gap-2 border-t border-[rgba(124,58,237,0.06)] hover:bg-[var(--color-primary-bg)] transition-colors"
                   >
                     {/* Chevron */}
                     <svg
-                      className={`w-3 h-3 text-purple-400 transition-transform ${isCategoryCollapsed ? '' : 'rotate-90'}`}
+                      className={`w-3 h-3 text-[var(--color-primary)]/60 transition-transform ${isCategoryCollapsed ? '' : 'rotate-90'}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -276,8 +276,8 @@ export function BudgetSection({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                     <span className="text-lg">{group.icon}</span>
-                    <span className="text-base font-semibold text-purple-800 flex-1 text-left">{group.name}</span>
-                    <span className="text-sm text-purple-600 font-medium tabular-nums">
+                    <span className="text-base font-semibold text-[var(--color-primary)] flex-1 text-left">{group.name}</span>
+                    <span className="text-sm text-[var(--color-primary)] font-medium tabular-nums">
                       ₹{formatNumber(group.total)}
                     </span>
                   </button>
@@ -324,7 +324,7 @@ export function BudgetSection({
                               e.stopPropagation();
                               onStartAdd(catId, catName);
                             }}
-                            className="w-full pl-10 pr-4 py-2 flex items-center gap-2 text-gray-400 text-sm hover:text-purple-700 hover:bg-gray-50 transition-colors"
+                            className="w-full pl-10 pr-4 py-2 flex items-center gap-2 text-gray-400 text-sm hover:text-[var(--color-primary)] hover:bg-white/40 transition-colors"
                           >
                             <span>+</span>
                             <span>Add item</span>
@@ -351,7 +351,7 @@ export function BudgetSection({
               ) : (
                 <button
                   onClick={() => onStartAdd()}
-                  className="w-full px-4 py-3 flex items-center gap-2 text-purple-700 font-medium hover:bg-purple-50 transition-colors border-t border-gray-200"
+                  className="w-full px-4 py-3 flex items-center gap-2 text-[var(--color-primary)] font-medium hover:bg-[var(--color-primary-bg)] transition-colors border-t border-[rgba(124,58,237,0.06)]"
                 >
                   <span className="text-lg">+</span>
                   <span>Add expense</span>

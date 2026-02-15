@@ -3,13 +3,15 @@ import type { ReactNode } from 'react';
 interface CardProps {
   children: ReactNode;
   className?: string;
-  variant?: 'default' | 'hero';
+  variant?: 'default' | 'hero' | 'glass' | 'glass-elevated';
 }
 
 export function Card({ children, className = '', variant = 'default' }: CardProps) {
   const variants = {
-    default: 'bg-white rounded-2xl py-8 px-6 shadow-lg',
-    hero: 'bg-hero-gradient rounded-xl py-6 px-5 text-white',
+    default: 'glass-card p-4',
+    hero: 'bg-hero-gradient rounded-2xl py-6 px-5 text-white',
+    glass: 'glass-card p-4',
+    'glass-elevated': 'glass-card glass-card-elevated p-4',
   };
 
   return (

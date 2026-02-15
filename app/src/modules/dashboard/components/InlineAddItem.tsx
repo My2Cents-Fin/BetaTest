@@ -123,7 +123,7 @@ export function InlineAddItem({
   };
 
   return (
-    <div data-add-container className={`px-4 py-3 bg-purple-50 border-l-4 border-purple-600 ${indented ? 'pl-10' : ''}`}>
+    <div data-add-container className={`px-4 py-3 bg-[var(--color-primary-bg)] border-l-4 border-[var(--color-primary)] ${indented ? 'pl-10' : ''}`}>
       <div className="flex items-center gap-2">
         {/* Icon selector */}
         <span className="text-lg shrink-0">{selectedIcon}</span>
@@ -137,10 +137,10 @@ export function InlineAddItem({
               className="
                 appearance-none
                 pl-2 pr-6 py-1.5
-                border border-purple-300 rounded-lg
+                border border-[rgba(124,58,237,0.15)] rounded-xl
                 text-sm text-gray-700
-                bg-white
-                focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100
+                bg-white/75
+                focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]
                 cursor-pointer
               "
             >
@@ -170,10 +170,10 @@ export function InlineAddItem({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder={type === 'income' ? 'Income source...' : 'Expense name...'}
-          className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
+          className={`flex-1 min-w-0 px-2 py-1.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:ring-2 ${
             showDuplicateError
               ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
-              : 'border-purple-300 focus:border-purple-600 focus:ring-purple-100'
+              : 'border-[rgba(124,58,237,0.15)] focus:border-[var(--color-primary)] focus:ring-[rgba(124,58,237,0.15)]'
           }`}
         />
 
@@ -181,7 +181,7 @@ export function InlineAddItem({
         <button
           onClick={handleSubmit}
           disabled={!name.trim()}
-          className="p-1.5 text-green-600 hover:text-green-700 active:text-green-800 disabled:text-gray-300 transition-colors shrink-0"
+          className="p-1.5 text-[var(--color-success)] hover:text-[var(--color-success)] active:text-[var(--color-success)] disabled:text-gray-300 transition-colors shrink-0"
           aria-label="Add"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
@@ -218,7 +218,7 @@ export function InlineAddItem({
                 e.preventDefault(); // Prevent input blur
                 handleSuggestionClick(suggestion);
               }}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 bg-white/75 border border-[rgba(124,58,237,0.1)] rounded-xl text-sm text-gray-700 hover:border-[var(--color-primary)]/30 hover:bg-[var(--color-primary-bg)] transition-colors"
             >
               <span>{suggestion.icon}</span>
               <span>{suggestion.name}</span>

@@ -6,27 +6,69 @@
 2026-02-15
 
 ## Last Session Summary
-**Session 20: Member filter on budget tab.**
+**Session 26: Filter Overlay Fix (React Portal) + Glass Design Completion**
 
-Added member filter to the budget view mode. When a household has multiple members, pill buttons ("All", "Member1", "Member2") appear after the edit pencil in both desktop and mobile headers.
+### Filter Overlay Fix (Critical Bug)
+The filter dropdowns in TransactionsTab and BudgetTab were appearing as "orphaned modals" on the left side of the screen instead of overlaying near the filter button. Root cause: CSS `backdrop-filter` on ancestor elements (`.glass-header`, `.glass-card`) creates containing blocks that trap `fixed` positioned descendants.
 
-1. **Member filter UI (`BudgetTab.tsx`):**
-   - Added `filterMemberId` state (null = All, string = specific member)
-   - Desktop: pill buttons after Edit pencil button
-   - Mobile: pill row below month selector (scrollable)
-   - Only shows in view mode when household has >1 member
+**Fix:** Used `ReactDOM.createPortal(dropdown, document.body)` to render filter dropdowns directly at the document root, completely escaping all ancestor containing blocks.
 
-2. **Data plumbing (`budget.ts`):**
-   - `getActualsBySubCategory` now also returns `rawTransactions` (with `sub_category_id`, `amount`, `logged_by`)
-   - `getBudgetViewData` passes `expenseTransactions` through to the component
+Changes:
+- `TransactionsTab.tsx` — Added `createPortal` import; filter dropdown now renders via portal with transparent backdrop for click-outside-to-close; replaced `glass-card glass-card-elevated` with `bg-white rounded-2xl border` (no `backdrop-filter`/`overflow: hidden`)
+- `BudgetTab.tsx` — Same portal pattern for budget member filter dropdown
 
-3. **Filtering logic (`BudgetViewMode.tsx`):**
-   - When a member is selected: expense actuals recomputed from raw transactions for that member only
-   - Income items filtered by `loggedBy`
-   - Total income recalculated from filtered items
-   - Planned amounts remain unchanged (household-level)
+### Glass Design Completion (from Session 25 continuation)
+Completed glass design conversion for remaining components:
+- `InlineAddItem.tsx` — Full glass design conversion
+- `WelcomeCard.tsx` — `bg-primary-gradient`
+- `ExpenseSelectionScreen.tsx` — `bg-primary-gradient`
+- `InlineAddCategory.tsx` — Full glass design conversion
+- `ErrorAlert.tsx` — CSS var danger colors
 
-All type checks pass clean. NOT YET DEPLOYED.
+### Previous Session 25 fixes (preserved)
+- Transactions summary card widened
+- Income amounts red bleed-through fixed (opaque bg)
+- Icon-header padding reduced
+- Notification icon removed from Dashboard
+- Overspent Categories restructured
+
+### Previous: Sessions 22-24 — Dreamy Glass Design Language
+
+Applied a comprehensive "dreamy glass" design language across the entire My2cents PWA.
+
+### Design Foundation Layer
+- **CSS Custom Properties** in `app/src/index.css`: `--color-primary: #7C3AED`, `--color-page-bg`, `--color-success`, `--color-danger`, `--glass-blur`, `--glass-border`, `--glass-shadow`, `--color-primary-bg`, `--color-success-bg`
+- **Utility Classes**: `.glass-card`, `.glass-card-elevated`, `.glass-header`, `.glass-nav`, `.bg-primary-gradient`, `.noise-overlay`
+- **NoiseOverlay component** (`app/src/shared/components/NoiseOverlay.tsx`): SVG fractal noise texture overlay on page bg
+- **GlassCard component** (`app/src/shared/components/GlassCard.tsx`): Reusable frosted glass card
+
+### Files Modified (30+ components)
+**Dashboard:** DashboardScreen.tsx, WelcomeCard.tsx, BudgetSection.tsx (dashboard), BudgetItem.tsx (dashboard), InlineAddItem.tsx, QuickAddTransaction.tsx, FundTransferModal.tsx
+**Budget:** BudgetTab.tsx, BudgetViewMode.tsx, InlineIncomeSection.tsx, MonthSelector.tsx, CategoryTile.tsx, AmountInput.tsx, InlineAddCategory.tsx, ExpenseSelectionScreen.tsx
+**Transactions:** TransactionsTab.tsx
+**Auth:** PhoneEntryScreen.tsx, OTPScreen.tsx, SuccessScreen.tsx, OTPInput.tsx, PhoneInput.tsx
+**Onboarding:** YourNameScreen.tsx, HouseholdScreen.tsx, InviteScreen.tsx
+**Shared:** ProfilePanel.tsx, Toast.tsx, MemberMultiSelect.tsx, ErrorAlert.tsx, Input.tsx, NavItem.tsx, ProgressDots.tsx
+**App:** Router.tsx (LoadingScreen)
+
+### Design Conversion Patterns Applied
+- `bg-stone-50` → `bg-[var(--color-page-bg)]`
+- `bg-white rounded-xl` → `glass-card`
+- `bg-white border-b` headers → `glass-header`
+- `bg-purple-600/700/800` buttons → `bg-primary-gradient` with shadow `shadow-[0_4px_16px_rgba(124,58,237,0.3)]` + hover lift
+- `rounded-lg` → `rounded-xl` throughout
+- `text-purple-XXX` → `text-[var(--color-primary)]`
+- Modal backdrops → `bg-black/40 backdrop-blur-sm`
+- Modal cards → `bg-white/90 backdrop-blur-xl rounded-t-3xl md:rounded-2xl`
+- Inputs → `border-[rgba(124,58,237,0.15)] rounded-xl bg-white/75` with glass focus ring
+- Dropdowns → `bg-white/90 backdrop-blur-xl` with glass shadow
+- Emojis in headers → SVG line icons in `rounded-lg bg-[var(--color-primary-bg)]` containers
+- Hover states → `hover:bg-white/40` or `hover:bg-white/60`
+- Borders → `border-[rgba(124,58,237,0.06)]` for separators
+
+### Build Status
+- TypeScript: ✅ Zero errors (`npx tsc --noEmit` passes clean)
+- Zero hardcoded `purple-` or `indigo-` class references in any `.tsx` file (only in comments)
 
 ---
 
@@ -71,6 +113,7 @@ All type checks pass clean. NOT YET DEPLOYED.
 - [x] Onboarding flow HTML prototype → `design-previews/14-onboarding-flow.html`
 - [x] My2cents design system → `docs/my2cents-design-system.md`
 - [x] Brand identity comparison → `design-previews/my2cents-identity-comparison.html`
+- [x] **Dreamy Glass design language** — Full app reskin with glass morphism (frosted glass cards, backdrop-blur, noise overlay, CSS custom properties, gradient buttons). Applied to 30+ components across all screens.
 
 ### Supabase Setup
 - [x] **PRODUCTION:** Created Supabase project "My2Cents-prod" → `qybzttjbjxmqdhcstuif.supabase.co`
@@ -97,21 +140,21 @@ All type checks pass clean. NOT YET DEPLOYED.
 
 ### Onboarding App (Frontend)
 - [x] Vite + React 18 + TypeScript project → `app/`
-- [x] Tailwind CSS v4 with standard colors (purple-800, stone-50, gray-*) → `app/tailwind.config.js`
+- [x] Tailwind CSS v4 with **glass design system** (CSS custom properties, glass-card/glass-header utilities, primary gradient) → `app/src/index.css`
 - [x] Google Fonts (Poppins) → `app/index.html`
 - [x] Supabase client (real auth, no demo mode) → `app/src/lib/supabase.ts`
 - [x] Shared components → `app/src/shared/components/`
-  - Button (purple-800 primary, loading, disabled states, ghost/secondary variants)
-  - Input (purple focus ring, gray borders, error states)
-  - Card (default and hero variants)
-  - ErrorAlert (red color scheme)
+  - Button (primary gradient, loading, disabled states, ghost/secondary variants)
+  - Input (glass border/focus ring, error states)
+  - GlassCard, NoiseOverlay (glass design foundation)
+  - ErrorAlert (CSS var danger color scheme)
   - Logo (My2cents wordmark)
 - [x] Validation utilities → `app/src/shared/utils/validation.ts`
 - [x] Auth module → `app/src/modules/auth/`
 - [x] Onboarding module → `app/src/modules/onboarding/`
 - [x] AuthProvider with real Supabase session
 - [x] Router with auth guards
-- [x] **Responsive split-screen layout** (purple branding panel + cream form panel)
+- [x] **Responsive split-screen layout** (gradient branding panel + glass form panel)
 - [x] Build passes with no TypeScript errors
 - [x] **Full auth flow working** with real Supabase
 
@@ -235,7 +278,7 @@ All type checks pass clean. NOT YET DEPLOYED.
 ---
 
 ## In Progress
-- [ ] **Deploy and test income-as-transactions flow** — Deploy and verify on https://beta-test-five.vercel.app
+- [x] **Deploy and test income-as-transactions flow** — Deployed commit `71d3c01` to https://beta-test-five.vercel.app
   - New user: Budget tab → edit mode with Income + Expenses sections → Record income inline → Allocate expenses → Freeze → View mode
   - Existing user: Budget tab → should show frozen view with income from transactions
   - Edit mode: Income section editable inline (click to edit amount, delete, add new) alongside expenses
@@ -247,9 +290,10 @@ All type checks pass clean. NOT YET DEPLOYED.
 ## Next Up (in order)
 
 ### 1. Near-Term Tasks (User's List)
-- [x] **Filter by member on budget tab** — AI and AE update to show only that member's contributions. Pill buttons ("All" + member names) in view mode header. Expense actuals recomputed from raw transactions per member; income items filtered by loggedBy.
+- [x] **Filter by member on budget tab** — Filter icon + MemberMultiSelect dropdown in view mode header. Expense actuals recomputed from raw transactions per selected members; income items filtered by loggedBy.
+- [ ] **Dashboard → Transactions drill-down** — Click on a dashboard category/card to navigate to Transactions tab pre-filtered for those transactions
+- [ ] **Category & subcategory filters in Transactions tab** — Add category and sub-category as filter options alongside Members and date range
 - [ ] **Onboarding income and expense flow test** — End-to-end test of new user flow through income recording + expense planning + freeze
-- [ ] **FAB income flow improvement** — Add inline sub-category creation for income in QuickAdd (DEFERRED — user wants to live with current behavior first)
 - [ ] **Voice-based budget setup** — Simplify budget setup through voice instructions (future exploration)
 
 ### 2. UI Polish & Fixes
@@ -297,6 +341,8 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 ## Deferred Decisions (User to revisit after living with the app)
 - **FAB income flow:** Currently FAB can only add income against existing sub-categories. User wants Option 2 (inline sub-category creation for income in QuickAdd) but deferred the UX decision (how to distinguish income vs expense input). Revisit after daily usage.
+- **Income transaction date:** When income is recorded in budget edit mode, the date defaults to today (`new Date().toISOString().split('T')[0]`). User may want to specify a different date (e.g., salary received on a specific date). Revisit after daily usage.
+- **FAB for income recording:** Evaluate whether income should be recordable through the FAB (floating action button) at all. Currently income is only recorded inline during budget edit mode. FAB could provide a quicker path for recording income outside of budget planning. Revisit after daily usage.
 - **Voice-based budget setup:** Simplify budget setup through voice instructions. User mentioned as future task.
 
 ---
@@ -318,6 +364,9 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-15 | **Session 25 (UI polish from testing):** Fixed 7 issues from real-device screenshots: (1) Transactions filter overlay — changed from `absolute` to `fixed` positioning, (2) Budget filter overlay — same fix for mobile, (3) Transactions summary card widened — more padding, larger icons, left-aligned text, (4) Budget edit income amounts red — changed semi-transparent `bg-white/40` to opaque `bg-white` so swipe-to-delete red bg doesn't bleed through, (5) Reduced icon-header padding in InlineIncomeSection + BudgetSection (`gap-1.5`→`gap-1`, icon `w-7`→`w-6`), (6) Removed notification bell icon from DashboardTab mobile header, (7) Overspent Categories moved outside card to match "Daily Expenses to Watch" pattern (heading+icon outside, items in separate card). TypeScript passes clean. |
+| 2026-02-15 | **Sessions 22-24 (dreamy glass design language):** Full app reskin with glass morphism design language. Built CSS foundation (custom properties, utility classes like `.glass-card`, `.glass-header`, `.bg-primary-gradient`, NoiseOverlay/GlassCard components). Systematically converted 30+ components across all screens: Dashboard (DashboardScreen, WelcomeCard, BudgetSection, BudgetItem, InlineAddItem, QuickAddTransaction, FundTransferModal), Budget (BudgetTab, BudgetViewMode, InlineIncomeSection, MonthSelector, CategoryTile, AmountInput, InlineAddCategory, ExpenseSelectionScreen), Transactions (TransactionsTab), Auth (PhoneEntryScreen, OTPScreen, SuccessScreen, OTPInput, PhoneInput), Onboarding (YourNameScreen, HouseholdScreen, InviteScreen), Shared (ProfilePanel, Toast, MemberMultiSelect, ErrorAlert, Input, NavItem, ProgressDots), App (Router LoadingScreen). Replaced all emojis in modal headers with SVG line icons. Zero hardcoded purple/indigo references remain. TypeScript passes clean. |
+| 2026-02-15 | **Session 21 (multiselect filter + deploy):** Iterated member filter UI 3x based on user feedback: pills → filter icon + pills → filter icon + multiselect dropdown. Created shared `MemberMultiSelect` component (`app/src/shared/components/MemberMultiSelect.tsx`) — select-like input with checkboxes dropdown, max-h scroll for large lists, click-outside-to-close. Applied to both BudgetTab (filter icon + dropdown panel) and TransactionsTab (renamed "Recorded By" → "Members"). Changed `filterMemberId` (single) → `filterMemberIds` (array). Fixed budget filter panel: removed `overflow-hidden` (was clipping dropdown), increased spacing (`mb-1` → `mb-4`). Deployed commit `71d3c01`. Updated deferred decisions (income date). Added new near-term tasks (dashboard drill-down, category/subcategory filters in trx tab). |
 | 2026-02-15 | **Session 20 (member filter on budget tab):** Added member filter pills ("All" + member names) to budget view mode header — desktop: after edit pencil, mobile: below month selector row. Added `filterMemberId` state to BudgetTab, `rawTransactions` passthrough from `getActualsBySubCategory` → `getBudgetViewData` → BudgetViewMode. When filtered: expense actuals recomputed from raw transactions per member, income items filtered by `loggedBy`, totals recalculated. Planned amounts unchanged (household-level). Type check passes clean. |
 | 2026-02-15 | **Session 19 (dashboard card renames + income date fix):** Renamed "Budget Health" → "Left to Spend" (removed redundant "Left this month" subtitle). Renamed "Combined Cash Balance" → "Total Cash in Hand" (added subtitle "Total income v/s actual expense"). Fixed "Split by Members" button alignment to top-right (`items-center` → `items-start`). Fixed income transaction date from hardcoded 1st-of-month to actual recording date (`new Date().toISOString().split('T')[0]`). Analyzed FAB income flow limitations — deferred improvement decision. All type checks pass. |
 | 2026-02-15 | **Session 18 (section header styling + unplanned income wording):** Applied `bg-purple-100` to all 4 section headers (edit mode income/expense, view mode income/expense) with progressive hierarchy (section=`bg-purple-100`, category=`bg-purple-50`). Moved unplanned income indicator to left-aligned subtitle under Expenses heading ("₹X left to plan" green / "₹X over income" red). Updated column label colors to `text-purple-400`. |

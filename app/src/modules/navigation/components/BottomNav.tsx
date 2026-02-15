@@ -90,7 +90,7 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
   };
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 z-40 ${className}`}>
+    <nav className={`fixed bottom-0 left-0 right-0 glass-nav h-16 z-40 ${className}`}>
       {/* Center FAB - positioned absolutely to sit above nav */}
       <div className="absolute left-1/2 -translate-x-1/2 -top-6">
         <button
@@ -100,10 +100,10 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
           onClick={handleClick}
           disabled={isFabDisabled}
           className={`
-            w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-colors border-4 border-white
+            w-14 h-14 rounded-2xl shadow-[0_4px_16px_rgba(124,58,237,0.35)] flex items-center justify-center text-white transition-all border-4 border-white/80
             ${isFabDisabled
               ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-purple-600 active:bg-purple-700'}
+              : 'bg-primary-gradient active:scale-95'}
           `}
           aria-label={hasOtherMembers ? "Add transaction (long press for fund transfer)" : "Add transaction"}
         >
@@ -119,35 +119,40 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
           onClick={isDashboardLocked ? undefined : () => onTabChange('dashboard')}
           disabled={isDashboardLocked}
           className={`
-            flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors h-full relative
+            flex-1 flex flex-col items-center justify-center gap-1 transition-all h-full relative rounded-xl
             ${isDashboardLocked
               ? 'text-gray-300 cursor-not-allowed'
               : activeTab === 'dashboard'
-                ? 'text-purple-600'
-                : 'text-gray-400 active:text-gray-600'}
+                ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
+                : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
           `}
         >
-          <span className="text-xl relative">
-            {tabs[0].icon}
-            {isDashboardLocked && (
-              <span className="absolute -top-1 -right-1 text-xs">🔒</span>
-            )}
-          </span>
-          <span className="text-xs font-medium">{tabs[0].label}</span>
+          <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9,22 9,12 15,12 15,22"/>
+          </svg>
+          {isDashboardLocked && (
+            <span className="absolute top-1.5 right-3 text-[10px]">🔒</span>
+          )}
+          <span className="text-[10px] font-medium">{tabs[0].label}</span>
         </button>
 
         {/* Budget */}
         <button
           onClick={() => onTabChange('budget')}
           className={`
-            flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors h-full
+            flex-1 flex flex-col items-center justify-center gap-1 transition-all h-full rounded-xl
             ${activeTab === 'budget'
-              ? 'text-purple-600'
-              : 'text-gray-400 active:text-gray-600'}
+              ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
+              : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
           `}
         >
-          <span className="text-xl">{tabs[1].icon}</span>
-          <span className="text-xs font-medium">{tabs[1].label}</span>
+          <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="2" y1="7" x2="22" y2="7"/>
+            <line x1="2" y1="11" x2="22" y2="11"/>
+          </svg>
+          <span className="text-[10px] font-medium">{tabs[1].label}</span>
         </button>
 
         {/* Center spacer for FAB */}
@@ -158,30 +163,38 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
           onClick={isTransactionsLocked ? undefined : () => onTabChange('transactions')}
           disabled={isTransactionsLocked}
           className={`
-            flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors h-full relative
+            flex-1 flex flex-col items-center justify-center gap-1 transition-all h-full relative rounded-xl
             ${isTransactionsLocked
               ? 'text-gray-300 cursor-not-allowed'
               : activeTab === 'transactions'
-                ? 'text-purple-600'
-                : 'text-gray-400 active:text-gray-600'}
+                ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
+                : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
           `}
         >
-          <span className="text-xl relative">
-            {tabs[2].icon}
-            {isTransactionsLocked && (
-              <span className="absolute -top-1 -right-1 text-xs">🔒</span>
-            )}
-          </span>
-          <span className="text-xs font-medium">{tabs[2].label}</span>
+          <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <circle cx="4" cy="6" r="1" fill="currentColor"/>
+            <circle cx="4" cy="12" r="1" fill="currentColor"/>
+            <circle cx="4" cy="18" r="1" fill="currentColor"/>
+          </svg>
+          {isTransactionsLocked && (
+            <span className="absolute top-1.5 right-3 text-[10px]">🔒</span>
+          )}
+          <span className="text-[10px] font-medium">{tabs[2].label}</span>
         </button>
 
         {/* Settings/Profile */}
         <button
           onClick={onOpenSettings}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors h-full text-gray-400 active:text-gray-600"
+          className="flex-1 flex flex-col items-center justify-center gap-1 transition-all h-full text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)] rounded-xl"
         >
-          <span className="text-xl">👤</span>
-          <span className="text-xs font-medium">Profile</span>
+          <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="7" r="4"/>
+            <path d="M5.5 21a8.38 8.38 0 0 1 13 0"/>
+          </svg>
+          <span className="text-[10px] font-medium">Profile</span>
         </button>
       </div>
     </nav>

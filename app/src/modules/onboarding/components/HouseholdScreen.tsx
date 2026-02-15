@@ -192,7 +192,7 @@ export function HouseholdScreen() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Panel - Branding */}
-      <div className="bg-gradient-to-br from-purple-800 to-purple-900 lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
+      <div className="bg-primary-gradient relative overflow-hidden lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
         {/* Header row with brand and sign-out (mobile) */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl text-white font-semibold">
@@ -227,7 +227,7 @@ export function HouseholdScreen() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 bg-stone-50 flex flex-col">
+      <div className="flex-1 bg-[var(--color-page-bg)] flex flex-col">
         {/* Sign out button - desktop only */}
         <div className="hidden lg:flex justify-end px-4 pt-4 lg:px-8 lg:pt-6">
           <button
@@ -249,20 +249,20 @@ export function HouseholdScreen() {
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => { setMode('create'); setError(''); }}
-              className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${
+              className={`flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition-all ${
                 mode === 'create'
-                  ? 'bg-purple-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]'
+                  : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
               }`}
             >
               Create New
             </button>
             <button
               onClick={() => { setMode('join'); setError(''); }}
-              className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${
+              className={`flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition-all ${
                 mode === 'join'
-                  ? 'bg-purple-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]'
+                  : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.1)] hover:bg-white/80'
               }`}
             >
               Join Existing
@@ -296,7 +296,7 @@ export function HouseholdScreen() {
                     className={`
                       w-full px-4 py-3.5 border rounded-xl text-gray-900 bg-white
                       placeholder:text-gray-400
-                      focus:outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-100
+                      focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]
                       disabled:opacity-50 disabled:cursor-not-allowed
                       ${error ? 'border-red-500' : 'border-gray-200'}
                     `}
@@ -311,7 +311,7 @@ export function HouseholdScreen() {
                 <button
                   onClick={handleCreate}
                   disabled={!isCreateValid || isLoading}
-                  className="w-full py-3.5 px-6 bg-purple-800 text-white font-semibold rounded-xl hover:bg-purple-900 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -367,7 +367,7 @@ export function HouseholdScreen() {
                       className={`
                         w-full px-4 py-3.5 border rounded-xl text-gray-900 bg-white font-mono tracking-widest
                         placeholder:text-gray-400 placeholder:font-sans placeholder:tracking-normal
-                        focus:outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-100
+                        focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]
                         disabled:opacity-50 disabled:cursor-not-allowed
                         ${error ? 'border-red-500' : 'border-gray-200'}
                       `}
@@ -389,7 +389,7 @@ export function HouseholdScreen() {
                   <button
                     onClick={() => handleJoin()}
                     disabled={!isJoinValid || isLoading}
-                    className="w-full py-3.5 px-6 bg-purple-800 text-white font-semibold rounded-xl hover:bg-purple-900 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
                   >
                     {isLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -413,7 +413,7 @@ export function HouseholdScreen() {
                       <button
                         onClick={startScanner}
                         disabled={isLoading}
-                        className="w-full py-3.5 px-6 border-2 border-purple-800 text-purple-800 font-semibold rounded-xl hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-3.5 px-6 border-2 border-[var(--color-primary)] text-[var(--color-primary)] font-semibold rounded-xl hover:bg-[var(--color-primary-bg)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h2m14 0h2M6 20h2M6 4h2m8 0h2" />
@@ -432,10 +432,14 @@ export function HouseholdScreen() {
 
       {/* Sign out confirmation modal */}
       {showSignOutModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card glass-card-elevated max-w-sm w-full p-6">
             <div className="text-center mb-6">
-              <span className="text-5xl mb-4 block">😢</span>
+              <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-bg)] flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
                 Do you really want to go?
               </h3>
@@ -446,13 +450,13 @@ export function HouseholdScreen() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSignOutModal(false)}
-                className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-3 border border-[rgba(124,58,237,0.15)] text-gray-700 font-medium rounded-xl bg-white/60 hover:bg-white/80 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSignOut}
-                className="flex-1 px-4 py-3 bg-purple-800 text-white font-semibold rounded-xl hover:bg-purple-900 transition-colors"
+                className="flex-1 px-4 py-3 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] transition-all"
               >
                 Sign out
               </button>

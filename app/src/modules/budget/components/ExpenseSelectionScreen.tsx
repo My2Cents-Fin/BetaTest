@@ -49,7 +49,7 @@ export function ExpenseSelectionScreen() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Panel - Branding */}
-      <div className="bg-gradient-to-br from-purple-800 to-purple-900 lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
+      <div className="bg-primary-gradient lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
         <h1 className="text-2xl text-white font-semibold">
           My<span className="font-bold">2Cents</span>
         </h1>
@@ -105,7 +105,7 @@ export function ExpenseSelectionScreen() {
             </button>
             <button
               onClick={handleSkip}
-              className="flex-1 py-3 px-6 bg-purple-800 text-white font-semibold rounded-xl hover:bg-purple-900 transition-colors"
+              className="flex-1 py-3 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 transition-all"
             >
               Go to Dashboard
             </button>

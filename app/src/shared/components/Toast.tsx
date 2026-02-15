@@ -24,9 +24,9 @@ export function Toast({ message, type = 'success', duration = 3000, onClose }: T
   }, [duration, onClose]);
 
   const bgColor = {
-    success: 'bg-green-600',
-    error: 'bg-red-600',
-    info: 'bg-purple-800',
+    success: 'bg-[var(--color-success)]',
+    error: 'bg-[var(--color-danger)]',
+    info: 'bg-primary-gradient',
   }[type];
 
   const icon = {
@@ -53,7 +53,7 @@ export function Toast({ message, type = 'success', duration = 3000, onClose }: T
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
       }`}
     >
-      <div className={`${bgColor} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3`}>
+      <div className={`${bgColor} text-white px-4 py-3 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.15)] backdrop-blur-xl flex items-center gap-3`}>
         {icon}
         <span className="font-medium text-sm">{message}</span>
       </div>
