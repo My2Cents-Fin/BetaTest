@@ -119,10 +119,12 @@ BEGIN
     v_phone_email := replace(r.phone, '+', '') || '@my2cents.app';
 
     -- Add email + password to existing auth record
+    -- Set email_confirmed_at so Supabase doesn't block login
     UPDATE auth.users
     SET
       email = v_phone_email,
       encrypted_password = v_hashed_password,
+      email_confirmed_at = COALESCE(email_confirmed_at, now()),
       raw_user_meta_data = COALESCE(r.raw_user_meta_data, '{}'::jsonb) ||
         jsonb_build_object('phone_number', r.phone),
       updated_at = now()
