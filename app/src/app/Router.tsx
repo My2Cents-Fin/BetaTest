@@ -6,7 +6,8 @@ import { getUserHousehold } from '../modules/onboarding/services/onboarding';
 
 // Auth screens
 import { PhoneEntryScreen } from '../modules/auth/components/PhoneEntryScreen';
-import { OTPScreen } from '../modules/auth/components/OTPScreen';
+import { SetPinScreen } from '../modules/auth/components/SetPinScreen';
+import { EnterPinScreen } from '../modules/auth/components/EnterPinScreen';
 import { SuccessScreen } from '../modules/auth/components/SuccessScreen';
 
 // Onboarding screens
@@ -137,7 +138,22 @@ export function AppRouter() {
             </PublicRoute>
           }
         />
-        <Route path="/verify" element={<OTPScreen />} />
+        <Route
+          path="/set-pin"
+          element={
+            <PublicRoute>
+              <SetPinScreen />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/enter-pin"
+          element={
+            <PublicRoute>
+              <EnterPinScreen />
+            </PublicRoute>
+          }
+        />
         <Route path="/success" element={<SuccessScreen />} />
 
         {/* Onboarding routes */}

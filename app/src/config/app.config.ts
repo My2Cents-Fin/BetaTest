@@ -11,15 +11,15 @@
 // Authentication Settings
 // ============================================
 
-export type LoginMethod = 'phone_otp' | 'email_otp' | 'google';
+export type LoginMethod = 'phone_otp' | 'phone_pin' | 'email_otp' | 'google';
 
 export const AUTH_CONFIG = {
   /**
    * Enabled login methods
-   * Options: 'phone_otp', 'email_otp', 'google'
+   * Options: 'phone_otp', 'phone_pin', 'email_otp', 'google'
    * Multiple can be enabled - UI will show options accordingly
    */
-  loginMethods: ['phone_otp'] as LoginMethod[],
+  loginMethods: ['phone_pin'] as LoginMethod[],
 
   /**
    * Default country code for phone input
@@ -30,6 +30,17 @@ export const AUTH_CONFIG = {
    * Country flag emoji for phone input
    */
   countryFlag: '🇮🇳',
+
+  /**
+   * PIN length for MPIN-based login
+   */
+  pinLength: 6,
+
+  /**
+   * Email domain for Supabase email/password auth
+   * Phone numbers are converted to emails: {phone}@{domain}
+   */
+  emailDomain: 'my2cents.app',
 } as const;
 
 // ============================================

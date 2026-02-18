@@ -3,28 +3,67 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-15
+2026-02-18
 
 ## Last Session Summary
-**Session 27: Unified Sub-Category Filter (Replaces Type Filter)**
+**Session 29: Replace OTP Login with MPIN-Based Login**
 
-### Category/Sub-Category Filter in Transactions Tab
-Replaced the 3 toggle buttons (Income/Expense/Transfer) in the Transactions filter panel with a unified sub-category multiselect dropdown. Use case: RCA for overflowing categories ("show me all transactions under Groceries or Food Ordering").
+### Auth Architecture Change
+Replaced Supabase phone OTP auth (SMS-based, costs per login) with 6-digit MPIN system (zero SMS cost). Phone number remains the identifier, but authentication uses `supabase.auth.signUp/signInWithPassword` with email = `{phone}@my2cents.app` and password = the MPIN.
 
-**New component:** `app/src/shared/components/CategoryMultiSelect.tsx`
-- Grouped dropdown with sub-categories organized by parent category (Income, EMI, Savings, Variable, etc.)
-- "Quick Select" shortcuts at top: "All Income", "All Expenses", "All Transfers"
-- Indeterminate checkbox state when some items of a type are selected
-- Fund transfers handled as special entry (sub_category_id = null)
-- Click-outside-to-close, max-h scroll, glass design styling
-- OR logic: selecting sub-cats from different categories shows all matching transactions
+### New Files Created
+- **`supabase/migrations/010_user_pins.sql`** — `user_pins` table, `check_phone_registered` RPC (anon-callable), `reset_user_pin` RPC (SECURITY DEFINER, updates auth.users.encrypted_password + user_pins), migration block for existing OTP users (adds email/password to auth records, preserves user_id)
+- **`app/src/modules/auth/components/SetPinScreen.tsx`** — Two-step PIN creation (enter + confirm). Used for both new user signup and PIN reset. Validates PIN strength (rejects all-same-digit, 123456, 654321). Split-screen layout matching existing auth screens.
+- **`app/src/modules/auth/components/EnterPinScreen.tsx`** — PIN login screen for existing users. Masked phone display, auto-submit on 6 digits, "Forgot PIN?" link to reset flow.
 
-**State changes in TransactionsTab.tsx:**
-- Removed: `filterTypes: TransactionType[]`
-- Added: `filterSubCategoryIds: Set<string>` + `filterIncludeTransfers: boolean`
-- New handlers: `toggleSubCategory`, `toggleTransfers`, `toggleAllOfType`
-- Filter logic: Set.has() for sub-category ID matching, separate boolean for transfers
-- Revert: git commit `71d3c01` has the old Type filter implementation
+### Modified Files
+- **`auth.ts`** — Removed `sendOTP()`, `verifyOTP()`. Added `phoneToEmail()`, `checkPhoneExists()` (RPC call), `signUpWithPin()`, `signInWithPin()`, `resetPin()` (RPC call). Kept `signOut`, `getOnboardingStatus`, etc unchanged.
+- **`PhoneEntryScreen.tsx`** — Now calls `checkPhoneExists()` on Continue, navigates to `/enter-pin` (existing) or `/set-pin` (new) instead of `/verify`.
+- **`OTPInput.tsx`** — Added `masked?: boolean` prop with `-webkit-text-security: disc` for PIN dot masking.
+- **`Router.tsx`** — Added `/set-pin` and `/enter-pin` routes (PublicRoute-guarded). Removed `/verify` route. OTPScreen import removed.
+- **`app.config.ts`** — Added `phone_pin` login method, `pinLength: 6`, `emailDomain: 'my2cents.app'`.
+- **`validation.ts`** — Added `validatePin()` (6-digit, rejects trivial PINs) and `maskPhone()` (xxxxx 43210).
+- **`ProfilePanel.tsx`** — Phone display reads from `user_metadata.phone_number` (MPIN auth) with fallback to `user.phone` (OTP auth).
+- **`onboarding.ts`** — Phone extraction in `updateDisplayName` handles MPIN auth metadata.
+
+### Database Migration (DEV)
+- ✅ Ran `010_user_pins.sql` on DEV Supabase (`vcbmazhfcmchbswdcwqr`) — `user_pins` table, `check_phone_registered` RPC, `reset_user_pin` RPC, existing OTP user migration all created successfully.
+- ✅ Disabled "Confirm email" in DEV Supabase Auth → Sign In / Providers settings.
+- ✅ Tested new user flow: enter phone → detected as new → navigated to "Create your PIN" screen. Working end-to-end.
+
+### Deployment Notes (PROD)
+- **Still needed for PROD**: Run `010_user_pins.sql` on PROD Supabase (`qybzttjbjxmqdhcstuif`) and disable email confirmations there.
+- **Existing user migration**: Existing OTP users get email + temporary PIN `000000`. Set real PINs via `SELECT reset_user_pin('918130944414@my2cents.app', 'XXXXXX')` in SQL editor.
+- **OTPScreen.tsx** is now dead code (not imported anywhere) — can be deleted in a cleanup pass.
+
+### Build Status
+- TypeScript: ✅ Zero errors (`npx tsc --noEmit` passes clean)
+- Vite build: ✅ Passes clean
+
+**Previous Session 28: CategoryMultiSelect Search-Select, Dashboard Drill-Down, UX Fixes, Demo Data**
+
+### CategoryMultiSelect Improvements
+- **Search-select pattern:** Replaced button trigger with input element that serves as both display ("Search categories") and search field. Typing opens dropdown and filters sub-categories by name/category. Size aligned with MemberMultiSelect using explicit `h-[34px]`, `leading-none`, `style={{ fontSize: '12px' }}`.
+- **Quick Select shortcuts:** Changed from 2-column grid with color dots to vertical list layout.
+- **Search filtering:** Filters sub-categories by name or parent category name, filters shortcuts by type name.
+
+### Dashboard → Transactions Drill-Down
+Clicking any sub-category in "Daily Expenses to Watch" or "Overspent Categories" on Dashboard navigates to Transactions tab pre-filtered for that sub-category.
+- `AppLayout.tsx`: Added `drillDownSubCategoryId` state, `handleCategoryDrillDown` callback, `handleDrillDownConsumed`
+- `DashboardTab.tsx`: Added `onCategoryDrillDown` prop, made rows clickable with chevron icon
+- `TransactionsTab.tsx`: Added `drillDownSubCategoryId` and `onDrillDownConsumed` props, useEffect to apply filter on mount
+- Filter badge shows active, user can reset filters to return to normal view
+
+### UX Fixes
+- **Phone validation:** Inline validation errors shown as user types (not just on disabled Continue click). Added `touched` state and `showInlineError` logic in `PhoneEntryScreen.tsx`.
+- **Enter key support:** Name entry (`YourNameScreen.tsx`), household creation both create and join modes (`HouseholdScreen.tsx`) now submit on Enter key.
+
+### Demo Household Seed Data
+- Created `supabase/migrations/SEED_DEMO_HOUSEHOLD.sql` for prod demo
+- PL/pgSQL DO block with realistic data: 2 users (Ravi & Priya Sharma), full household, 32 sub-categories, frozen budget (₹1,85,000 income / ₹1,72,500 allocated), 60+ transactions
+- Dashboard designed to show at-risk categories (Food Ordering 95%, Dining Out 88%, Shopping 82%, Entertainment 77%) and overspent (Electricity 114%)
+- 3 fund transfers between members, mix of payment methods
+- UUIDs: Ravi=4ee05567, Priya=7466b2f9
 
 **Previous Session 26: Filter Overlay Fix (React Portal) + Glass Design Completion**
 
@@ -384,6 +423,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-18 | **Session 29 (OTP → MPIN auth):** Replaced Supabase phone OTP auth with 6-digit MPIN system to eliminate SMS costs. Created `user_pins` table + 2 RPC functions (`check_phone_registered`, `reset_user_pin` with SECURITY DEFINER). Auth uses `signUp/signInWithPassword` with email=`{phone}@my2cents.app`, password=PIN. New screens: `SetPinScreen.tsx` (2-step PIN creation, reused for reset), `EnterPinScreen.tsx` (PIN login with "Forgot PIN?" link). Modified: `auth.ts` (removed sendOTP/verifyOTP, added PIN-based functions), `PhoneEntryScreen.tsx` (checks phone existence, routes to set-pin or enter-pin), `OTPInput.tsx` (added `masked` prop), `Router.tsx` (new routes, removed /verify), `app.config.ts` (phone_pin login method), `validation.ts` (validatePin, maskPhone), `ProfilePanel.tsx` + `onboarding.ts` (phone from user_metadata). Migration SQL includes existing OTP user migration preserving user_ids. Ran migration on DEV Supabase + disabled email confirmations. Tested new user flow end-to-end — working. TypeScript + build pass clean. |
 | 2026-02-15 | **Session 27 (unified sub-category filter):** Replaced the Type filter (Income/Expense/Transfer toggle buttons) in Transactions tab with a unified sub-category multiselect dropdown (`CategoryMultiSelect.tsx`). Sub-categories grouped by parent category with "Quick Select" shortcuts at top (All Income, All Expenses, All Transfers). Indeterminate checkbox state for partial selections. Fund transfers as special entry (sub_category_id = null). OR logic across categories. State changed from `filterTypes: TransactionType[]` to `filterSubCategoryIds: Set<string>` + `filterIncludeTransfers: boolean`. TypeScript passes clean. Revert available via git commit `71d3c01`. |
 | 2026-02-15 | **Session 25 (UI polish from testing):** Fixed 7 issues from real-device screenshots: (1) Transactions filter overlay — changed from `absolute` to `fixed` positioning, (2) Budget filter overlay — same fix for mobile, (3) Transactions summary card widened — more padding, larger icons, left-aligned text, (4) Budget edit income amounts red — changed semi-transparent `bg-white/40` to opaque `bg-white` so swipe-to-delete red bg doesn't bleed through, (5) Reduced icon-header padding in InlineIncomeSection + BudgetSection (`gap-1.5`→`gap-1`, icon `w-7`→`w-6`), (6) Removed notification bell icon from DashboardTab mobile header, (7) Overspent Categories moved outside card to match "Daily Expenses to Watch" pattern (heading+icon outside, items in separate card). TypeScript passes clean. |
 | 2026-02-15 | **Sessions 22-24 (dreamy glass design language):** Full app reskin with glass morphism design language. Built CSS foundation (custom properties, utility classes like `.glass-card`, `.glass-header`, `.bg-primary-gradient`, NoiseOverlay/GlassCard components). Systematically converted 30+ components across all screens: Dashboard (DashboardScreen, WelcomeCard, BudgetSection, BudgetItem, InlineAddItem, QuickAddTransaction, FundTransferModal), Budget (BudgetTab, BudgetViewMode, InlineIncomeSection, MonthSelector, CategoryTile, AmountInput, InlineAddCategory, ExpenseSelectionScreen), Transactions (TransactionsTab), Auth (PhoneEntryScreen, OTPScreen, SuccessScreen, OTPInput, PhoneInput), Onboarding (YourNameScreen, HouseholdScreen, InviteScreen), Shared (ProfilePanel, Toast, MemberMultiSelect, ErrorAlert, Input, NavItem, ProgressDots), App (Router LoadingScreen). Replaced all emojis in modal headers with SVG line icons. Zero hardcoded purple/indigo references remain. TypeScript passes clean. |

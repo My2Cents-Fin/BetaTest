@@ -135,7 +135,7 @@ One-time:    (empty - user adds custom items)
 
 ## Key Decisions
 
-- Auth: Phone + OTP via Supabase. No email, no passwords.
+- Auth: Phone + 6-digit MPIN via Supabase email/password (email = `{phone}@my2cents.app`, password = PIN). No SMS costs.
 - Partner invite: QR code → phone camera scan → My2cents link → auth.
 - Income: A category in the plan template, not a separate setup step.
 - Opening balance: Sub-category under Income, defaults to ₹0.

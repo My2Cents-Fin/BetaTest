@@ -38,7 +38,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const displayName = user?.user_metadata?.display_name || 'User';
-  const phone = user?.phone || '';
+  const phone = user?.user_metadata?.phone_number || user?.phone || '';
 
   useEffect(() => {
     if (isOpen) {

@@ -8,6 +8,7 @@ interface OTPInputProps {
   error?: boolean;
   disabled?: boolean;
   length?: number;
+  masked?: boolean;
 }
 
 export function OTPInput({
@@ -17,6 +18,7 @@ export function OTPInput({
   error = false,
   disabled = false,
   length = 6,
+  masked = false,
 }: OTPInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -124,6 +126,7 @@ export function OTPInput({
             ${error ? 'border-[var(--color-danger)] bg-red-50 animate-shake' : 'border-[rgba(124,58,237,0.15)]'}
             ${digit && !error ? 'border-[var(--color-primary)] bg-[var(--color-primary-bg)]' : ''}
           `}
+          style={masked && digit ? { WebkitTextSecurity: 'disc', textSecurity: 'disc' } as React.CSSProperties : undefined}
         />
       ))}
     </div>

@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabase';
+import { AUTH_CONFIG } from '../../../config/app.config';
 
 export interface UpdateNameResult {
   success: boolean;
@@ -38,7 +39,7 @@ export async function updateDisplayName(name: string): Promise<UpdateNameResult>
       .upsert({
         id: user.id,
         display_name: name,
-        phone: user.phone,
+        phone: user.user_metadata?.phone_number || user.phone || user.email?.replace(`@${AUTH_CONFIG.emailDomain}`, ''),
         updated_at: new Date().toISOString(),
       });
 

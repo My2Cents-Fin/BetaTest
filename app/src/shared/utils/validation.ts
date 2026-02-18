@@ -102,3 +102,38 @@ export function validateOTP(otp: string): ValidationResult {
 
   return { valid: true, value: digits };
 }
+
+/**
+ * Validate 6-digit MPIN
+ * Rejects trivial PINs (all same digit, simple sequences)
+ */
+export function validatePin(pin: string): ValidationResult {
+  const digits = pin.replace(/\D/g, '');
+
+  if (digits.length !== 6) {
+    return { valid: false, error: 'PIN must be 6 digits' };
+  }
+
+  // Reject all-same digit (000000, 111111, etc.)
+  if (/^(\d)\1{5}$/.test(digits)) {
+    return { valid: false, error: 'PIN cannot be all the same digit' };
+  }
+
+  // Reject simple sequences
+  if (digits === '123456' || digits === '654321') {
+    return { valid: false, error: 'PIN is too simple. Choose a stronger PIN.' };
+  }
+
+  return { valid: true, value: digits };
+}
+
+/**
+ * Mask phone number for display: +919876543210 -> xxxxx 43210
+ */
+export function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length >= 5) {
+    return 'xxxxx ' + digits.slice(-5);
+  }
+  return digits;
+}

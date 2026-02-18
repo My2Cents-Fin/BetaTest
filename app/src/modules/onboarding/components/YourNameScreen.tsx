@@ -118,6 +118,12 @@ export function YourNameScreen() {
                   setName(e.target.value);
                   if (error) setError('');
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isValid && !isLoading) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
                 placeholder="e.g., John"
                 autoCapitalize="words"
                 autoComplete="given-name"

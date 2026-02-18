@@ -2,16 +2,27 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhoneInput } from './PhoneInput';
 import { validatePhone } from '../../../shared/utils/validation';
-import { sendOTP } from '../services/auth';
+import { checkPhoneExists } from '../services/auth';
 
 export function PhoneEntryScreen() {
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   const validation = validatePhone(phone);
   const isValid = validation.valid;
+
+  // Show inline validation hint after user has typed something meaningful
+  // Only show "must start with 6-9" once they've entered 1+ digit, and length error once they've typed & stopped
+  const showInlineError = touched && !isValid && phone.length > 0 && (
+    // If they typed 10 digits but it's invalid (starts with 0-5), show immediately
+    phone.length === 10 ||
+    // If they typed a first digit that's invalid, show right away
+    (phone.length >= 1 && !/^[6-9]/.test(phone))
+  );
+  const inlineError = showInlineError ? validation.error : '';
 
   const handleSubmit = async () => {
     if (!isValid) {
@@ -23,12 +34,17 @@ export function PhoneEntryScreen() {
     setIsLoading(true);
 
     try {
-      const result = await sendOTP(validation.value!);
+      const result = await checkPhoneExists(validation.value!);
       if (result.error) {
         setError(result.error);
         return;
       }
-      navigate('/verify', { state: { phone: validation.value } });
+
+      if (result.exists) {
+        navigate('/enter-pin', { state: { phone: validation.value } });
+      } else {
+        navigate('/set-pin', { state: { phone: validation.value, isNewUser: true } });
+      }
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -83,10 +99,11 @@ export function PhoneEntryScreen() {
               value={phone}
               onChange={(value) => {
                 setPhone(value);
+                if (!touched) setTouched(true);
                 if (error) setError('');
               }}
               onKeyDown={handleKeyDown}
-              error={error}
+              error={error || inlineError}
               disabled={isLoading}
             />
 
@@ -98,7 +115,7 @@ export function PhoneEntryScreen() {
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Sending...
+                  Checking...
                 </span>
               ) : (
                 'Continue'

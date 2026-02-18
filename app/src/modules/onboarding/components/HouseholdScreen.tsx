@@ -290,6 +290,12 @@ export function HouseholdScreen() {
                       setName(e.target.value);
                       if (error) setError('');
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && isCreateValid && !isLoading) {
+                        e.preventDefault();
+                        handleCreate();
+                      }
+                    }}
                     placeholder="e.g., Sharma Family"
                     autoCapitalize="words"
                     disabled={isLoading}
@@ -360,6 +366,12 @@ export function HouseholdScreen() {
                       onChange={(e) => {
                         setInviteCode(e.target.value.toUpperCase());
                         if (error) setError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && isJoinValid && !isLoading) {
+                          e.preventDefault();
+                          handleJoin();
+                        }
                       }}
                       placeholder="e.g., ABC123"
                       autoCapitalize="characters"

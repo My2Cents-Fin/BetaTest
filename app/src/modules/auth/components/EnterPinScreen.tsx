@@ -1,0 +1,192 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { OTPInput } from './OTPInput';
+import { signInWithPin, getOnboardingStatus } from '../services/auth';
+import { maskPhone } from '../../../shared/utils/validation';
+import { Toast } from '../../../shared/components/Toast';
+
+export function EnterPinScreen() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const phone = (location.state as { phone?: string })?.phone;
+
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+
+  // Redirect if no phone in state
+  useEffect(() => {
+    if (!phone) {
+      navigate('/login', { replace: true });
+    }
+  }, [phone, navigate]);
+
+  const handleVerify = async (pinValue?: string) => {
+    const pinToVerify = pinValue || pin;
+
+    if (pinToVerify.length !== 6) {
+      return;
+    }
+
+    setError('');
+    setIsError(false);
+    setIsLoading(true);
+
+    try {
+      const result = await signInWithPin(phone!, pinToVerify);
+
+      if (!result.success) {
+        setError(result.error || 'Incorrect PIN. Please try again.');
+        setIsError(true);
+        setPin('');
+        setIsLoading(false);
+        return;
+      }
+
+      setShowToast(true);
+
+      const status = await getOnboardingStatus();
+      setTimeout(() => {
+        navigate(status.nextRoute, { replace: true });
+      }, 1000);
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setIsError(true);
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPin = () => {
+    navigate('/set-pin', { state: { phone, isReset: true } });
+  };
+
+  const handleBack = () => {
+    navigate('/login');
+  };
+
+  const formatPhone = (p: string) => {
+    // +919876543210 -> +91 xxxxx 43210
+    const digits = p.replace(/\D/g, '');
+    if (digits.length === 12) {
+      return `+${digits.slice(0, 2)} ${maskPhone(p)}`;
+    }
+    return maskPhone(p);
+  };
+
+  return (
+    <>
+      {showToast && (
+        <Toast
+          message="Logged in successfully!"
+          type="success"
+          onClose={() => setShowToast(false)}
+        />
+      )}
+
+      <div className="min-h-screen flex flex-col lg:flex-row">
+        {/* Left Panel - Branding */}
+        <div className="bg-primary-gradient lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16 relative overflow-hidden">
+          <div className="absolute top-[15%] right-[-8%] w-[200px] h-[200px] bg-white/[0.06] rounded-full" />
+          <div className="absolute bottom-[10%] left-[-10%] w-[160px] h-[160px] bg-white/[0.04] rounded-full" />
+
+          <h1 className="text-2xl text-white font-semibold relative z-10">
+            My<span className="font-bold">2Cents</span>
+          </h1>
+
+          <div className="flex-1 flex flex-col justify-center py-8 lg:py-0 relative z-10">
+            <h2 className="text-3xl lg:text-4xl xl:text-5xl text-white leading-tight mb-4">
+              <span className="font-bold">Manage money together,</span>{' '}
+              <em className="font-light">effortlessly.</em>
+            </h2>
+            <p className="text-base text-white/60 max-w-lg">
+              Track household expenses, plan budgets, and stay on top of your finances as a team.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Panel - Form */}
+        <div className="flex-1 bg-[var(--color-page-bg)] flex items-center justify-center p-8 lg:p-12">
+          <div className="w-full max-w-md">
+            {/* Back Button - desktop */}
+            <button
+              onClick={handleBack}
+              className="hidden lg:flex items-center gap-1 text-sm font-medium text-gray-500 mb-6 hover:text-[var(--color-primary)] transition-colors"
+            >
+              ← Back
+            </button>
+
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Enter your PIN
+            </h2>
+            <p className="text-gray-500 mb-8">
+              Enter the 6-digit PIN for{' '}
+              <span className="font-medium text-gray-900">
+                {phone ? formatPhone(phone) : ''}
+              </span>
+            </p>
+
+            {/* Error Alert */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* PIN Input */}
+            <div className="mb-6">
+              <OTPInput
+                value={pin}
+                onChange={(value) => {
+                  setPin(value);
+                  if (isError) {
+                    setIsError(false);
+                    setError('');
+                  }
+                }}
+                onComplete={handleVerify}
+                error={isError}
+                masked
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Forgot PIN */}
+            <p className="text-sm text-center mb-6">
+              <button
+                onClick={handleForgotPin}
+                className="text-[var(--color-primary)] font-semibold hover:underline"
+              >
+                Forgot PIN?
+              </button>
+            </p>
+
+            <button
+              onClick={() => handleVerify()}
+              disabled={pin.length !== 6 || isLoading}
+              className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Verifying...
+                </span>
+              ) : (
+                'Login'
+              )}
+            </button>
+
+            {/* Back button - mobile */}
+            <button
+              onClick={handleBack}
+              className="lg:hidden w-full mt-4 py-3 text-sm font-medium text-gray-500 hover:text-[var(--color-primary)] transition-colors"
+            >
+              ← Change phone number
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
