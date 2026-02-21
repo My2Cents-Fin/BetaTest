@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories } from '../../budget/services/budget';
-import { getCurrentMonthTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
+import { getCurrentMonthTransactions, getTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
@@ -101,7 +101,48 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     }
   }, [hasOtherMembers, onHasOtherMembersChange]);
 
-  async function loadTransactions() {
+  // Re-fetch from Supabase when date filters change
+  // This ensures we actually query the DB for the new date range
+  // (the in-memory list may not contain those transactions)
+  useEffect(() => {
+    if (!household) return;
+    // Skip on initial load (hasLoadedRef handles that)
+    if (!hasLoadedRef.current) return;
+    refetchTransactions(household.id, filterDateFrom, filterDateTo);
+  }, [filterDateFrom, filterDateTo]);
+
+  /**
+   * Re-fetch just the transactions (lightweight — no sub-categories/users reload)
+   */
+  async function refetchTransactions(householdId: string, dateFrom?: string, dateTo?: string) {
+    try {
+      // If both date filters are cleared, revert to current month
+      let startDate = dateFrom || undefined;
+      let endDate = dateTo || undefined;
+      if (!startDate && !endDate) {
+        const now = new Date();
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      }
+
+      const result = await getTransactions(householdId, startDate, endDate);
+      const txns = result.transactions || [];
+      setTransactions(txns);
+
+      // Update unique recorders from new data
+      const recordersMap = new Map<string, string>();
+      txns.forEach(t => {
+        if (t.logged_by && t.logged_by_name && !recordersMap.has(t.logged_by)) {
+          recordersMap.set(t.logged_by, t.logged_by_name);
+        }
+      });
+      setUniqueRecorders(Array.from(recordersMap.entries()).map(([id, name]) => ({ id, name })));
+    } catch (e) {
+      console.error('Error refetching transactions:', e);
+    }
+  }
+
+  async function loadTransactions(overrideDateFrom?: string, overrideDateTo?: string) {
     setIsLoading(true);
     try {
       // Step 1: Get household (sequential — needs user internally)
@@ -109,10 +150,24 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       if (!householdData) return;
       setHousehold(householdData);
 
+      // Determine date range: use overrides if provided, else date filters, else current month
+      let startDate: string | undefined;
+      let endDate: string | undefined;
+      if (overrideDateFrom || overrideDateTo) {
+        startDate = overrideDateFrom;
+        endDate = overrideDateTo;
+      } else if (filterDateFrom || filterDateTo) {
+        startDate = filterDateFrom || undefined;
+        endDate = filterDateTo || undefined;
+      }
+      // If no date range specified, getCurrentMonthTransactions will be used
+
       // Step 2: All independent — run in parallel
       const [subCategoriesResult, transactionsResult, authResult, usersResult] = await Promise.all([
         getHouseholdSubCategories(householdData.id),
-        getCurrentMonthTransactions(householdData.id),
+        startDate || endDate
+          ? getTransactions(householdData.id, startDate, endDate)
+          : getCurrentMonthTransactions(householdData.id),
         supabase.auth.getUser(),
         getHouseholdUsers(householdData.id),
       ]);
@@ -247,11 +302,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
-    setFilterDateFrom('');
-    setFilterDateTo('');
+    // Clear non-date filters immediately
     setFilterRecordedBy([]);
     setFilterSubCategoryIds(new Set());
     setFilterIncludeTransfers(false);
+    // Clear date filters — the useEffect will trigger a re-fetch to current month
+    setFilterDateFrom('');
+    setFilterDateTo('');
   };
 
   const toggleRecorder = (recorderId: string) => {
@@ -362,7 +419,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
       {/* Header - Desktop */}
       <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header">
-        <h1 className="text-lg font-semibold text-gray-900">Transactions • {monthDisplay}</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Transactions • {filterDateFrom || filterDateTo ? 'Filtered' : monthDisplay}</h1>
         <div className="flex items-center gap-2">
           {/* Import Statement Button */}
           <button
@@ -638,10 +695,18 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           categoryMap={categoryMap}
           subCategories={allSubCategories}
           onClose={() => setShowImport(false)}
-          onSuccess={() => {
+          onSuccess={(importedDateRange) => {
             setShowImport(false);
             hasLoadedRef.current = false;
-            loadTransactions();
+            // Set date filters to cover the imported date range so user sees their imports
+            if (importedDateRange) {
+              setFilterDateFrom(importedDateRange.from);
+              setFilterDateTo(importedDateRange.to);
+              // Load with the imported date range
+              loadTransactions(importedDateRange.from, importedDateRange.to);
+            } else {
+              loadTransactions();
+            }
           }}
         />
       )}

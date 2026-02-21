@@ -31,7 +31,7 @@ interface StatementImportModalProps {
   categoryMap: Map<string, { name: string; type: string }>;
   currentUserId: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (importedDateRange?: { from: string; to: string }) => void;
 }
 
 type Step = 'upload' | 'preview' | 'importing' | 'done';
@@ -171,7 +171,16 @@ export function StatementImportModal({
   };
 
   const handleDone = () => {
-    onSuccess();
+    // Compute the date range of imported transactions so the parent can set filters
+    const selectedDates = candidates
+      .filter(c => c.selected)
+      .map(c => c.date)
+      .filter(Boolean)
+      .sort();
+    const dateRange = selectedDates.length > 0
+      ? { from: selectedDates[0], to: selectedDates[selectedDates.length - 1] }
+      : undefined;
+    onSuccess(dateRange);
     onClose();
   };
 
@@ -399,7 +408,7 @@ function UploadStep({
           </svg>
         </div>
         <p className="text-sm font-medium text-gray-900 mb-1">Upload Bank Statement</p>
-        <p className="text-xs text-gray-500">PDF or CSV from HDFC, ICICI, SBI, Kotak, Axis</p>
+        <p className="text-xs text-gray-500">PDF or CSV — works with most Indian banks</p>
         <p className="text-[10px] text-gray-400 mt-2">Tap to browse or drag & drop</p>
       </div>
 

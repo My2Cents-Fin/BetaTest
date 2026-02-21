@@ -3,41 +3,52 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-21
+2026-02-22
 
 ## Last Session Summary
-**Session 31: Bank Statement Import — Full Build (PDF + CSV)**
+**Session 32: Bank Statement Import — Real-World Testing & Generic Parser Rewrite**
 
 ### What Was Done
-- **Built the complete bank statement import feature** — both PDF and CSV support
-- User pivoted from CSV-only to **PDF as primary format** (most convenient on mobile)
-- Installed dependencies: `pdfjs-dist` (PDF parsing, ~260KB gzipped, lazy loaded), `papaparse` (CSV), `@types/papaparse`
-- **8 new files created**, **4 existing files modified**, TypeScript + build pass clean
+- **Tested with real bank statements** — Axis Bank and ICICI Bank PDFs validated against real statements
+- **Rewrote the generic PDF fallback parser** — previous version used pre-mapped TableRow[] cells which failed on unknown bank layouts. New version uses raw TextItem[][] with X-coordinate based column clustering and proximity-based amount assignment
+- **Fixed bank misdetection** — Federal Bank (Jupiter) PDF was incorrectly detected as Axis Bank because it mentioned "Axis Bank" as a partner. Tightened Axis detection to reject Federal Bank IFSC prefix (FDRL) and require "tran date" header
+- **Simplified bank parser strategy** — User decision: keep bank-specific parsers only for tested banks (ICICI, Axis), comment out untested ones (HDFC, SBI for PDF; HDFC, SBI, Kotak for CSV). All other banks fall through to generic fallback which uses X-coordinate auto-detection
+- **Added Vite LAN access** — `server: { host: true }` in vite.config.ts for phone testing over local network
+- **Fixed transaction visibility after import** — date filter re-fetch to show imported transactions immediately
 
-### New Files Created
-1. **`supabase/migrations/011_csv_import_support.sql`** — Adds `source` (manual/csv_import) and `original_narration` columns to transactions table, indexes for import source and uncategorized transactions
-2. **`app/src/modules/transactions/data/merchantRules.ts`** — Static merchant keyword→sub-category rules for 21 Indian merchant categories (Groceries, Food Ordering, Dining Out, Fuel, Shopping, Entertainment, Subscriptions, Phone Bill, Internet, Medical, Transport, Personal Care, Electricity, Water, Society Maintenance, Maid/Help, Insurance, EMI/Loan, Rent, Salary, General Savings)
-3. **`app/src/modules/transactions/services/merchantMatcher.ts`** — Matching logic: keyword match → lookup subCategoryName in household → suggest if exists, leave uncategorized if not
-4. **`app/src/modules/transactions/services/pdfParser.ts`** — Three-layer PDF architecture: text extraction with X/Y coordinates → table reconstruction via Y-coordinate grouping → bank-specific parsers (HDFC, ICICI, SBI, Generic). Handles password-protected PDFs, multi-line narrations, lazy-loads pdfjs-dist via dynamic import with CDN worker
-5. **`app/src/modules/transactions/services/csvParser.ts`** — CSV parsing with papaparse, auto-detects bank format from column headers (HDFC, ICICI, SBI, Kotak, Axis, Generic), handles multiple date formats
-6. **`app/src/modules/transactions/services/statementImport.ts`** — Orchestration: parseStatementFile (routes to PDF/CSV), prepareImportCandidates (merchant matching + duplicate detection), commitImport (batch insert in groups of 50)
-7. **`app/src/modules/transactions/components/StatementImportModal.tsx`** — Multi-step modal (upload → preview → importing → done) with glass design. File upload (drag & drop, PDF/CSV), password prompt for protected PDFs, preview with category suggestions (AI confidence tags), inline category editing, select all/deselect duplicates, summary stats
+### Key Changes
+1. **`pdfParser.ts`** (heavily modified):
+   - Extended `BankPDFFormat` with `usesRawRows` and `parseRawRows` for raw TextItem processing
+   - Tightened Axis Bank detection (IFSC prefix check, reject Federal Bank, require "tran date")
+   - Completely rewrote generic fallback parser with X-coordinate column clustering (30px tolerance), header keyword detection recording X positions, amount assignment by X-proximity (60px tolerance), multi-line transaction support
+   - **Commented out HDFC_PDF and SBI_PDF** (untested) — only ICICI_PDF, AXIS_PDF, GENERIC_PDF in active array
+   - Updated `parsePDF()` to route to raw row parser when `usesRawRows` is true
 
-### Existing Files Modified
-1. **`app/src/modules/budget/types.ts`** — `sub_category_id: string → string | null`, added `source: TransactionSource`, `original_narration: string | null`, new types: `ParsedStatementTransaction`, `StatementParseResult`, `ImportCandidate`, `TransactionSource`
-2. **`app/src/modules/budget/services/transactions.ts`** — `createTransaction()` includes source/original_narration; `getTransactions()` maps null sub_category_id non-transfers to "Uncategorised" with ❓ icon; `updateTransaction()` accepts null subCategoryId and transactionType for re-categorizing imports
-3. **`app/src/modules/transactions/components/TransactionsTab.tsx`** — Import button in both mobile and desktop headers, `showImport` state, raw sub-categories + categoryMap for import modal, fixed filter logic for null sub_category_id, amber "Uncategorised" badge on transaction cards, renders StatementImportModal
-4. **`app/src/modules/dashboard/components/QuickAddTransaction.tsx`** — Shows read-only "Bank Description" field for imported transactions in edit mode, allows null sub_category_id in edit mode (save without categorizing), passes transactionType in update call
-5. **`app/src/modules/dashboard/components/DashboardTab.tsx`** — Uncategorized expenses added to daily spending velocity; "Uncategorised" row (amber, ❓ icon) in "Daily Expenses to Watch" section with "Imported, needs review" subtext
+2. **`csvParser.ts`** (modified):
+   - **Commented out HDFC_CSV, SBI_CSV, KOTAK_CSV** (untested) — only ICICI_CSV, AXIS_CSV, GENERIC_CSV in active array
+   - Updated error message for unrecognized formats
+
+3. **`vite.config.ts`** — Added `server: { host: true }` for LAN access
+4. **`TransactionsTab.tsx`** — Date filter re-fetch, import date range auto-filter
+5. **`StatementImportModal.tsx`** — onSuccess date range passback
 
 ### Build Status
 - TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
-- Vite build: ✅ Passes clean (PDF.js properly code-split as separate 404KB chunk, lazy loaded)
 
-### Still Needed Before Testing
+### Testing Results
+- ✅ Axis Bank PDF — parsed correctly with bank-specific parser
+- ✅ ICICI Bank PDF — parsed correctly with bank-specific parser
+- ✅ Federal Bank (Jupiter) PDF — correctly falls through to generic parser, all transactions imported
+- Bank-specific parsers: only ICICI + Axis (tested). All others → generic fallback.
+
+### Still Needed
 - **Run migration `011_csv_import_support.sql`** on DEV Supabase before testing
-- Test with real HDFC/ICICI/SBI bank statement PDFs and CSVs
-- Verify password-protected PDF handling on mobile
+- Test more banks with generic parser to validate robustness
+- Clean up debug console.log statements from pdfParser.ts (low priority)
+
+### Previous Session 31: Bank Statement Import — Full Build (PDF + CSV)
+- Built complete bank statement import (8 new files, 5 modified)
+- PDF + CSV support with merchant matching and multi-step import modal
 
 ### Previous Session 30: CSV Import Planning
 - Plan approved, saved at `.claude/plans/velvety-knitting-noodle.md`
@@ -378,12 +389,13 @@ Applied a comprehensive "dreamy glass" design language across the entire My2cent
 ---
 
 ## In Progress
-- [x] **Bank Statement Import (Pillar 1: Productivity)** — ✅ Code complete, needs migration + testing
+- [x] **Bank Statement Import (Pillar 1: Productivity)** — ✅ Code complete + tested with real statements
   - Plan at: `.claude/plans/velvety-knitting-noodle.md`
-  - All 15 implementation steps complete (migration → types → services → merchant rules → PDF parser → CSV parser → import modal → TransactionsTab → QuickAddTransaction → Dashboard)
+  - All implementation steps complete + real-world testing done
+  - Tested banks: ✅ Axis (bank-specific), ✅ ICICI (bank-specific), ✅ Federal/Jupiter (generic fallback)
+  - Untested bank parsers commented out (HDFC, SBI, Kotak) — will uncomment after real statement validation
   - Dependencies: `pdfjs-dist` (PDF), `papaparse` (CSV), `@types/papaparse`
-  - **Action needed:** Run migration `011_csv_import_support.sql` on DEV Supabase before testing
-  - **Action needed:** Test with real bank statement PDFs (HDFC, ICICI, SBI)
+  - **Action needed:** Run migration `011_csv_import_support.sql` on DEV Supabase before full testing
 
 ---
 
@@ -464,6 +476,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-22 | **Session 32 (bank statement import testing & generic parser rewrite):** Tested with real Axis Bank, ICICI Bank, and Federal Bank (Jupiter) PDF statements. Rewrote generic PDF fallback parser to use raw TextItem[][] with X-coordinate column clustering instead of pre-mapped TableRow[] cells — fixes parsing failures on unknown bank formats. Fixed Federal Bank misdetection as Axis Bank (IFSC prefix check, require "tran date" header). User decision: keep bank-specific parsers only for tested banks (ICICI, Axis), commented out HDFC+SBI PDF parsers and HDFC+SBI+Kotak CSV parsers (untested). All other banks fall through to generic. Added Vite LAN access for phone testing. TypeScript passes clean. |
 | 2026-02-21 | **Session 31 (bank statement import build):** Built complete bank statement import feature (PDF + CSV). User pivoted to PDF-primary (mobile convenience). Installed pdfjs-dist + papaparse. Created 8 new files: DB migration (source/original_narration columns), merchant rules (21 Indian categories), merchant matcher, PDF parser (3-layer: text extraction → table reconstruction → bank-specific parsing for HDFC/ICICI/SBI/Generic), CSV parser (6 bank formats), import orchestration service, multi-step import modal (upload→preview→import→done with glass design), StatementImportModal.tsx. Modified 5 files: types.ts (nullable sub_category_id, import types), transactions.ts (uncategorized display, source tracking), TransactionsTab.tsx (import button, amber badge, modal integration), QuickAddTransaction.tsx (bank description field, null category in edit), DashboardTab.tsx (uncategorized in daily velocity, "Uncategorised" row in expenses to watch). TypeScript + build pass clean. PDF.js properly code-split (404KB lazy chunk). Migration 011 needs to run on DEV before testing. |
 | 2026-02-20 | **Session 30 (CSV import planning):** Researched Indian data security laws (DPDPA 2023, IT Act, SPDI Rules) — minimal compliance at current scale. Checked Supabase data residency (DEV=Seoul, PROD=Singapore, neither in India). Evaluated SMS parsing (blocked by Google Play for PWA), CSV upload (zero cost), UPI integration (heavy compliance). Decision: start with CSV bank statement import. Designed comprehensive plan: 6 new files (migration, merchant rules, merchant matcher, CSV parser, import service, import modal) + 5 modified files (types, transactions service, TransactionsTab, DashboardTab, QuickAddTransaction). Key design: uncategorized transactions stay in normal list with amber badge, treated as expenses, shown in dashboard. Merchant matching via static keyword→sub-category-name rules for Indian merchants. Bank format auto-detection from headers (HDFC, ICICI, SBI, Kotak, Axis). Plan approved — build starts next session. |
 | 2026-02-18 | **Session 29 (OTP → MPIN auth):** Replaced Supabase phone OTP auth with 6-digit MPIN system to eliminate SMS costs. Created `user_pins` table + 2 RPC functions (`check_phone_registered`, `reset_user_pin` with SECURITY DEFINER). Auth uses `signUp/signInWithPassword` with email=`{phone}@my2cents.app`, password=PIN. New screens: `SetPinScreen.tsx` (2-step PIN creation, reused for reset), `EnterPinScreen.tsx` (PIN login with "Forgot PIN?" link). Modified: `auth.ts` (removed sendOTP/verifyOTP, added PIN-based functions), `PhoneEntryScreen.tsx` (checks phone existence, routes to set-pin or enter-pin), `OTPInput.tsx` (added `masked` prop), `Router.tsx` (new routes, removed /verify), `app.config.ts` (phone_pin login method), `validation.ts` (validatePin, maskPhone), `ProfilePanel.tsx` + `onboarding.ts` (phone from user_metadata). Migration SQL includes existing OTP user migration preserving user_ids. Ran migration on DEV Supabase + disabled email confirmations. Tested new user flow end-to-end — working. TypeScript + build pass clean. |
