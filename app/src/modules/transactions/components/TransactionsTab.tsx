@@ -10,6 +10,7 @@ import type { TransactionWithDetails, HouseholdSubCategory } from '../../budget/
 import { supabase } from '../../../lib/supabase';
 import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 import { CategoryMultiSelect } from '../../../shared/components/CategoryMultiSelect';
+import { StatementImportModal } from './StatementImportModal';
 
 interface TransactionsTabProps {
   quickAddTrigger?: number;
@@ -38,6 +39,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
   const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [showImport, setShowImport] = useState(false);
+  const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
+  const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
 
   // Filter states
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
@@ -124,6 +128,18 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       }));
       setAllSubCategories(subCatList);
 
+      // Store raw sub-categories for import modal
+      setRawSubCategories(subCategories);
+
+      // Build category map for merchant matcher
+      const catMap = new Map<string, { name: string; type: string }>();
+      subCategories.forEach((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => {
+        if (sc.category_id && sc.categories) {
+          catMap.set(sc.category_id, { name: sc.categories.name, type: sc.categories.type });
+        }
+      });
+      setCategoryMap(catMap);
+
       // Process transactions
       const txns = transactionsResult.transactions || [];
       setTransactions(txns);
@@ -202,7 +218,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
         if (t.transaction_type === 'transfer') {
           if (!filterIncludeTransfers) return false;
         } else {
-          if (!filterSubCategoryIds.has(t.sub_category_id)) return false;
+          // null sub_category_id = uncategorized — show when no specific filter is applied
+          if (t.sub_category_id === null) {
+            // Uncategorized transactions pass through when any sub-cat filter is active
+            // (they don't belong to any filtered category, so include them)
+          } else if (!filterSubCategoryIds.has(t.sub_category_id)) {
+            return false;
+          }
         }
       }
       return true;
@@ -308,41 +330,67 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       {/* Header - Mobile */}
       <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden">
         <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          {/* Import Statement Button */}
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]`}
+            onClick={() => setShowImport(true)}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors bg-white/60 border border-[rgba(124,58,237,0.15)] text-[var(--color-primary)]"
+            title="Import Statement"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
           </button>
+          {/* Filter Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Header - Desktop */}
       <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header">
         <h1 className="text-lg font-semibold text-gray-900">Transactions • {monthDisplay}</h1>
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          {/* Import Statement Button */}
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]"
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors bg-white/60 border border-[rgba(124,58,237,0.15)] text-[var(--color-primary)] hover:bg-white/80"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            <span className="text-sm font-medium">Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="w-5 h-5 bg-white text-[var(--color-primary)] text-xs font-bold rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
+            <span className="text-sm font-medium">Import</span>
           </button>
+          {/* Filter Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span className="text-sm font-medium">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 bg-white text-[var(--color-primary)] text-xs font-bold rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -478,12 +526,20 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
                       {/* Details */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {txn.sub_category_name}
-                          {txn.transaction_type === 'transfer' && txn.transfer_to_name && (
-                            <span className="text-gray-500"> → {txn.transfer_to_name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {txn.sub_category_name}
+                            {txn.transaction_type === 'transfer' && txn.transfer_to_name && (
+                              <span className="text-gray-500"> → {txn.transfer_to_name}</span>
+                            )}
+                          </p>
+                          {/* Uncategorised badge for imported transactions without a category */}
+                          {txn.sub_category_id === null && txn.transaction_type !== 'transfer' && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-amber-100 text-amber-700 whitespace-nowrap flex-shrink-0">
+                              Uncategorised
+                            </span>
                           )}
-                        </p>
+                        </div>
                         <p className="text-[11px] text-gray-400">
                           {new Date(txn.transaction_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, {new Date(txn.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })} • {txn.logged_by_name || 'Unknown'}
                         </p>
@@ -570,6 +626,23 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           currentUserId={currentUserId}
           onClose={() => setShowFundTransfer(false)}
           onSuccess={handleTransactionAdded}
+        />
+      )}
+
+      {/* Statement Import Modal */}
+      {showImport && household && (
+        <StatementImportModal
+          householdId={household.id}
+          currentUserId={currentUserId}
+          householdSubCategories={rawSubCategories}
+          categoryMap={categoryMap}
+          subCategories={allSubCategories}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => {
+            setShowImport(false);
+            hasLoadedRef.current = false;
+            loadTransactions();
+          }}
         />
       )}
 

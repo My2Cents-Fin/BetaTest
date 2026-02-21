@@ -54,6 +54,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [showOtherMembers, setShowOtherMembers] = useState(false);
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
   const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
+  const [uncategorizedTotal, setUncategorizedTotal] = useState(0);
 
   const hasLoadedRef = useRef(false);
 
@@ -187,10 +188,17 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
       setCategorySpending(categoryList);
 
+      // Calculate uncategorized expense total (sub_category_id === null, non-transfer)
+      const uncategorizedSpent = transactions
+        .filter(t => t.transaction_type === 'expense' && t.sub_category_id === null)
+        .reduce((sum, t) => sum + t.amount, 0);
+      setUncategorizedTotal(uncategorizedSpent);
+
       // Calculate variable-only spending for daily spending card
+      // Include uncategorized expenses in the daily velocity (they're assumed as day-to-day spending)
       const varSpent = categoryList
         .filter(c => c.categoryName === 'Variable')
-        .reduce((sum, c) => sum + c.actual, 0);
+        .reduce((sum, c) => sum + c.actual, 0) + uncategorizedSpent;
       setVariableSpent(varSpent);
 
       const varPlanned = categoryList
@@ -510,8 +518,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             )}
           </div>
 
-          {/* 3a. Variable Categories At-Risk (>=75%) */}
-          {variableAtRisk.length > 0 && (
+          {/* 3a. Variable Categories At-Risk (>=75%) + Uncategorised */}
+          {(variableAtRisk.length > 0 || uncategorizedTotal > 0) && (
             <>
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-2">
@@ -557,6 +565,27 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     </div>
                   </div>
                 ))}
+                {/* Uncategorised row — shows imported transactions without a category */}
+                {uncategorizedTotal > 0 && (
+                  <div
+                    className={`flex items-center gap-3 py-2.5 ${variableAtRisk.length > 0 ? 'border-t border-black/[0.04]' : ''}`}
+                  >
+                    <div className="w-[3px] h-9 rounded-sm bg-amber-400" />
+                    <div className="icon-container icon-container-md" style={{ background: 'rgba(217,119,6,0.08)' }}>
+                      <span className="text-base">❓</span>
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-[13px] font-medium text-amber-700">Uncategorised</span>
+                      <span className="block text-[10px] text-amber-600/70">Imported, needs review</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-amber-600">
+                        ₹{formatNumber(uncategorizedTotal)}
+                      </span>
+                      <p className="text-[10px] text-amber-600/60">unbudgeted</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -609,7 +638,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           )}
 
           {/* No issues */}
-          {variableAtRisk.length === 0 && nonVariableOverspent.length === 0 && (
+          {variableAtRisk.length === 0 && nonVariableOverspent.length === 0 && uncategorizedTotal === 0 && (
             <div className="glass-card p-6 text-center">
               <span className="text-4xl mb-3 block">🎉</span>
               <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">All Categories Healthy</h3>

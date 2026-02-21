@@ -54,6 +54,8 @@ export async function createTransaction(
       payment_method: input.paymentMethod,
       remarks: input.remarks || null,
       logged_by: input.loggedBy || user.id, // Use provided loggedBy or default to current user
+      source: input.source || 'manual',
+      original_narration: input.originalNarration || null,
     };
 
     // Add transfer_to for fund transfers
@@ -163,10 +165,20 @@ export async function getTransactions(
       transfer_to: t.transfer_to || null,
       created_at: t.created_at,
       updated_at: t.updated_at,
-      sub_category_name: t.household_sub_categories?.name || (t.transaction_type === 'transfer' ? 'Fund Transfer' : 'Unknown'),
-      sub_category_icon: t.household_sub_categories?.icon || (t.transaction_type === 'transfer' ? '💸' : '📦'),
-      category_name: t.household_sub_categories?.categories?.name || (t.transaction_type === 'transfer' ? 'Transfer' : 'Unknown'),
-      category_icon: t.household_sub_categories?.categories?.icon || (t.transaction_type === 'transfer' ? '💸' : '📁'),
+      sub_category_name: t.household_sub_categories?.name ||
+        (t.transaction_type === 'transfer' ? 'Fund Transfer' :
+         t.sub_category_id === null ? 'Uncategorised' : 'Unknown'),
+      sub_category_icon: t.household_sub_categories?.icon ||
+        (t.transaction_type === 'transfer' ? '💸' :
+         t.sub_category_id === null ? '❓' : '📦'),
+      category_name: t.household_sub_categories?.categories?.name ||
+        (t.transaction_type === 'transfer' ? 'Transfer' :
+         t.sub_category_id === null ? 'Uncategorised' : 'Unknown'),
+      category_icon: t.household_sub_categories?.categories?.icon ||
+        (t.transaction_type === 'transfer' ? '💸' :
+         t.sub_category_id === null ? '❓' : '📁'),
+      source: t.source || 'manual',
+      original_narration: t.original_narration || null,
       logged_by_name: userMap.get(t.logged_by) || 'Unknown',
       transfer_to_name: t.transfer_to ? userMap.get(t.transfer_to) : undefined,
     }));
@@ -212,19 +224,21 @@ export async function updateTransaction(
   transactionId: string,
   updates: Partial<{
     amount: number;
-    subCategoryId: string;
+    subCategoryId: string | null;
     transactionDate: string;
     paymentMethod: PaymentMethod;
     remarks: string;
+    transactionType: TransactionType;
   }>
 ): Promise<TransactionResult> {
   try {
     const updateData: any = {};
     if (updates.amount !== undefined) updateData.amount = updates.amount;
-    if (updates.subCategoryId) updateData.sub_category_id = updates.subCategoryId;
+    if (updates.subCategoryId !== undefined) updateData.sub_category_id = updates.subCategoryId;
     if (updates.transactionDate) updateData.transaction_date = updates.transactionDate;
     if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
     if (updates.remarks !== undefined) updateData.remarks = updates.remarks;
+    if (updates.transactionType) updateData.transaction_type = updates.transactionType;
 
     const { data, error } = await supabase
       .from('transactions')

@@ -182,13 +182,15 @@ export type TransactionType = 'expense' | 'income' | 'transfer';
 
 export type PaymentMethod = 'cash' | 'upi' | 'card' | 'netbanking' | 'other';
 
+export type TransactionSource = 'manual' | 'csv_import';
+
 /**
  * A recorded transaction (expense, income, or transfer)
  */
 export interface Transaction {
   id: string;
   household_id: string;
-  sub_category_id: string;
+  sub_category_id: string | null;
   amount: number;
   transaction_type: TransactionType;
   transaction_date: string; // ISO date string (e.g., '2025-02-09')
@@ -196,6 +198,8 @@ export interface Transaction {
   remarks: string | null;
   logged_by: string; // user_id of who logged it (sender for transfers)
   transfer_to: string | null; // user_id of recipient (only for fund transfers)
+  source: TransactionSource;
+  original_narration: string | null;
   created_at?: string;
   updated_at?: string;
   // Joined relations
@@ -207,7 +211,7 @@ export interface Transaction {
  */
 export interface CreateTransactionInput {
   householdId: string;
-  subCategoryId: string;
+  subCategoryId: string | null;
   amount: number;
   transactionType: TransactionType;
   transactionDate: string;
@@ -215,6 +219,8 @@ export interface CreateTransactionInput {
   remarks?: string;
   transferTo?: string; // user_id of recipient (only for fund transfers)
   loggedBy?: string; // user_id of who paid (defaults to current user if not provided)
+  source?: TransactionSource;
+  originalNarration?: string;
 }
 
 /**
@@ -227,4 +233,45 @@ export interface TransactionWithDetails extends Transaction {
   category_icon: string | null;
   logged_by_name?: string;
   transfer_to_name?: string; // recipient name (only for fund transfers)
+}
+
+// ============================================
+// Statement Import Types
+// ============================================
+
+/**
+ * A single transaction parsed from a bank statement (PDF or CSV)
+ */
+export interface ParsedStatementTransaction {
+  date: string;           // ISO date YYYY-MM-DD
+  narration: string;      // Raw bank description
+  amount: number;         // Always positive
+  transactionType: 'expense' | 'income';  // Debit=expense, Credit=income
+  balance?: number;       // Running balance if available
+}
+
+/**
+ * Result of parsing a bank statement file
+ */
+export interface StatementParseResult {
+  success: boolean;
+  error?: string;
+  transactions?: ParsedStatementTransaction[];
+  bankName?: string;
+  passwordRequired?: boolean;
+}
+
+/**
+ * Import candidate = parsed transaction + merchant matching + duplicate detection
+ */
+export interface ImportCandidate extends ParsedStatementTransaction {
+  index: number;                          // Position in original list
+  suggestedSubCategoryId: string | null;
+  suggestedSubCategoryName: string | null;
+  suggestedCategoryName: string | null;
+  matchConfidence: 'high' | 'medium' | 'none';
+  isDuplicate: boolean;
+  selected: boolean;                      // User can deselect
+  userOverrideSubCategoryId: string | null;
+  userOverrideTransactionType: TransactionType;
 }

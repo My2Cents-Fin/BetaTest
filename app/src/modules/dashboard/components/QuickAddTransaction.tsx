@@ -190,12 +190,13 @@ export function QuickAddTransaction({
       return;
     }
 
-    if (!selectedSubCategoryId) {
+    // In add mode, category is required. In edit mode, allow null (uncategorized).
+    if (!isEditMode && !selectedSubCategoryId) {
       setError('Select category');
       return;
     }
 
-    const selectedCategory = subCategories.find(c => c.id === selectedSubCategoryId);
+    const selectedCategory = selectedSubCategoryId ? subCategories.find(c => c.id === selectedSubCategoryId) : null;
     const transactionType: TransactionType = selectedCategory?.categoryType === 'income' ? 'income' : 'expense';
 
     setIsSubmitting(true);
@@ -208,6 +209,7 @@ export function QuickAddTransaction({
       result = await updateTransaction(transaction.id, {
         amount: numAmount,
         subCategoryId: selectedSubCategoryId,
+        transactionType,
         transactionDate,
         remarks: remarks.trim() || '',
       });
@@ -407,6 +409,18 @@ export function QuickAddTransaction({
             </div>
           )}
 
+          {/* Bank Description (read-only, shown only for imported transactions in edit mode) */}
+          {isEditMode && transaction?.original_narration && (
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+                <span>🏦</span> Bank Description
+              </label>
+              <div className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.08)] rounded-xl text-sm text-gray-500 bg-gray-50/75 italic">
+                {transaction.original_narration}
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           <div className="mb-4">
             <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
@@ -430,10 +444,10 @@ export function QuickAddTransaction({
         <div className="px-4 py-3">
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !amount || !selectedSubCategoryId}
+            disabled={isSubmitting || !amount || (!isEditMode && !selectedSubCategoryId)}
             className={`
               w-full py-2.5 rounded-xl text-sm font-semibold transition-all
-              ${isSubmitting || !amount || !selectedSubCategoryId
+              ${isSubmitting || !amount || (!isEditMode && !selectedSubCategoryId)
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                 : 'bg-primary-gradient text-white shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 active:translate-y-0'}
             `}
