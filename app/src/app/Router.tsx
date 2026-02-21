@@ -17,6 +17,10 @@ import { HouseholdScreen } from '../modules/onboarding/components/HouseholdScree
 // Main App Layout (with tab navigation)
 import { AppLayout } from './AppLayout';
 
+// Static pages (no auth required)
+import { PrivacyPolicyPage } from '../shared/pages/PrivacyPolicyPage';
+import { TermsPage } from '../shared/pages/TermsPage';
+
 // Loading screen
 function LoadingScreen() {
   return (
@@ -182,6 +186,10 @@ export function AppRouter() {
             </RequireOnboarded>
           }
         />
+
+        {/* Static pages (no auth required) */}
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />

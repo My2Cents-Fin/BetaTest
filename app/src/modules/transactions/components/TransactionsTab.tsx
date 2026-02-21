@@ -19,6 +19,8 @@ interface TransactionsTabProps {
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
   /** Pre-apply a sub-category filter (drill-down from Dashboard) */
   drillDownSubCategoryId?: string | null;
+  /** Pre-apply uncategorized-only filter (drill-down from Dashboard) */
+  drillDownUncategorized?: boolean;
   onDrillDownConsumed?: () => void;
 }
 
@@ -28,7 +30,7 @@ interface GroupedTransactions {
   transactions: TransactionWithDetails[];
 }
 
-export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, onDrillDownConsumed }: TransactionsTabProps) {
+export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, onDrillDownConsumed }: TransactionsTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
@@ -50,6 +52,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   // Category filter (replaces previous filterTypes toggle buttons — see commit 71d3c01 for revert)
   const [filterSubCategoryIds, setFilterSubCategoryIds] = useState<Set<string>>(new Set());
   const [filterIncludeTransfers, setFilterIncludeTransfers] = useState(false);
+  const [filterUncategorizedOnly, setFilterUncategorizedOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [uniqueRecorders, setUniqueRecorders] = useState<{ id: string; name: string }[]>([]);
 
@@ -71,9 +74,20 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     if (drillDownSubCategoryId) {
       setFilterSubCategoryIds(new Set([drillDownSubCategoryId]));
       setFilterIncludeTransfers(false);
+      setFilterUncategorizedOnly(false);
       onDrillDownConsumed?.();
     }
   }, [drillDownSubCategoryId]);
+
+  // Apply drill-down filter from Dashboard (uncategorized only)
+  useEffect(() => {
+    if (drillDownUncategorized) {
+      setFilterUncategorizedOnly(true);
+      setFilterSubCategoryIds(new Set());
+      setFilterIncludeTransfers(false);
+      onDrillDownConsumed?.();
+    }
+  }, [drillDownUncategorized]);
 
   // Note: click-outside-to-close is handled by the portal backdrop's onClick.
   // The old document mousedown listener was removed — it conflicted with the portal
@@ -267,6 +281,10 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       if (filterRecordedBy.length > 0 && !filterRecordedBy.includes(t.logged_by)) {
         return false;
       }
+      // Uncategorized-only filter (from dashboard drill-down)
+      if (filterUncategorizedOnly) {
+        return t.sub_category_id === null && t.transaction_type !== 'transfer';
+      }
       // Filter by sub-category / transfer (replaces old type filter)
       const hasSubCatFilter = filterSubCategoryIds.size > 0 || filterIncludeTransfers;
       if (hasSubCatFilter) {
@@ -284,7 +302,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       }
       return true;
     });
-  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterSubCategoryIds, filterIncludeTransfers]);
+  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterSubCategoryIds, filterIncludeTransfers, filterUncategorizedOnly]);
 
   // Group filtered transactions by date
   const filteredGroupedTransactions = useMemo(() => {
@@ -292,13 +310,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   }, [filteredTransactions]);
 
   // Check if any filter is active
-  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterSubCategoryIds.size > 0 || filterIncludeTransfers);
+  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly);
 
   // Count active filters
   const activeFilterCount = [
     filterDateFrom || filterDateTo ? 1 : 0,
     filterRecordedBy.length > 0 ? 1 : 0,
-    filterSubCategoryIds.size > 0 || filterIncludeTransfers ? 1 : 0,
+    filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
@@ -306,6 +324,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     setFilterRecordedBy([]);
     setFilterSubCategoryIds(new Set());
     setFilterIncludeTransfers(false);
+    setFilterUncategorizedOnly(false);
     // Clear date filters — the useEffect will trigger a re-fetch to current month
     setFilterDateFrom('');
     setFilterDateTo('');
@@ -320,6 +339,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   };
 
   const toggleSubCategory = (id: string) => {
+    setFilterUncategorizedOnly(false); // Selecting a specific category exits uncategorized-only mode
     setFilterSubCategoryIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -327,10 +347,14 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     });
   };
 
-  const toggleTransfers = () => setFilterIncludeTransfers(prev => !prev);
+  const toggleTransfers = () => {
+    setFilterUncategorizedOnly(false);
+    setFilterIncludeTransfers(prev => !prev);
+  };
 
   const toggleAllOfType = (type: 'income' | 'expense' | 'transfer') => {
     if (type === 'transfer') { toggleTransfers(); return; }
+    setFilterUncategorizedOnly(false); // Selecting a type exits uncategorized-only mode
     const idsOfType = allSubCategories.filter(sc => sc.categoryType === type).map(sc => sc.id);
     const allSelected = idsOfType.every(id => filterSubCategoryIds.has(id));
     setFilterSubCategoryIds(prev => {
@@ -465,7 +489,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               allSubCategories={allSubCategories}
               filterSubCategoryIds={filterSubCategoryIds}
               filterIncludeTransfers={filterIncludeTransfers}
+              filterUncategorizedOnly={filterUncategorizedOnly}
               hasTransfers={transactions.some(t => t.transaction_type === 'transfer')}
+              hasUncategorized={transactions.some(t => t.sub_category_id === null && t.transaction_type !== 'transfer')}
               uniqueRecorders={uniqueRecorders}
               hasActiveFilters={hasActiveFilters}
               maxDate={today}
@@ -475,6 +501,15 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               toggleSubCategory={toggleSubCategory}
               toggleTransfers={toggleTransfers}
               toggleAllOfType={toggleAllOfType}
+              toggleUncategorized={() => {
+                const newVal = !filterUncategorizedOnly;
+                setFilterUncategorizedOnly(newVal);
+                if (newVal) {
+                  // Entering uncategorized-only mode — clear other category selections
+                  setFilterSubCategoryIds(new Set());
+                  setFilterIncludeTransfers(false);
+                }
+              }}
               clearFilters={clearFilters}
               onClose={() => setShowFilters(false)}
             />
@@ -741,7 +776,9 @@ interface FilterContentProps {
   allSubCategories: { id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[];
   filterSubCategoryIds: Set<string>;
   filterIncludeTransfers: boolean;
+  filterUncategorizedOnly: boolean;
   hasTransfers: boolean;
+  hasUncategorized: boolean;
   uniqueRecorders: { id: string; name: string }[];
   hasActiveFilters: boolean;
   maxDate: string;
@@ -751,6 +788,7 @@ interface FilterContentProps {
   toggleSubCategory: (id: string) => void;
   toggleTransfers: () => void;
   toggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
+  toggleUncategorized: () => void;
   clearFilters: () => void;
   onClose: () => void;
 }
@@ -762,7 +800,9 @@ function FilterContent({
   allSubCategories,
   filterSubCategoryIds,
   filterIncludeTransfers,
+  filterUncategorizedOnly,
   hasTransfers,
+  hasUncategorized,
   uniqueRecorders,
   hasActiveFilters,
   maxDate,
@@ -772,6 +812,7 @@ function FilterContent({
   toggleSubCategory,
   toggleTransfers,
   toggleAllOfType,
+  toggleUncategorized,
   clearFilters,
   onClose,
 }: FilterContentProps) {
@@ -838,9 +879,12 @@ function FilterContent({
         selectedIds={filterSubCategoryIds}
         includeTransfers={filterIncludeTransfers}
         hasTransfers={hasTransfers}
+        uncategorizedOnly={filterUncategorizedOnly}
+        hasUncategorized={hasUncategorized}
         onToggleSubCategory={toggleSubCategory}
         onToggleTransfers={toggleTransfers}
         onToggleAllOfType={toggleAllOfType}
+        onToggleUncategorized={toggleUncategorized}
       />
 
       {/* Reset Filters */}

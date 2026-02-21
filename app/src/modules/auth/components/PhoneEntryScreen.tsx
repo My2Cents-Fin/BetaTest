@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhoneInput } from './PhoneInput';
+import { ConsentModal } from './ConsentModal';
 import { validatePhone } from '../../../shared/utils/validation';
 import { checkPhoneExists } from '../services/auth';
 
@@ -10,6 +11,8 @@ export function PhoneEntryScreen() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState('');
 
   const validation = validatePhone(phone);
   const isValid = validation.valid;
@@ -41,15 +44,28 @@ export function PhoneEntryScreen() {
       }
 
       if (result.exists) {
+        // Existing user — go straight to PIN entry
         navigate('/enter-pin', { state: { phone: validation.value } });
       } else {
-        navigate('/set-pin', { state: { phone: validation.value, isNewUser: true } });
+        // New user — show consent modal first
+        setPendingPhone(validation.value!);
+        setShowConsent(true);
       }
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleConsentAccept = () => {
+    setShowConsent(false);
+    navigate('/set-pin', { state: { phone: pendingPhone, isNewUser: true, consentAccepted: true } });
+  };
+
+  const handleConsentDecline = () => {
+    setShowConsent(false);
+    setPendingPhone('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -125,12 +141,19 @@ export function PhoneEntryScreen() {
 
           <p className="mt-8 text-center text-sm text-gray-400">
             By continuing, you agree to our{' '}
-            <a href="#" className="text-[var(--color-primary)] hover:underline">Terms</a>
+            <button onClick={() => window.open('/privacy', '_blank')} className="text-[var(--color-primary)] hover:underline">Privacy Policy</button>
             {' & '}
-            <a href="#" className="text-[var(--color-primary)] hover:underline">Privacy Policy</a>
+            <button onClick={() => window.open('/terms', '_blank')} className="text-[var(--color-primary)] hover:underline">Terms</button>
           </p>
         </div>
       </div>
+
+      {/* Consent Modal for new users */}
+      <ConsentModal
+        isOpen={showConsent}
+        onAccept={handleConsentAccept}
+        onDecline={handleConsentDecline}
+      />
     </div>
   );
 }

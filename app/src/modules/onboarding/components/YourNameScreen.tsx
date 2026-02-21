@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { validateName } from '../../../shared/utils/validation';
 import { updateDisplayName } from '../services/onboarding';
 import { useAuth } from '../../../app/providers/AuthProvider';
 
 export function YourNameScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signOut } = useAuth();
+  const consentAccepted = (location.state as { consentAccepted?: boolean })?.consentAccepted;
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +32,7 @@ export function YourNameScreen() {
     setIsLoading(true);
 
     try {
-      const result = await updateDisplayName(validation.value!);
+      const result = await updateDisplayName(validation.value!, consentAccepted);
 
       if (!result.success) {
         setError(result.error || 'Failed to save name');

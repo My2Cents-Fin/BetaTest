@@ -8,12 +8,13 @@ import { Toast } from '../../../shared/components/Toast';
 interface LocationState {
   phone?: string;
   isReset?: boolean;
+  consentAccepted?: boolean;
 }
 
 export function SetPinScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { phone, isReset } = (location.state as LocationState) || {};
+  const { phone, isReset, consentAccepted } = (location.state as LocationState) || {};
 
   const [step, setStep] = useState<1 | 2>(1);
   const [pin, setPin] = useState('');
@@ -83,7 +84,10 @@ export function SetPinScreen() {
         setShowToast(true);
         const status = await getOnboardingStatus();
         setTimeout(() => {
-          navigate(status.nextRoute, { replace: true });
+          navigate(status.nextRoute, {
+            replace: true,
+            state: consentAccepted ? { consentAccepted: true } : undefined,
+          });
         }, 1000);
       }
     } catch {

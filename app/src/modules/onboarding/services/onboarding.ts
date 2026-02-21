@@ -14,9 +14,9 @@ export interface CreateHouseholdResult {
 }
 
 /**
- * Update user's display name
+ * Update user's display name and optionally record consent
  */
-export async function updateDisplayName(name: string): Promise<UpdateNameResult> {
+export async function updateDisplayName(name: string, consentAccepted?: boolean): Promise<UpdateNameResult> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -33,15 +33,24 @@ export async function updateDisplayName(name: string): Promise<UpdateNameResult>
       return { success: false, error: authError.message };
     }
 
-    // Also save to users table (optional - may fail if table doesn't exist yet)
+    // Build the user record with optional consent fields
+    const userRecord: Record<string, unknown> = {
+      id: user.id,
+      display_name: name,
+      phone: user.user_metadata?.phone_number || user.phone || user.email?.replace(`@${AUTH_CONFIG.emailDomain}`, ''),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (consentAccepted) {
+      userRecord.consent_accepted = true;
+      userRecord.consent_accepted_at = new Date().toISOString();
+      userRecord.consent_version = '1.0';
+    }
+
+    // Save to users table (optional - may fail if table doesn't exist yet)
     const { error: dbError } = await supabase
       .from('users')
-      .upsert({
-        id: user.id,
-        display_name: name,
-        phone: user.user_metadata?.phone_number || user.phone || user.email?.replace(`@${AUTH_CONFIG.emailDomain}`, ''),
-        updated_at: new Date().toISOString(),
-      });
+      .upsert(userRecord);
 
     if (dbError) {
       console.error('Failed to save to users table:', dbError);

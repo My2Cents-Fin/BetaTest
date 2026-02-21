@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories, getAllocations, getMonthlyPlan } from '../../budget/services/budget';
-import { getCurrentMonthTransactions, getHouseholdUsers } from '../../budget/services/transactions';
+import { getCurrentMonthTransactions, getHouseholdUsers, getUncategorizedCount } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from './QuickAddTransaction';
 import { FundTransferModal } from './FundTransferModal';
@@ -15,6 +15,7 @@ interface DashboardTabProps {
   onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
   onCategoryDrillDown?: (subCategoryId: string) => void;
+  onUncategorizedDrillDown?: () => void;
 }
 
 interface CategorySpending {
@@ -36,7 +37,7 @@ interface UserBalance {
   expectedBalance: number;
 }
 
-export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown }: DashboardTabProps) {
+export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown }: DashboardTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
@@ -55,6 +56,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
   const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [uncategorizedTotal, setUncategorizedTotal] = useState(0);
+  const [uncategorizedCountAll, setUncategorizedCountAll] = useState(0);
+  const [uncategorizedCountThisMonth, setUncategorizedCountThisMonth] = useState(0);
 
   const hasLoadedRef = useRef(false);
 
@@ -112,12 +115,13 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       setHousehold(householdData);
 
       // Step 2: All these only need householdData.id — run in parallel
-      const [planResult, subCategoriesResult, allocationsResult, transactionsResult, usersResult] = await Promise.all([
+      const [planResult, subCategoriesResult, allocationsResult, transactionsResult, usersResult, uncatCountResult] = await Promise.all([
         getMonthlyPlan(householdData.id, currentMonth),
         getHouseholdSubCategories(householdData.id),
         getAllocations(householdData.id, currentMonth),
         getCurrentMonthTransactions(householdData.id),
         getHouseholdUsers(householdData.id),
+        getUncategorizedCount(householdData.id),
       ]);
 
       // Process plan
@@ -189,10 +193,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       setCategorySpending(categoryList);
 
       // Calculate uncategorized expense total (sub_category_id === null, non-transfer)
-      const uncategorizedSpent = transactions
-        .filter(t => t.transaction_type === 'expense' && t.sub_category_id === null)
-        .reduce((sum, t) => sum + t.amount, 0);
+      const uncategorizedTxns = transactions.filter(t => t.transaction_type === 'expense' && t.sub_category_id === null);
+      const uncategorizedSpent = uncategorizedTxns.reduce((sum, t) => sum + t.amount, 0);
       setUncategorizedTotal(uncategorizedSpent);
+      setUncategorizedCountThisMonth(uncategorizedTxns.length);
+      setUncategorizedCountAll(uncatCountResult.count);
 
       // Calculate variable-only spending for daily spending card
       // Include uncategorized expenses in the daily velocity (they're assumed as day-to-day spending)
@@ -568,7 +573,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                 {/* Uncategorised row — shows imported transactions without a category */}
                 {uncategorizedTotal > 0 && (
                   <div
-                    className={`flex items-center gap-3 py-2.5 ${variableAtRisk.length > 0 ? 'border-t border-black/[0.04]' : ''}`}
+                    className={`flex items-center gap-3 py-2.5 ${variableAtRisk.length > 0 ? 'border-t border-black/[0.04]' : ''} ${onUncategorizedDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors' : ''}`}
+                    onClick={() => onUncategorizedDrillDown?.()}
                   >
                     <div className="w-[3px] h-9 rounded-sm bg-amber-400" />
                     <div className="icon-container icon-container-md" style={{ background: 'rgba(217,119,6,0.08)' }}>
@@ -576,13 +582,22 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     </div>
                     <div className="flex-1">
                       <span className="text-[13px] font-medium text-amber-700">Uncategorised</span>
-                      <span className="block text-[10px] text-amber-600/70">Imported, needs review</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-amber-600">
-                        ₹{formatNumber(uncategorizedTotal)}
+                      <span className="block text-[10px] text-amber-600/70">
+                        {uncategorizedCountThisMonth} this month{uncategorizedCountAll > uncategorizedCountThisMonth ? ` · ${uncategorizedCountAll} total` : ''}
                       </span>
-                      <p className="text-[10px] text-amber-600/60">unbudgeted</p>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <span className="text-sm font-bold text-amber-600">
+                          ₹{formatNumber(uncategorizedTotal)}
+                        </span>
+                        <p className="text-[10px] text-amber-600/60">unbudgeted</p>
+                      </div>
+                      {onUncategorizedDrillDown && (
+                        <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                     </div>
                   </div>
                 )}

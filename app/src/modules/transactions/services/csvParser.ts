@@ -261,6 +261,7 @@ const GENERIC_CSV: BankCSVFormat = {
   parseRow: (row) => {
     const keys = Object.keys(row);
     let date = '';
+    let dateKey = '';
     let narration = '';
 
     // Find date column
@@ -268,6 +269,7 @@ const GENERIC_CSV: BankCSVFormat = {
       const parsed = parseDate(row[key]);
       if (parsed) {
         date = parsed;
+        dateKey = key;
         break;
       }
     }
@@ -281,21 +283,51 @@ const GENERIC_CSV: BankCSVFormat = {
       }
     }
 
+    // Detect CR/DR indicator column — used for single-amount-column statements
+    // (e.g., mini-statements with one "Amount" column + a "CR/DR" or "Type" column)
+    let crDrIndicator = '';
+    for (const key of keys) {
+      const keyLower = key.toLowerCase().trim();
+      if (keyLower === 'cr/dr' || keyLower === 'dr/cr' || keyLower === 'type' || keyLower === 'dr./cr.') {
+        crDrIndicator = (row[key] || '').trim().toLowerCase().replace(/\./g, '');
+        break;
+      }
+    }
+
     // Try to detect debit/credit from header names
     let debit = 0;
     let credit = 0;
     const debitKeywords = ['debit', 'withdrawal', 'dr', 'paid', 'expense'];
     const creditKeywords = ['credit', 'deposit', 'cr', 'received', 'income'];
+    // Headers that indicate a single combined amount column (not debit or credit specifically)
+    const amountKeywords = ['amount', 'txn amount', 'transaction amount'];
 
+    let singleAmount = 0;
     for (const key of keys) {
       const keyLower = key.toLowerCase().trim();
+      if (key === dateKey) continue; // Skip the date column (its value can look like a number)
       const amt = parseAmount(row[key]);
       if (amt > 0) {
-        if (debitKeywords.some(kw => keyLower.includes(kw))) {
+        if (debitKeywords.some(kw => keyLower.includes(kw) && !keyLower.includes('cr'))) {
+          // Match debit keywords but NOT if the header also contains "cr" (e.g., "CR/DR")
           debit = amt;
-        } else if (creditKeywords.some(kw => keyLower.includes(kw))) {
+        } else if (creditKeywords.some(kw => keyLower.includes(kw) && !keyLower.includes('dr'))) {
+          // Match credit keywords but NOT if the header also contains "dr" (e.g., "CR/DR")
           credit = amt;
+        } else if (amountKeywords.some(kw => keyLower.includes(kw))) {
+          // Generic "Amount" column — use CR/DR indicator to determine type
+          singleAmount = amt;
         }
+      }
+    }
+
+    // If we found a single amount column with a CR/DR indicator, use it
+    if (debit === 0 && credit === 0 && singleAmount > 0) {
+      if (crDrIndicator.startsWith('cr')) {
+        credit = singleAmount;
+      } else {
+        // Default to debit (expense) — most transactions are expenses
+        debit = singleAmount;
       }
     }
 
@@ -303,13 +335,23 @@ const GENERIC_CSV: BankCSVFormat = {
     if (debit === 0 && credit === 0) {
       const amountEntries: { key: string; amt: number }[] = [];
       for (const key of keys) {
+        if (key === dateKey) continue; // Skip date column
+        const keyLower = key.toLowerCase().trim();
+        // Skip columns that are clearly not amounts (serial numbers, identifiers)
+        if (keyLower.includes('serial') || keyLower.includes('sl') || keyLower.includes('sno') ||
+            keyLower.includes('s.no') || keyLower.includes('ref') || keyLower.includes('chq') ||
+            keyLower.includes('cheque') || keyLower.includes('cr/dr') || keyLower.includes('dr/cr')) continue;
         const amt = parseAmount(row[key]);
         if (amt > 0) amountEntries.push({ key, amt });
       }
 
       if (amountEntries.length === 1) {
-        // Single amount column — can't distinguish, default to expense
-        debit = amountEntries[0].amt;
+        // Single amount column — use CR/DR indicator if available
+        if (crDrIndicator.startsWith('cr')) {
+          credit = amountEntries[0].amt;
+        } else {
+          debit = amountEntries[0].amt;
+        }
       } else if (amountEntries.length >= 2) {
         // Two amount columns — convention: first is debit, second is credit
         // (most banks: withdrawal before deposit). Only one will be non-zero per row.

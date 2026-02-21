@@ -12,9 +12,12 @@ interface CategoryMultiSelectProps {
   selectedIds: Set<string>;
   includeTransfers: boolean;
   hasTransfers: boolean;
+  uncategorizedOnly?: boolean;
+  hasUncategorized?: boolean;
   onToggleSubCategory: (id: string) => void;
   onToggleTransfers: () => void;
   onToggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
+  onToggleUncategorized?: () => void;
 }
 
 export function CategoryMultiSelect({
@@ -23,9 +26,12 @@ export function CategoryMultiSelect({
   selectedIds,
   includeTransfers,
   hasTransfers,
+  uncategorizedOnly,
+  hasUncategorized,
   onToggleSubCategory,
   onToggleTransfers,
   onToggleAllOfType,
+  onToggleUncategorized,
 }: CategoryMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -110,6 +116,12 @@ export function CategoryMultiSelect({
     return hasTransfers && ('transfer'.includes(q) || 'all transfers'.includes(q) || 'transfers'.includes(q));
   }, [search, hasTransfers]);
 
+  const showUncategorizedShortcut = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return !!hasUncategorized;
+    return !!hasUncategorized && ('uncategorised'.includes(q) || 'uncategorized'.includes(q) || 'all uncategorised'.includes(q));
+  }, [search, hasUncategorized]);
+
   // Show transfer entry in the grouped list based on search
   const showTransferEntry = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -117,7 +129,7 @@ export function CategoryMultiSelect({
     return hasTransfers && ('transfer'.includes(q) || 'fund transfer'.includes(q) || 'transfers'.includes(q));
   }, [search, hasTransfers]);
 
-  const hasAnyShortcut = showIncomeShortcut || showExpenseShortcut || showTransferShortcut;
+  const hasAnyShortcut = showIncomeShortcut || showExpenseShortcut || showTransferShortcut || showUncategorizedShortcut;
 
   // Set indeterminate state on shortcut checkboxes
   useEffect(() => {
@@ -133,8 +145,8 @@ export function CategoryMultiSelect({
   }, [someExpenseSelected]);
 
   // Display text
-  const totalSelected = selectedIds.size + (includeTransfers ? 1 : 0);
-  const displayText = totalSelected === 0 ? 'All categories' : `${totalSelected} selected`;
+  const totalSelected = selectedIds.size + (includeTransfers ? 1 : 0) + (uncategorizedOnly ? 1 : 0);
+  const displayText = uncategorizedOnly ? 'Uncategorised only' : totalSelected === 0 ? 'All categories' : `${totalSelected} selected`;
 
   // No results check
   const hasNoResults = filteredGrouped.size === 0 && !showTransferEntry && !hasAnyShortcut;
@@ -213,6 +225,18 @@ export function CategoryMultiSelect({
                         className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                       />
                       <span className="text-xs font-medium text-gray-700">All Transfers</span>
+                    </label>
+                  )}
+
+                  {showUncategorizedShortcut && onToggleUncategorized && (
+                    <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer rounded-lg">
+                      <input
+                        type="checkbox"
+                        checked={!!uncategorizedOnly}
+                        onChange={() => onToggleUncategorized()}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">All Uncategorised</span>
                     </label>
                   )}
                 </div>

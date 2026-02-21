@@ -218,6 +218,32 @@ export async function getCurrentMonthTransactions(
 }
 
 /**
+ * Get count of all uncategorized transactions across all time (lightweight — count only, no data)
+ */
+export async function getUncategorizedCount(
+  householdId: string
+): Promise<{ count: number; error?: string }> {
+  try {
+    const { count, error } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('household_id', householdId)
+      .is('sub_category_id', null)
+      .neq('transaction_type', 'transfer');
+
+    if (error) {
+      console.error('getUncategorizedCount error:', error);
+      return { count: 0, error: error.message };
+    }
+
+    return { count: count || 0 };
+  } catch (e) {
+    console.error('getUncategorizedCount error:', e);
+    return { count: 0, error: 'Failed to count uncategorized transactions' };
+  }
+}
+
+/**
  * Update a transaction
  */
 export async function updateTransaction(

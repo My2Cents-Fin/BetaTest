@@ -6,45 +6,72 @@
 2026-02-22
 
 ## Last Session Summary
-**Session 32: Bank Statement Import — Real-World Testing & Generic Parser Rewrite**
+**Session 34: Uncategorized Drill-Down, Filter Enhancements, Excel Fix & Prod Fixes**
 
 ### What Was Done
-- **Tested with real bank statements** — Axis Bank and ICICI Bank PDFs validated against real statements
-- **Rewrote the generic PDF fallback parser** — previous version used pre-mapped TableRow[] cells which failed on unknown bank layouts. New version uses raw TextItem[][] with X-coordinate based column clustering and proximity-based amount assignment
-- **Fixed bank misdetection** — Federal Bank (Jupiter) PDF was incorrectly detected as Axis Bank because it mentioned "Axis Bank" as a partner. Tightened Axis detection to reject Federal Bank IFSC prefix (FDRL) and require "tran date" header
-- **Simplified bank parser strategy** — User decision: keep bank-specific parsers only for tested banks (ICICI, Axis), comment out untested ones (HDFC, SBI for PDF; HDFC, SBI, Kotak for CSV). All other banks fall through to generic fallback which uses X-coordinate auto-detection
-- **Added Vite LAN access** — `server: { host: true }` in vite.config.ts for phone testing over local network
-- **Fixed transaction visibility after import** — date filter re-fetch to show imported transactions immediately
+- **Dashboard → Transactions uncategorized drill-down** — Clicking the "Uncategorised" row on the dashboard now navigates to the Transactions tab pre-filtered to show only uncategorized transactions. Added `onUncategorizedDrillDown` callback prop to DashboardTab, `drillDownUncategorized` state in AppLayout, consumption logic in TransactionsTab with `filterUncategorizedOnly` state.
+- **"All Uncategorised" quick select in filters** — Added new checkbox option in the CategoryMultiSelect Quick Select section. Amber-colored styling. Mutual exclusion: toggling uncategorized-only clears all other category/transfer filters; toggling any specific category clears uncategorized-only mode.
+- **Dashboard uncategorized context** — Subtitle now shows "X this month · Y total" (only shows total when different from current month count). Added lightweight `getUncategorizedCount()` query using Supabase `select('*', { count: 'exact', head: true })` to get all-time uncategorized count without transferring data.
+- **Critical Excel import bug fix** — ICICI mini-statement XLS (`OpMiniStatement22-02-2026.xls`) was showing serial numbers (1, 2, 3, 4) as transaction amounts instead of actual amounts (337.00, 20.00, etc.). Root cause: the generic CSV fallback parser had 3 compound bugs — it parsed the date column as a number, picked up serial numbers as amount candidates, and the CR/DR indicator column confused both debit/credit keyword detection and positional fallback. Fixed the `GENERIC_CSV.parseRow` in csvParser.ts to handle both Pattern A (split Debit/Credit columns) and Pattern B (single Amount column + CR/DR indicator).
+- **Identified PDF parser gap** — Generic PDF parser handles Pattern A well but has a gap for Pattern B (single amount + CR/DR). Deprioritized since mini-statements are typically XLS/CSV downloads.
+- **Fixed sign-out 404 on Vercel production** — Sign-out used `window.location.href = '/login'` (hard browser navigation). On Vercel, this returned 404 because no static file exists at `/login`. Created `app/vercel.json` with SPA rewrite rule (`"source": "/(.*)"` → `"/index.html"`) so all client-side routes are served by the React app. Also fixes page refresh on any route (e.g., `/dashboard`).
+- **Fixed Privacy/Terms page back button** — Both pages opened via `window.open('/privacy', '_blank')` (new tab) but the back button used `navigate(-1)` which has nowhere to go in a fresh tab. Updated `handleBack` in both pages: checks `window.history.length <= 2` → calls `window.close()` (returns to original tab), with fallback to `navigate('/login')` if close is blocked.
+- **DPDA Compliance checklist**
+
+| #   | Requirement                             | Status     | Where                                                                                                                                                                                                                                                  |
+| --- | --------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Informed consent before data collection | ✅          | ConsentModal during signup                                                                                                                                                                                                                             |
+| 2   | Consent record in DB                    | ✅          | `consent_accepted`, `consent_accepted_at`, `consent_version` (migration run on PROD)                                                                                                                                                                   |
+| 3   | Right to erasure                        | ✅          | Delete account RPC + UI (migration run on PROD)                                                                                                                                                                                                        |
+| 4   | Right to access                         | ⚠️ Partial | Users see data in-app; no export/download button yet                                                                                                                                                                                                   |
+| 5   | Right to correction                     | ✅          | Edit transactions, names, household                                                                                                                                                                                                                    |
+| 6   | Right to withdraw consent               | ⚠️ Partial | Delete account = withdrawal. No withdraw-without-delete option                                                                                                                                                                                         |
+| 7   | Purpose limitation                      | ✅          | Only used for budgeting, no third-party sharing                                                                                                                                                                                                        |
+| 8   | Data minimisation                       | ✅          | Only phone, name, transactions                                                                                                                                                                                                                         |
+| 9   | Storage limitation / inactive purge     | ✅ **NEW**  | Privacy Policy states 24-month inactive account deletion                                                                                                                                                                                               |
+| 10  | Privacy policy                          | ✅          | `/privacy` page + Data & Privacy modal                                                                                                                                                                                                                 |
+| 11  | **Grievance officer**                   | ✅ **NEW**  | Privacy Policy section 10 — Varshine Kolla, [privacy@my2cents.app](mailto:privacy@my2cents.app) **Note:** You'll need to set up `privacy@my2cents.app` as an actual email (or forward it to your personal email) so the grievance contact is reachable |
+| 12  | **Children's data (Section 9)**         | ✅ **NEW**  | Terms section 4 + Privacy Policy section 7 — 18+ required, parental consent for minors                                                                                                                                                                 |
+| 13  | Data breach notification                | ❌          | Process not documented (can wait at current scale)                                                                                                                                                                                                     |
+| 14  | Data Protection Impact Assessment       | ❌          | Not required at current scale                                                                                                                                                                                                                          |
 
 ### Key Changes
-1. **`pdfParser.ts`** (heavily modified):
-   - Extended `BankPDFFormat` with `usesRawRows` and `parseRawRows` for raw TextItem processing
-   - Tightened Axis Bank detection (IFSC prefix check, reject Federal Bank, require "tran date")
-   - Completely rewrote generic fallback parser with X-coordinate column clustering (30px tolerance), header keyword detection recording X positions, amount assignment by X-proximity (60px tolerance), multi-line transaction support
-   - **Commented out HDFC_PDF and SBI_PDF** (untested) — only ICICI_PDF, AXIS_PDF, GENERIC_PDF in active array
-   - Updated `parsePDF()` to route to raw row parser when `usesRawRows` is true
+1. **New files:**
+   - `app/vercel.json` — SPA rewrite rule for Vercel deployment (all routes → index.html)
 
-2. **`csvParser.ts`** (modified):
-   - **Commented out HDFC_CSV, SBI_CSV, KOTAK_CSV** (untested) — only ICICI_CSV, AXIS_CSV, GENERIC_CSV in active array
-   - Updated error message for unrecognized formats
-
-3. **`vite.config.ts`** — Added `server: { host: true }` for LAN access
-4. **`TransactionsTab.tsx`** — Date filter re-fetch, import date range auto-filter
-5. **`StatementImportModal.tsx`** — onSuccess date range passback
+2. **Modified files:**
+   - `app/src/modules/dashboard/components/DashboardTab.tsx` — Added `onUncategorizedDrillDown` prop, `uncategorizedCountAll`/`uncategorizedCountThisMonth` state, clickable uncategorized row with chevron, dynamic subtitle "X this month · Y total"
+   - `app/src/app/AppLayout.tsx` — Added `drillDownUncategorized` state, `handleUncategorizedDrillDown` callback, passes props to DashboardTab and TransactionsTab
+   - `app/src/modules/transactions/components/TransactionsTab.tsx` — Added `drillDownUncategorized` prop, `filterUncategorizedOnly` state, useEffect to consume drill-down, uncategorized-only filter logic in `filteredTransactions`, mutual exclusion with other filters, wired CategoryMultiSelect uncategorized props
+   - `app/src/shared/components/CategoryMultiSelect.tsx` — Added `uncategorizedOnly`, `hasUncategorized`, `onToggleUncategorized` props, "All Uncategorised" checkbox in Quick Select with amber styling, searchable by "uncategorised"/"uncategorized"
+   - `app/src/modules/budget/services/transactions.ts` — Added `getUncategorizedCount()` function (count-only query, no data transfer)
+   - `app/src/modules/transactions/services/csvParser.ts` — Rewrote `GENERIC_CSV.parseRow` to: skip date column in amount scanning, detect CR/DR indicator columns, recognize "Amount" as combined column keyword, skip serial number/ref columns in positional fallback, use CR/DR value for debit/credit direction
+   - `app/src/shared/pages/PrivacyPolicyPage.tsx` — Back button uses `handleBack()` with `window.close()` for new-tab context, fallback to `/login`
+   - `app/src/shared/pages/TermsPage.tsx` — Same `handleBack()` fix as PrivacyPolicyPage
 
 ### Build Status
 - TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
-
-### Testing Results
-- ✅ Axis Bank PDF — parsed correctly with bank-specific parser
-- ✅ ICICI Bank PDF — parsed correctly with bank-specific parser
-- ✅ Federal Bank (Jupiter) PDF — correctly falls through to generic parser, all transactions imported
-- Bank-specific parsers: only ICICI + Axis (tested). All others → generic fallback.
+- Vite build: ✅ Passes clean
 
 ### Still Needed
-- **Run migration `011_csv_import_support.sql`** on DEV Supabase before testing
-- Test more banks with generic parser to validate robustness
-- Clean up debug console.log statements from pdfParser.ts (low priority)
+- ~~**Run migrations `012_consent_tracking.sql` and `013_delete_user_account.sql`** on DEV and PROD Supabase~~
+- **Run migration `011_csv_import_support.sql`** on DEV Supabase (from previous session)
+- PDF generic parser Pattern B gap (single amount + CR/DR indicator) — low priority
+- ~~Create actual /privacy and /terms static pages (currently open to non-existent routes)~~
+- Enable PGAudit on Supabase for admin query logging (Tier 1 security recommendation)
+
+### Previous Session 33: Privacy Consent & Data Transparency — DPDPA Compliance
+- Added DPDPA-compliant consent collection for new users (ConsentModal during signup)
+- Created consent tracking migration (`012_consent_tracking.sql`)
+- Added Data & Privacy page (PrivacyInfoModal) accessible from ProfilePanel
+- Fixed dead Terms/Privacy links on login screen
+- Built "Delete my account & data" feature with SECURITY DEFINER RPC (`013_delete_user_account.sql`)
+
+### Previous Session 32: Bank Statement Import — Real-World Testing & Generic Parser Rewrite
+- Tested with real Axis Bank, ICICI Bank, Federal Bank (Jupiter) PDFs
+- Rewrote generic PDF fallback parser with X-coordinate column clustering
+- Fixed bank misdetection, simplified parser strategy
+- **Added Excel (.xlsx/.xls) import support** — new `excelParser.ts` using SheetJS, delegates to CSV parser pipeline. ⚠️ NOT YET TESTED with real Excel bank statements
 
 ### Previous Session 31: Bank Statement Import — Full Build (PDF + CSV)
 - Built complete bank statement import (8 new files, 5 modified)
@@ -392,9 +419,12 @@ Applied a comprehensive "dreamy glass" design language across the entire My2cent
 - [x] **Bank Statement Import (Pillar 1: Productivity)** — ✅ Code complete + tested with real statements
   - Plan at: `.claude/plans/velvety-knitting-noodle.md`
   - All implementation steps complete + real-world testing done
-  - Tested banks: ✅ Axis (bank-specific), ✅ ICICI (bank-specific), ✅ Federal/Jupiter (generic fallback)
+  - Supports: PDF, CSV, **Excel (.xlsx/.xls)** — ✅ Excel tested with real ICICI mini-statement XLS (Session 34)
+  - Tested banks: ✅ Axis (bank-specific), ✅ ICICI (bank-specific + Excel), ✅ Federal/Jupiter (generic fallback)
+  - Generic parser handles both patterns: Pattern A (split Debit/Credit columns) and Pattern B (single Amount + CR/DR indicator)
+  - ⚠️ PDF generic parser has gap for Pattern B (low priority — mini-statements are typically XLS/CSV)
   - Untested bank parsers commented out (HDFC, SBI, Kotak) — will uncomment after real statement validation
-  - Dependencies: `pdfjs-dist` (PDF), `papaparse` (CSV), `@types/papaparse`
+  - Dependencies: `pdfjs-dist` (PDF), `papaparse` (CSV), `xlsx` (Excel), `@types/papaparse`
   - **Action needed:** Run migration `011_csv_import_support.sql` on DEV Supabase before full testing
 
 ---
@@ -403,7 +433,7 @@ Applied a comprehensive "dreamy glass" design language across the entire My2cent
 
 ### 1. Near-Term Tasks (User's List)
 - [x] **Filter by member on budget tab** — Filter icon + MemberMultiSelect dropdown in view mode header. Expense actuals recomputed from raw transactions per selected members; income items filtered by loggedBy.
-- [ ] **Dashboard → Transactions drill-down** — Click on a dashboard category/card to navigate to Transactions tab pre-filtered for those transactions
+- [x] **Dashboard → Transactions drill-down** — Click on a dashboard category/card to navigate to Transactions tab pre-filtered for those transactions. Also includes uncategorized drill-down (Session 34).
 - [x] **Category & subcategory filters in Transactions tab** — Replaced Type filter with unified `CategoryMultiSelect` dropdown. Sub-categories grouped by parent category, "Quick Select" shortcuts for All Income/Expenses/Transfers, OR logic across categories.
 - [ ] **Onboarding income and expense flow test** — End-to-end test of new user flow through income recording + expense planning + freeze
 - [ ] **Voice-based budget setup** — Simplify budget setup through voice instructions (future exploration)
@@ -476,7 +506,9 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
-| 2026-02-22 | **Session 32 (bank statement import testing & generic parser rewrite):** Tested with real Axis Bank, ICICI Bank, and Federal Bank (Jupiter) PDF statements. Rewrote generic PDF fallback parser to use raw TextItem[][] with X-coordinate column clustering instead of pre-mapped TableRow[] cells — fixes parsing failures on unknown bank formats. Fixed Federal Bank misdetection as Axis Bank (IFSC prefix check, require "tran date" header). User decision: keep bank-specific parsers only for tested banks (ICICI, Axis), commented out HDFC+SBI PDF parsers and HDFC+SBI+Kotak CSV parsers (untested). All other banks fall through to generic. Added Vite LAN access for phone testing. TypeScript passes clean. |
+| 2026-02-22 | **Session 34 (uncategorized drill-down, filter enhancements, Excel fix & prod fixes):** Five items: (1) Dashboard uncategorized drill-down — clicking "Uncategorised" row navigates to Transactions tab filtered to uncategorized-only. (2) "All Uncategorised" quick select in CategoryMultiSelect with amber styling, mutual exclusion with other filters. Dashboard subtitle now shows "X this month · Y total". (3) Critical Excel import bug fix — ICICI mini-statement XLS was showing serial numbers as amounts. Rewrote `GENERIC_CSV.parseRow` to handle both Pattern A (split Debit/Credit) and Pattern B (single Amount + CR/DR indicator). (4) Fixed sign-out 404 on Vercel prod — created `app/vercel.json` with SPA rewrite rule so all client-side routes serve index.html. (5) Fixed Privacy/Terms page back button — pages opened in new tab had no history for `navigate(-1)`. Now uses `window.close()` for new-tab context with fallback to `/login`. Modified: DashboardTab.tsx, AppLayout.tsx, TransactionsTab.tsx, CategoryMultiSelect.tsx, transactions.ts, csvParser.ts, PrivacyPolicyPage.tsx, TermsPage.tsx. New: vercel.json. TypeScript + build pass clean. |
+| 2026-02-22 | **Session 33 (privacy consent & data transparency):** Added DPDPA-compliant consent collection for new users. ConsentModal shows during signup (5 privacy commitments, data summary, checkbox). Created `012_consent_tracking.sql` migration (consent_accepted, consent_accepted_at, consent_version on users table). Consent flows through full signup chain: PhoneEntryScreen → ConsentModal → SetPinScreen → YourNameScreen → onboarding service. Added PrivacyInfoModal (7 data practices, stored vs. not-stored grid, DPDPA compliance note) accessible from ProfilePanel "Data & Privacy" button. Fixed dead Terms/Privacy links on login screen. New files: ConsentModal.tsx, PrivacyInfoModal.tsx, 012_consent_tracking.sql. Modified: PhoneEntryScreen.tsx, SetPinScreen.tsx, YourNameScreen.tsx, onboarding.ts, ProfilePanel.tsx. TypeScript + build pass clean. |
+| 2026-02-22 | **Session 32 (bank statement import testing & generic parser rewrite):** Tested with real Axis Bank, ICICI Bank, and Federal Bank (Jupiter) PDF statements. Rewrote generic PDF fallback parser to use raw TextItem[][] with X-coordinate column clustering instead of pre-mapped TableRow[] cells — fixes parsing failures on unknown bank formats. Fixed Federal Bank misdetection as Axis Bank (IFSC prefix check, require "tran date" header). User decision: keep bank-specific parsers only for tested banks (ICICI, Axis), commented out HDFC+SBI PDF parsers and HDFC+SBI+Kotak CSV parsers (untested). All other banks fall through to generic. Added Vite LAN access for phone testing. Added Excel (.xlsx/.xls) import support — new `excelParser.ts` using SheetJS (xlsx), converts sheets to CSV-like rows and delegates to existing CSV parser pipeline. Excel support NOT YET TESTED with real bank statements. Refactored CSV parser to extract shared `parseCSVRows()` reused by both CSV and Excel parsers. TypeScript passes clean. |
 | 2026-02-21 | **Session 31 (bank statement import build):** Built complete bank statement import feature (PDF + CSV). User pivoted to PDF-primary (mobile convenience). Installed pdfjs-dist + papaparse. Created 8 new files: DB migration (source/original_narration columns), merchant rules (21 Indian categories), merchant matcher, PDF parser (3-layer: text extraction → table reconstruction → bank-specific parsing for HDFC/ICICI/SBI/Generic), CSV parser (6 bank formats), import orchestration service, multi-step import modal (upload→preview→import→done with glass design), StatementImportModal.tsx. Modified 5 files: types.ts (nullable sub_category_id, import types), transactions.ts (uncategorized display, source tracking), TransactionsTab.tsx (import button, amber badge, modal integration), QuickAddTransaction.tsx (bank description field, null category in edit), DashboardTab.tsx (uncategorized in daily velocity, "Uncategorised" row in expenses to watch). TypeScript + build pass clean. PDF.js properly code-split (404KB lazy chunk). Migration 011 needs to run on DEV before testing. |
 | 2026-02-20 | **Session 30 (CSV import planning):** Researched Indian data security laws (DPDPA 2023, IT Act, SPDI Rules) — minimal compliance at current scale. Checked Supabase data residency (DEV=Seoul, PROD=Singapore, neither in India). Evaluated SMS parsing (blocked by Google Play for PWA), CSV upload (zero cost), UPI integration (heavy compliance). Decision: start with CSV bank statement import. Designed comprehensive plan: 6 new files (migration, merchant rules, merchant matcher, CSV parser, import service, import modal) + 5 modified files (types, transactions service, TransactionsTab, DashboardTab, QuickAddTransaction). Key design: uncategorized transactions stay in normal list with amber badge, treated as expenses, shown in dashboard. Merchant matching via static keyword→sub-category-name rules for Indian merchants. Bank format auto-detection from headers (HDFC, ICICI, SBI, Kotak, Axis). Plan approved — build starts next session. |
 | 2026-02-18 | **Session 29 (OTP → MPIN auth):** Replaced Supabase phone OTP auth with 6-digit MPIN system to eliminate SMS costs. Created `user_pins` table + 2 RPC functions (`check_phone_registered`, `reset_user_pin` with SECURITY DEFINER). Auth uses `signUp/signInWithPassword` with email=`{phone}@my2cents.app`, password=PIN. New screens: `SetPinScreen.tsx` (2-step PIN creation, reused for reset), `EnterPinScreen.tsx` (PIN login with "Forgot PIN?" link). Modified: `auth.ts` (removed sendOTP/verifyOTP, added PIN-based functions), `PhoneEntryScreen.tsx` (checks phone existence, routes to set-pin or enter-pin), `OTPInput.tsx` (added `masked` prop), `Router.tsx` (new routes, removed /verify), `app.config.ts` (phone_pin login method), `validation.ts` (validatePin, maskPhone), `ProfilePanel.tsx` + `onboarding.ts` (phone from user_metadata). Migration SQL includes existing OTP user migration preserving user_ids. Ran migration on DEV Supabase + disabled email confirmations. Tested new user flow end-to-end — working. TypeScript + build pass clean. |

@@ -37,6 +37,8 @@ export function AppLayout() {
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
   // Drill-down: initial sub-category filter when navigating from Dashboard → Transactions
   const [drillDownSubCategoryId, setDrillDownSubCategoryId] = useState<string | null>(null);
+  // Drill-down: show only uncategorized transactions
+  const [drillDownUncategorized, setDrillDownUncategorized] = useState(false);
 
   // Dashboard drill-down: navigate to Transactions tab with a pre-applied sub-category filter
   const handleCategoryDrillDown = useCallback((subCategoryId: string) => {
@@ -44,9 +46,16 @@ export function AppLayout() {
     setActiveTab('transactions');
   }, []);
 
+  // Dashboard drill-down: navigate to Transactions tab filtered to uncategorized only
+  const handleUncategorizedDrillDown = useCallback(() => {
+    setDrillDownUncategorized(true);
+    setActiveTab('transactions');
+  }, []);
+
   // Called by TransactionsTab after it consumes the drill-down filter
   const handleDrillDownConsumed = useCallback(() => {
     setDrillDownSubCategoryId(null);
+    setDrillDownUncategorized(false);
   }, []);
 
   const handleAddTransaction = useCallback(() => {
@@ -84,6 +93,7 @@ export function AppLayout() {
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
             onCategoryDrillDown={handleCategoryDrillDown}
+            onUncategorizedDrillDown={handleUncategorizedDrillDown}
           />
         )}
         {activeTab === 'budget' && (
@@ -103,6 +113,7 @@ export function AppLayout() {
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
             drillDownSubCategoryId={drillDownSubCategoryId}
+            drillDownUncategorized={drillDownUncategorized}
             onDrillDownConsumed={handleDrillDownConsumed}
           />
         )}

@@ -193,6 +193,51 @@ export async function resetPin(phone: string, newPin: string): Promise<ResetPinR
 }
 
 // ============================================
+// Account Deletion
+// ============================================
+
+export interface DeleteAccountResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Permanently delete current user's account and all data.
+ * Handles household ownership transfer if other members exist.
+ */
+export async function deleteAccount(): Promise<DeleteAccountResult> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    const { data, error } = await supabase.rpc('delete_user_account', {
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      console.error('deleteAccount RPC error:', error);
+      return { success: false, error: 'Failed to delete account. Please try again.' };
+    }
+
+    const result = data as { success: boolean; error?: string };
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Failed to delete account.' };
+    }
+
+    // Sign out locally (auth record is already deleted server-side)
+    await supabase.auth.signOut();
+
+    return { success: true };
+  } catch (e) {
+    console.error('deleteAccount error:', e);
+    return { success: false, error: 'Something went wrong. Please try again.' };
+  }
+}
+
+// ============================================
 // Session & User Functions
 // ============================================
 
