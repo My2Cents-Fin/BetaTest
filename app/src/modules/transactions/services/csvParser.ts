@@ -337,8 +337,67 @@ const BANK_CSV_FORMATS: BankCSVFormat[] = [
 ];
 
 // ============================================
-// Main Parse Function
+// Main Parse Functions
 // ============================================
+
+/**
+ * Parse rows with headers using the bank format detection pipeline.
+ * Shared by both CSV and Excel parsers — accepts pre-parsed tabular data.
+ */
+export function parseCSVRows(
+  headers: string[],
+  dataRows: Record<string, string>[]
+): StatementParseResult {
+  const format = BANK_CSV_FORMATS.find(f => f.detect(headers));
+
+  if (!format) {
+    return {
+      success: false,
+      error: 'Could not recognize the format. The generic parser should handle most bank exports.',
+    };
+  }
+
+  const transactions: ParsedStatementTransaction[] = [];
+  const debugInfo = { totalRows: 0, noDate: 0, noAmount: 0, noNarration: 0, sampleDates: [] as string[] };
+  for (const row of dataRows) {
+    debugInfo.totalRows++;
+    const parsed = format.parseRow(row);
+    if (parsed) {
+      transactions.push(parsed);
+    } else if (debugInfo.totalRows <= 5) {
+      // Capture debug info from first 5 failed rows
+      const vals = Object.entries(row);
+      for (const [key, val] of vals) {
+        if (val && parseDate(val)) break;
+        if (val && debugInfo.sampleDates.length < 3) {
+          // Collect values that look like they could be dates (non-empty, short)
+          if (val.trim().length > 0 && val.trim().length <= 20 && /\d/.test(val)) {
+            debugInfo.sampleDates.push(`${key}: "${val.trim()}"`);
+          }
+        }
+      }
+    }
+  }
+
+  if (transactions.length === 0) {
+    // Build a helpful error with diagnostic info
+    const sample = debugInfo.sampleDates.length > 0
+      ? ` Sample values from first rows: ${debugInfo.sampleDates.join(', ')}.`
+      : '';
+    const headerList = headers.slice(0, 8).join(', ');
+    console.warn(`[CSV Parser] Failed to parse. Bank: ${format.name}, Headers: [${headerList}], Rows: ${debugInfo.totalRows}.${sample}`);
+    return {
+      success: false,
+      error: `Recognized as ${format.name} but could not parse any transactions. Headers found: ${headerList}. The date format or column layout may not be supported yet.`,
+    };
+  }
+
+  return {
+    success: true,
+    transactions,
+    bankName: format.name,
+  };
+}
 
 /**
  * Parse a CSV bank statement file.
@@ -356,57 +415,7 @@ export async function parseCSV(file: File): Promise<StatementParseResult> {
         }
 
         const headers = results.meta.fields || [];
-        const format = BANK_CSV_FORMATS.find(f => f.detect(headers));
-
-        if (!format) {
-          resolve({
-            success: false,
-            error: 'Could not recognize the CSV format. The generic parser should handle most bank CSV exports.',
-          });
-          return;
-        }
-
-        const transactions: ParsedStatementTransaction[] = [];
-        const debugInfo = { totalRows: 0, noDate: 0, noAmount: 0, noNarration: 0, sampleDates: [] as string[] };
-        for (const row of results.data as Record<string, string>[]) {
-          debugInfo.totalRows++;
-          const parsed = format.parseRow(row);
-          if (parsed) {
-            transactions.push(parsed);
-          } else if (debugInfo.totalRows <= 5) {
-            // Capture debug info from first 5 failed rows
-            const vals = Object.entries(row);
-            for (const [key, val] of vals) {
-              if (val && parseDate(val)) break;
-              if (val && debugInfo.sampleDates.length < 3) {
-                // Collect values that look like they could be dates (non-empty, short)
-                if (val.trim().length > 0 && val.trim().length <= 20 && /\d/.test(val)) {
-                  debugInfo.sampleDates.push(`${key}: "${val.trim()}"`);
-                }
-              }
-            }
-          }
-        }
-
-        if (transactions.length === 0) {
-          // Build a helpful error with diagnostic info
-          const sample = debugInfo.sampleDates.length > 0
-            ? ` Sample values from first rows: ${debugInfo.sampleDates.join(', ')}.`
-            : '';
-          const headerList = headers.slice(0, 8).join(', ');
-          console.warn(`[CSV Parser] Failed to parse. Bank: ${format.name}, Headers: [${headerList}], Rows: ${debugInfo.totalRows}.${sample}`);
-          resolve({
-            success: false,
-            error: `Recognized as ${format.name} CSV but could not parse any transactions. Headers found: ${headerList}. The date format or column layout may not be supported yet.`,
-          });
-          return;
-        }
-
-        resolve({
-          success: true,
-          transactions,
-          bankName: format.name,
-        });
+        resolve(parseCSVRows(headers, results.data as Record<string, string>[]));
       },
       error: (error) => {
         resolve({ success: false, error: `Failed to parse CSV: ${error.message}` });

@@ -2,7 +2,7 @@
  * Statement Import Service
  *
  * Orchestrates the full import flow:
- * 1. Parse the file (PDF or CSV)
+ * 1. Parse the file (PDF, CSV, or Excel)
  * 2. Apply merchant matching
  * 3. Detect duplicates
  * 4. Bulk insert into transactions table
@@ -11,6 +11,7 @@
 import { supabase } from '../../../lib/supabase';
 import { parsePDF } from './pdfParser';
 import { parseCSV } from './csvParser';
+import { parseExcel } from './excelParser';
 import { matchMerchant } from './merchantMatcher';
 import type {
   ParsedStatementTransaction,
@@ -25,7 +26,7 @@ import type {
 // ============================================
 
 /**
- * Parse a statement file (PDF or CSV).
+ * Parse a statement file (PDF, CSV, or Excel).
  * Auto-detects format from file extension.
  */
 export async function parseStatementFile(
@@ -38,10 +39,12 @@ export async function parseStatementFile(
     return parsePDF(file, password);
   } else if (extension === 'csv') {
     return parseCSV(file);
+  } else if (extension === 'xlsx' || extension === 'xls') {
+    return parseExcel(file);
   } else {
     return {
       success: false,
-      error: `Unsupported file type: .${extension}. Please upload a PDF or CSV file.`,
+      error: `Unsupported file type: .${extension}. Please upload a PDF, CSV, or Excel file.`,
     };
   }
 }

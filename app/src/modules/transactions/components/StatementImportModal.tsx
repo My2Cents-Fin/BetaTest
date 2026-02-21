@@ -408,14 +408,14 @@ function UploadStep({
           </svg>
         </div>
         <p className="text-sm font-medium text-gray-900 mb-1">Upload Bank Statement</p>
-        <p className="text-xs text-gray-500">PDF or CSV — works with most Indian banks</p>
+        <p className="text-xs text-gray-500">PDF, Excel, or CSV — works with most Indian banks</p>
         <p className="text-[10px] text-gray-400 mt-2">Tap to browse or drag & drop</p>
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.csv"
+        accept=".pdf,.csv,.xlsx,.xls"
         onChange={handleInputChange}
         className="hidden"
       />
