@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ConsentModalProps {
   isOpen: boolean;
@@ -58,6 +58,14 @@ export function ConsentModal({ isOpen, onAccept, onDecline }: ConsentModalProps)
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -69,9 +77,9 @@ export function ConsentModal({ isOpen, onAccept, onDecline }: ConsentModalProps)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ touchAction: 'none' }}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onTouchMove={(e) => e.preventDefault()} />
 
       {/* Modal */}
       <div className="relative w-full max-w-lg bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.15)] max-h-[85vh] flex flex-col overflow-hidden">

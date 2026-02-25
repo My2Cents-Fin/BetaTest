@@ -190,7 +190,7 @@ export function HouseholdScreen() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row">
       {/* Left Panel - Branding */}
       <div className="bg-primary-gradient relative overflow-hidden lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
         {/* Header row with brand and sign-out (mobile) */}

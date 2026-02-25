@@ -76,7 +76,7 @@ export function PhoneEntryScreen() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row overflow-x-hidden">
+    <div className="min-h-[100dvh] w-full flex flex-col lg:flex-row overflow-x-hidden">
       {/* Left Panel - Branding */}
       <div className="bg-primary-gradient w-full lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16 shrink-0 relative overflow-hidden">
         {/* Decorative shapes */}
@@ -145,6 +145,14 @@ export function PhoneEntryScreen() {
             {' & '}
             <button onClick={() => window.open('/terms', '_blank')} className="text-[var(--color-primary)] hover:underline">Terms</button>
           </p>
+
+          {/* Trust strip */}
+          <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-gray-400 text-center">
+            <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Indian data laws compliant</span>
+          </div>
         </div>
       </div>
 

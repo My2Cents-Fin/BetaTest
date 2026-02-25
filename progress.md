@@ -6,9 +6,39 @@
 2026-02-22
 
 ## Last Session Summary
-**Session 34: Uncategorized Drill-Down, Filter Enhancements, Excel Fix & Prod Fixes**
+**Session 35: Trust & Security Messaging Quick Wins + PROD Migration Fix**
 
 ### What Was Done
+- **PROD migration fix** — `original_narration` column missing on PROD Supabase (migration `011_csv_import_support.sql` hadn't been run). User ran the SQL on PROD SQL editor. Transaction creation + fund transfers now work on prod.
+- **Trust & security messaging (Quick Wins)** — Added 6 contextual trust indicators across the app:
+  1. **Login screen** (`PhoneEntryScreen.tsx`) — "Indian data laws compliant" with lock icon, center-justified below Privacy/Terms links
+  2. **Bank statement upload** (`StatementImportModal.tsx`) — "Your file is processed on this device. We do not store any sensitive information." with green shield icon
+  3. **Transaction entry** (`QuickAddTransaction.tsx`) — "Stored in your household's private vault, only visible to you and other members in this household" with lock icon below submit button
+  4. **Fund transfer** (`FundTransferModal.tsx`) — Same trust footer as transaction entry
+  5. **Dashboard** (`DashboardTab.tsx`) — "Your data: Encrypted, private, never shared" tappable indicator with shield+chevron, opens PrivacyInfoModal
+  6. **Invite screen** (`InviteScreen.tsx`) — "Only household members can see your data. No one else." with green shield icon (only visible during new user onboarding Step 3 of 3)
+- **PrivacyInfoModal integration** — Dashboard trust indicator opens existing PrivacyInfoModal (created in Session 33) directly from the dashboard
+
+### Key Changes
+1. **Modified files:**
+   - `app/src/modules/auth/components/PhoneEntryScreen.tsx` — Added trust strip
+   - `app/src/modules/transactions/components/StatementImportModal.tsx` — Added trust reassurance
+   - `app/src/modules/dashboard/components/QuickAddTransaction.tsx` — Added trust footer
+   - `app/src/modules/dashboard/components/FundTransferModal.tsx` — Added trust footer
+   - `app/src/modules/dashboard/components/DashboardTab.tsx` — Added PrivacyInfoModal import, `showPrivacyInfo` state, tappable trust indicator
+   - `app/src/modules/onboarding/components/InviteScreen.tsx` — Added trust reassurance
+
+### Build Status
+- TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
+- Vite build: ✅ Passes clean
+
+### Still Needed (from this session)
+- Medium effort trust items: Data Export (CSV download), "What We Know About You" screen
+- PROD migration `011_csv_import_support.sql` — ✅ DONE (user ran it)
+
+### Previous Session 34: Uncategorized Drill-Down, Filter Enhancements, Excel Fix & Prod Fixes
+
+### What Was Done (Session 34)
 - **Dashboard → Transactions uncategorized drill-down** — Clicking the "Uncategorised" row on the dashboard now navigates to the Transactions tab pre-filtered to show only uncategorized transactions. Added `onUncategorizedDrillDown` callback prop to DashboardTab, `drillDownUncategorized` state in AppLayout, consumption logic in TransactionsTab with `filterUncategorizedOnly` state.
 - **"All Uncategorised" quick select in filters** — Added new checkbox option in the CategoryMultiSelect Quick Select section. Amber-colored styling. Mutual exclusion: toggling uncategorized-only clears all other category/transfer filters; toggling any specific category clears uncategorized-only mode.
 - **Dashboard uncategorized context** — Subtitle now shows "X this month · Y total" (only shows total when different from current month count). Added lightweight `getUncategorizedCount()` query using Supabase `select('*', { count: 'exact', head: true })` to get all-time uncategorized count without transferring data.

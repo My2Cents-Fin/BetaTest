@@ -85,7 +85,7 @@ export function EnterPinScreen() {
         />
       )}
 
-      <div className="min-h-screen flex flex-col lg:flex-row">
+      <div className="min-h-[100dvh] flex flex-col lg:flex-row">
         {/* Left Panel - Branding */}
         <div className="bg-primary-gradient lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16 relative overflow-hidden">
           <div className="absolute top-[15%] right-[-8%] w-[200px] h-[200px] bg-white/[0.06] rounded-full" />

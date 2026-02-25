@@ -6,6 +6,7 @@ import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from './QuickAddTransaction';
 import { FundTransferModal } from './FundTransferModal';
 import { supabase } from '../../../lib/supabase';
+import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
 import type { BudgetAllocation, HouseholdSubCategory } from '../../budget/types';
 
 interface DashboardTabProps {
@@ -32,9 +33,11 @@ interface UserBalance {
   userId: string;
   userName: string;
   income: number;
-  spent: number;
-  netTransfer: number; // positive = received more, negative = sent more
-  expectedBalance: number;
+  cashSpent: number;          // non-CC expenses
+  ccSpent: number;            // CC expenses only
+  totalSpent: number;         // all expenses (for budget tracking)
+  netTransfer: number;        // positive = received more, negative = sent more
+  expectedCashBalance: number; // income - cashSpent + netTransfer
 }
 
 export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown }: DashboardTabProps) {
@@ -58,6 +61,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [uncategorizedTotal, setUncategorizedTotal] = useState(0);
   const [uncategorizedCountAll, setUncategorizedCountAll] = useState(0);
   const [uncategorizedCountThisMonth, setUncategorizedCountThisMonth] = useState(0);
+  const [totalCCSpent, setTotalCCSpent] = useState(0);
+  const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
 
   const hasLoadedRef = useRef(false);
 
@@ -159,6 +164,12 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         .reduce((sum, t) => sum + t.amount, 0);
       setTotalActualIncome(actualIncome);
 
+      // Calculate total CC expenses (for Cash Position card)
+      const ccSpent = transactions
+        .filter(t => t.transaction_type === 'expense' && t.payment_method === 'card')
+        .reduce((sum, t) => sum + t.amount, 0);
+      setTotalCCSpent(ccSpent);
+
       // Calculate spending by sub-category
       const spendingBySubCat = new Map<string, number>();
       transactions
@@ -225,14 +236,21 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         userMap.set(u.id, u.display_name || 'Unknown');
       });
 
-      // Calculate balance for each user
+      // Calculate balance for each user (split CC vs cash expenses)
       const balances: UserBalance[] = userIds.map(userId => {
         const userIncome = transactions
           .filter(t => t.transaction_type === 'income' && t.logged_by === userId)
           .reduce((sum, t) => sum + t.amount, 0);
 
-        const userSpent = transactions
-          .filter(t => t.transaction_type === 'expense' && t.logged_by === userId)
+        const userExpenses = transactions
+          .filter(t => t.transaction_type === 'expense' && t.logged_by === userId);
+
+        const userCashSpent = userExpenses
+          .filter(t => t.payment_method !== 'card')
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const userCCSpent = userExpenses
+          .filter(t => t.payment_method === 'card')
           .reduce((sum, t) => sum + t.amount, 0);
 
         const transfersReceived = transactions
@@ -249,9 +267,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           userId,
           userName: userMap.get(userId) || 'Unknown',
           income: userIncome,
-          spent: userSpent,
+          cashSpent: userCashSpent,
+          ccSpent: userCCSpent,
+          totalSpent: userCashSpent + userCCSpent,
           netTransfer,
-          expectedBalance: userIncome - userSpent + netTransfer,
+          expectedCashBalance: userIncome - userCashSpent + netTransfer,
         };
       }).sort((a, b) => a.userName.localeCompare(b.userName));
 
@@ -279,7 +299,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const remaining = totalPlanned - totalSpent;
   const percentUsed = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
   const unallocated = totalActualIncome - totalPlanned; // AI - PE
-  const combinedBalance = userBalances.reduce((sum, u) => sum + u.expectedBalance, 0);
+  const cashInHand = userBalances.reduce((sum, u) => sum + u.expectedCashBalance, 0);
+  const netPosition = cashInHand - totalCCSpent;
 
   // Calculate spending velocity metrics based on VARIABLE expenses only (day-to-day spending)
   const daysElapsed = today.getDate();
@@ -499,27 +520,63 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             </div>
           </div>
 
-          {/* Row 3: Total Cash in Hand — compact full width */}
-          <div className="glass-card px-4 py-3 flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-0.5">
+          {/* Row 3: Cash Position — shows Cash in Hand, CC Due, and Net */}
+          <div className="glass-card px-4 py-3">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
                 <div className="icon-container" style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(5,150,105,0.1)' }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
                 </div>
-                <h3 className="text-xs font-semibold text-[var(--color-text-secondary)]">Total Cash in Hand</h3>
+                <h3 className="text-xs font-semibold text-[var(--color-text-secondary)]">Cash Position</h3>
               </div>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] ml-8">Total income v/s actual expense</p>
-              <p className={`text-xl font-bold mt-0.5 ml-8 ${combinedBalance >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
-                {combinedBalance >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(combinedBalance))}
-              </p>
+              {userBalances.length > 1 && (
+                <button
+                  onClick={() => setShowOtherMembers(true)}
+                  className="text-[11px] text-[var(--color-primary)] font-medium px-2.5 py-1 rounded-full border border-[rgba(124,58,237,0.2)] bg-[var(--color-primary-bg)] whitespace-nowrap flex-shrink-0"
+                >
+                  Split by Members
+                </button>
+              )}
             </div>
-            {userBalances.length > 1 && (
-              <button
-                onClick={() => setShowOtherMembers(true)}
-                className="text-[11px] text-[var(--color-primary)] font-medium px-2.5 py-1 rounded-full border border-[rgba(124,58,237,0.2)] bg-[var(--color-primary-bg)] whitespace-nowrap flex-shrink-0"
-              >
-                Split by Members
-              </button>
+
+            {/* Cash in Hand */}
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px]">💵</span>
+                <span className="text-xs text-[var(--color-text-secondary)]">Cash in Hand</span>
+              </div>
+              <span className={`text-sm font-bold ${cashInHand >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                {cashInHand >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(cashInHand))}
+              </span>
+            </div>
+
+            {/* CC Due — only show if there are CC expenses */}
+            {totalCCSpent > 0 && (
+              <>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px]">💳</span>
+                    <span className="text-xs text-[var(--color-text-secondary)]">Credit Card Due</span>
+                  </div>
+                  <span className="text-sm font-bold text-[var(--color-warning)]">
+                    ₹{formatNumber(totalCCSpent)}
+                  </span>
+                </div>
+
+                {/* Divider + Net Position */}
+                <div className="border-t border-black/[0.06] my-2" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-[var(--color-text-primary)]">Net Position</span>
+                  <span className={`text-lg font-bold ${netPosition >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                    {netPosition >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(netPosition))}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* Subtitle when no CC expenses */}
+            {totalCCSpent === 0 && (
+              <p className="text-[10px] text-[var(--color-text-tertiary)] ml-6">Total income v/s actual expense</p>
             )}
           </div>
 
@@ -660,8 +717,25 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               <p className="text-xs text-[var(--color-text-tertiary)]">No categories are at risk of exceeding budget</p>
             </div>
           )}
+
+          {/* Trust indicator */}
+          <button
+            onClick={() => setShowPrivacyInfo(true)}
+            className="w-full flex items-center justify-center gap-1.5 mt-2 py-2 text-[11px] text-gray-400 hover:text-gray-500 transition-colors"
+          >
+            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>Your data: Encrypted, private, never shared</span>
+            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </main>
+
+      {/* Privacy Info Modal */}
+      <PrivacyInfoModal isOpen={showPrivacyInfo} onClose={() => setShowPrivacyInfo(false)} />
 
       {/* FAB - Quick Add Transaction (Web only - mobile uses bottom nav center button) */}
       {household && (
@@ -744,27 +818,33 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                           <span className="text-[9px] bg-[var(--color-primary-bg)] text-[var(--color-primary)] px-1.5 py-0.5 rounded-md font-medium">You</span>
                         )}
                       </div>
-                      <p className={`text-lg font-bold ${user.expectedBalance >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
-                        {user.expectedBalance >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(user.expectedBalance))}
+                      <p className={`text-lg font-bold ${user.expectedCashBalance >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                        {user.expectedCashBalance >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(user.expectedCashBalance))}
                       </p>
                     </div>
 
                     {/* Breakdown */}
-                    <div className="flex items-center justify-between text-[10px] text-[var(--color-text-tertiary)]">
+                    <div className="flex items-center justify-between text-[10px] text-[var(--color-text-tertiary)] flex-wrap gap-y-1">
                       <div>
                         <span>Income: </span>
                         <span className="font-medium text-[var(--color-text-secondary)]">₹{formatNumber(user.income)}</span>
                       </div>
+                      <div>
+                        <span>Spent: </span>
+                        <span className="font-medium text-[var(--color-text-secondary)]">₹{formatNumber(user.cashSpent)}</span>
+                      </div>
+                      {user.ccSpent > 0 && (
+                        <div>
+                          <span>CC: </span>
+                          <span className="font-medium text-[var(--color-warning)]">₹{formatNumber(user.ccSpent)}</span>
+                        </div>
+                      )}
                       {user.netTransfer !== 0 && !isNaN(user.netTransfer) && (
                         <div>
-                          <span>Net Transfer: </span>
+                          <span>Transfers: </span>
                           <span className="font-medium text-[var(--color-text-secondary)]">{user.netTransfer > 0 ? '+' : '-'}₹{formatNumber(Math.abs(user.netTransfer))}</span>
                         </div>
                       )}
-                      <div>
-                        <span>Spent: </span>
-                        <span className="font-medium text-[var(--color-text-secondary)]">₹{formatNumber(user.spent)}</span>
-                      </div>
                     </div>
                   </div>
                 ))}

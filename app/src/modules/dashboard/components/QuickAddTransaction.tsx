@@ -63,6 +63,9 @@ export function QuickAddTransaction({
   const [paidBy, setPaidBy] = useState<string>(() =>
     isEditMode ? (transaction.logged_by || '') : currentUserId
   );
+  const [isCreditCard, setIsCreditCard] = useState<boolean>(() =>
+    isEditMode ? transaction.payment_method === 'card' : false
+  );
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const categoryInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +122,8 @@ export function QuickAddTransaction({
     setCategorySearch(`${cat.icon || (cat.categoryType === 'income' ? '💰' : '📦')} ${cat.name}`);
     setShowCategoryDropdown(false);
     setHighlightedIndex(-1);
+    // Reset CC toggle when selecting income category
+    if (cat.categoryType === 'income') setIsCreditCard(false);
   };
 
   const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -212,6 +217,7 @@ export function QuickAddTransaction({
         transactionType,
         transactionDate,
         remarks: remarks.trim() || '',
+        paymentMethod: transactionType === 'income' ? 'upi' : (isCreditCard ? 'card' : 'upi'),
       });
     } else {
       // Create new transaction
@@ -221,7 +227,7 @@ export function QuickAddTransaction({
         amount: numAmount,
         transactionType,
         transactionDate,
-        paymentMethod: 'upi',
+        paymentMethod: transactionType === 'income' ? 'upi' : (isCreditCard ? 'card' : 'upi'),
         remarks: remarks.trim() || undefined,
         loggedBy: paidBy || undefined, // Include paidBy
       });
@@ -283,6 +289,28 @@ export function QuickAddTransaction({
               className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
             />
           </div>
+
+          {/* Credit Card Toggle — only for expense transactions */}
+          {selectedCategory?.categoryType !== 'income' && (
+            <div className="mb-4 flex items-center justify-between px-1">
+              <label className="text-xs text-gray-500 flex items-center gap-1.5">
+                <span>💳</span> Paid with Credit Card?
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsCreditCard(!isCreditCard)}
+                className={`relative w-10 h-[22px] rounded-full transition-colors ${
+                  isCreditCard
+                    ? 'bg-[var(--color-primary)]'
+                    : 'bg-gray-200'
+                }`}
+              >
+                <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                  isCreditCard ? 'translate-x-[18px]' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+          )}
 
           {/* Category Search Dropdown */}
           <div className="mb-5 relative" ref={dropdownRef}>
@@ -458,6 +486,12 @@ export function QuickAddTransaction({
                 ? 'Update Transaction'
                 : `Add ${selectedCategory?.categoryType === 'income' ? 'Income' : 'Expense'}`}
           </button>
+          <p className="text-[10px] text-gray-400 text-center mt-2 flex items-center justify-center gap-1">
+            <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Stored in your household's private vault, only visible to you and other members in this household
+          </p>
         </div>
       </div>
     </div>
