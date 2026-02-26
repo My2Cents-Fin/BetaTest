@@ -4,6 +4,16 @@
 
 My2cents is a household financial management PWA for Indian families. Users plan monthly budgets (savings-first, top-down allocation), record daily transactions, and track budget vs actuals. Built for one household (2 users), architected for multi-household scale. Live at https://beta-test-five.vercel.app.
 
+## ⚠️ NON-NEGOTIABLE: Production Safety
+
+**This repo is connected to PRODUCTION via Vercel auto-deploy. There are active users. Every push goes live.**
+
+1. **NEVER write code, edit files, or make commits unless the user explicitly asks you to.** If the session starts with a handoff summary or feature discussion, that is context — NOT permission to code.
+2. **Always start in plan/discussion mode.** Research, read files, ask questions, propose an approach. Wait for explicit "go ahead" / "implement it" / "code it" before touching any file.
+3. **Dev environment is the user's local laptop, not this cloud agent.** Until a separate dev deployment is set up, treat every file change here as a production change.
+4. **Before any commit or push, confirm with the user.** Never auto-push. Never assume a push is wanted.
+5. **If in doubt, ask.** The cost of asking is zero. The cost of a bad deploy is real users seeing broken features.
+
 ## ⚠️ NON-NEGOTIABLE: Progress Tracking
 
 1. **Start of every session:** Read `progress.md` FIRST. It tells you where work was left off.
