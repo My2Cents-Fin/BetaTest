@@ -53,6 +53,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [filterSubCategoryIds, setFilterSubCategoryIds] = useState<Set<string>>(new Set());
   const [filterIncludeTransfers, setFilterIncludeTransfers] = useState(false);
   const [filterUncategorizedOnly, setFilterUncategorizedOnly] = useState(false);
+  const [filterPaidVia, setFilterPaidVia] = useState<'cc' | 'non_cc' | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [uniqueRecorders, setUniqueRecorders] = useState<{ id: string; name: string }[]>([]);
 
@@ -281,6 +282,16 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       if (filterRecordedBy.length > 0 && !filterRecordedBy.includes(t.logged_by)) {
         return false;
       }
+      // Filter by paid via
+      if (filterPaidVia === 'cc') {
+        // CC: only card expenses — no transfers, no income
+        if (t.transaction_type === 'transfer') return false;
+        if (t.transaction_type === 'income') return false;
+        if (t.payment_method !== 'card') return false;
+      } else if (filterPaidVia === 'non_cc') {
+        // Others: non-card payment methods (transfers pass through)
+        if (t.transaction_type !== 'transfer' && t.payment_method === 'card') return false;
+      }
       // Uncategorized-only filter (from dashboard drill-down)
       if (filterUncategorizedOnly) {
         return t.sub_category_id === null && t.transaction_type !== 'transfer';
@@ -302,7 +313,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       }
       return true;
     });
-  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterSubCategoryIds, filterIncludeTransfers, filterUncategorizedOnly]);
+  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterPaidVia, filterSubCategoryIds, filterIncludeTransfers, filterUncategorizedOnly]);
 
   // Group filtered transactions by date
   const filteredGroupedTransactions = useMemo(() => {
@@ -310,18 +321,20 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   }, [filteredTransactions]);
 
   // Check if any filter is active
-  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly);
+  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterPaidVia || filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly);
 
   // Count active filters
   const activeFilterCount = [
     filterDateFrom || filterDateTo ? 1 : 0,
     filterRecordedBy.length > 0 ? 1 : 0,
+    filterPaidVia ? 1 : 0,
     filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
     // Clear non-date filters immediately
     setFilterRecordedBy([]);
+    setFilterPaidVia(null);
     setFilterSubCategoryIds(new Set());
     setFilterIncludeTransfers(false);
     setFilterUncategorizedOnly(false);
@@ -486,6 +499,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               filterDateFrom={filterDateFrom}
               filterDateTo={filterDateTo}
               filterRecordedBy={filterRecordedBy}
+              filterPaidVia={filterPaidVia}
               allSubCategories={allSubCategories}
               filterSubCategoryIds={filterSubCategoryIds}
               filterIncludeTransfers={filterIncludeTransfers}
@@ -498,6 +512,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               setFilterDateFrom={setFilterDateFrom}
               setFilterDateTo={setFilterDateTo}
               toggleRecorder={toggleRecorder}
+              togglePaidVia={(value: 'cc' | 'non_cc' | null) => {
+                if (value === null) {
+                  setFilterPaidVia(null);
+                } else {
+                  setFilterPaidVia(prev => prev === value ? null : value);
+                }
+              }}
               toggleSubCategory={toggleSubCategory}
               toggleTransfers={toggleTransfers}
               toggleAllOfType={toggleAllOfType}
@@ -776,6 +797,7 @@ interface FilterContentProps {
   filterDateFrom: string;
   filterDateTo: string;
   filterRecordedBy: string[];
+  filterPaidVia: 'cc' | 'non_cc' | null;
   allSubCategories: { id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[];
   filterSubCategoryIds: Set<string>;
   filterIncludeTransfers: boolean;
@@ -788,6 +810,7 @@ interface FilterContentProps {
   setFilterDateFrom: (date: string) => void;
   setFilterDateTo: (date: string) => void;
   toggleRecorder: (id: string) => void;
+  togglePaidVia: (value: 'cc' | 'non_cc' | null) => void;
   toggleSubCategory: (id: string) => void;
   toggleTransfers: () => void;
   toggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
@@ -800,6 +823,7 @@ function FilterContent({
   filterDateFrom,
   filterDateTo,
   filterRecordedBy,
+  filterPaidVia,
   allSubCategories,
   filterSubCategoryIds,
   filterIncludeTransfers,
@@ -812,6 +836,7 @@ function FilterContent({
   setFilterDateFrom,
   setFilterDateTo,
   toggleRecorder,
+  togglePaidVia,
   toggleSubCategory,
   toggleTransfers,
   toggleAllOfType,
@@ -875,6 +900,34 @@ function FilterContent({
         />
       )}
 
+      {/* Paid Via Filter */}
+      <div>
+        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">Paid Via</label>
+        <div className="flex gap-2">
+          {([
+            { value: null, label: 'All', icon: '📋' },
+            { value: 'cc' as const, label: 'CC', icon: '💳' },
+            { value: 'non_cc' as const, label: 'Others', icon: '🏧' },
+          ]).map(({ value, label: chipLabel, icon }) => {
+            const isSelected = filterPaidVia === value;
+            return (
+              <button
+                key={chipLabel}
+                onClick={() => togglePaidVia(value)}
+                className={`px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                    : 'bg-white/60 text-gray-600 border border-[rgba(124,58,237,0.12)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+                }`}
+              >
+                <span>{icon}</span>
+                <span>{chipLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Category Filter (unified sub-category multiselect — replaces old Type pills) */}
       <CategoryMultiSelect
         label="Category"
@@ -884,6 +937,7 @@ function FilterContent({
         hasTransfers={hasTransfers}
         uncategorizedOnly={filterUncategorizedOnly}
         hasUncategorized={hasUncategorized}
+        ccFilterActive={filterPaidVia === 'cc'}
         onToggleSubCategory={toggleSubCategory}
         onToggleTransfers={toggleTransfers}
         onToggleAllOfType={toggleAllOfType}

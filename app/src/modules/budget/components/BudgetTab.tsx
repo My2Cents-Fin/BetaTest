@@ -120,8 +120,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Member filter (view mode only) — empty array means "All"
   const [filterMemberIds, setFilterMemberIds] = useState<string[]>([]);
   const [showBudgetFilter, setShowBudgetFilter] = useState(false);
-  const mobileFilterRef = useRef<HTMLDivElement>(null);
-  const desktopFilterRef = useRef<HTMLDivElement>(null);
+  // Filter refs removed — close-on-outside handled by portal backdrop onClick
 
   // Auto-save debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -167,19 +166,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     }
   }, [hasOtherMembers, onHasOtherMembersChange]);
 
-  // Close budget filter when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      const isOutsideMobile = mobileFilterRef.current && !mobileFilterRef.current.contains(target);
-      const isOutsideDesktop = desktopFilterRef.current && !desktopFilterRef.current.contains(target);
-      if (isOutsideMobile && isOutsideDesktop) {
-        setShowBudgetFilter(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Close budget filter: handled by the portal backdrop's onClick.
+  // The old document mousedown listener conflicted with the portal
+  // (refs pointed to filter buttons, not the portal-rendered panel).
 
   // Default single-member household to that member selected
   useEffect(() => {
@@ -852,7 +841,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           )}
           {/* Filter icon — desktop (view mode, multi-member households) */}
           {budgetStep === 'view' && hasOtherMembers && (
-            <div className="relative" ref={desktopFilterRef}>
+            <div className="relative">
               <button
                 onClick={() => setShowBudgetFilter(!showBudgetFilter)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]"
@@ -895,7 +884,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             )}
             {/* Filter icon — mobile (view mode, multi-member households) */}
             {budgetStep === 'view' && hasOtherMembers && (
-              <div className="relative" ref={mobileFilterRef}>
+              <div className="relative">
                 <button
                   onClick={() => setShowBudgetFilter(!showBudgetFilter)}
                   className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors bg-primary-gradient text-white shadow-[0_2px_8px_rgba(124,58,237,0.25)]"

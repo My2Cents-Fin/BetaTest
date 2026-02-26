@@ -14,6 +14,7 @@ interface CategoryMultiSelectProps {
   hasTransfers: boolean;
   uncategorizedOnly?: boolean;
   hasUncategorized?: boolean;
+  ccFilterActive?: boolean;
   onToggleSubCategory: (id: string) => void;
   onToggleTransfers: () => void;
   onToggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
@@ -28,6 +29,7 @@ export function CategoryMultiSelect({
   hasTransfers,
   uncategorizedOnly,
   hasUncategorized,
+  ccFilterActive,
   onToggleSubCategory,
   onToggleTransfers,
   onToggleAllOfType,
@@ -191,15 +193,17 @@ export function CategoryMultiSelect({
                   <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Quick Select</p>
 
                   {showIncomeShortcut && (
-                    <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer rounded-lg">
+                    <label className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg ${ccFilterActive ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
                       <input
                         ref={incomeCheckRef}
                         type="checkbox"
                         checked={allIncomeSelected}
-                        onChange={() => onToggleAllOfType('income')}
+                        onChange={() => !ccFilterActive && onToggleAllOfType('income')}
+                        disabled={ccFilterActive}
                         className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                       />
                       <span className="text-xs font-medium text-gray-700">All Income</span>
+                      {ccFilterActive && <span className="text-[9px] text-gray-400 ml-auto">N/A for CC</span>}
                     </label>
                   )}
 
@@ -217,14 +221,16 @@ export function CategoryMultiSelect({
                   )}
 
                   {showTransferShortcut && (
-                    <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer rounded-lg">
+                    <label className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg ${ccFilterActive ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
                       <input
                         type="checkbox"
                         checked={includeTransfers}
-                        onChange={() => onToggleTransfers()}
+                        onChange={() => !ccFilterActive && onToggleTransfers()}
+                        disabled={ccFilterActive}
                         className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                       />
                       <span className="text-xs font-medium text-gray-700">All Transfers</span>
+                      {ccFilterActive && <span className="text-[9px] text-gray-400 ml-auto">N/A for CC</span>}
                     </label>
                   )}
 
@@ -243,40 +249,47 @@ export function CategoryMultiSelect({
               )}
 
               {/* Grouped sub-categories (filtered by search) */}
-              {Array.from(filteredGrouped.entries()).map(([categoryName, { items }]) => (
-                <div key={categoryName}>
-                  <div className="sticky top-0 bg-white px-3 pt-2.5 pb-1">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{categoryName}</p>
+              {Array.from(filteredGrouped.entries()).map(([categoryName, { categoryType, items }]) => {
+                const isDisabledGroup = ccFilterActive && categoryType === 'income';
+                return (
+                  <div key={categoryName} className={isDisabledGroup ? 'opacity-40' : ''}>
+                    <div className="sticky top-0 bg-white px-3 pt-2.5 pb-1 flex items-center gap-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{categoryName}</p>
+                      {isDisabledGroup && <span className="text-[9px] text-gray-400">N/A for CC</span>}
+                    </div>
+                    {items.map(sc => (
+                      <label
+                        key={sc.id}
+                        className={`flex items-center gap-2.5 px-3 py-1.5 ${isDisabledGroup ? 'cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(sc.id)}
+                          onChange={() => !isDisabledGroup && onToggleSubCategory(sc.id)}
+                          disabled={isDisabledGroup}
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                        />
+                        <span className="text-sm">{sc.icon}</span>
+                        <span className="text-xs text-gray-700">{sc.name}</span>
+                      </label>
+                    ))}
                   </div>
-                  {items.map(sc => (
-                    <label
-                      key={sc.id}
-                      className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(sc.id)}
-                        onChange={() => onToggleSubCategory(sc.id)}
-                        className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                      />
-                      <span className="text-sm">{sc.icon}</span>
-                      <span className="text-xs text-gray-700">{sc.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ))}
+                );
+              })}
 
               {/* Fund Transfer entry */}
               {showTransferEntry && (
-                <div>
-                  <div className="sticky top-0 bg-white px-3 pt-2.5 pb-1">
+                <div className={ccFilterActive ? 'opacity-40' : ''}>
+                  <div className="sticky top-0 bg-white px-3 pt-2.5 pb-1 flex items-center gap-2">
                     <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Transfers</p>
+                    {ccFilterActive && <span className="text-[9px] text-gray-400">N/A for CC</span>}
                   </div>
-                  <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer">
+                  <label className={`flex items-center gap-2.5 px-3 py-1.5 ${ccFilterActive ? 'cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
                     <input
                       type="checkbox"
                       checked={includeTransfers}
-                      onChange={() => onToggleTransfers()}
+                      onChange={() => !ccFilterActive && onToggleTransfers()}
+                      disabled={ccFilterActive}
                       className="w-3.5 h-3.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                     />
                     <span className="text-sm">💸</span>
