@@ -569,12 +569,6 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     setIncompleteItemIds(new Set());
   };
 
-  const handleCancelDraft = () => {
-    setBudgetStep('setup');
-    setShowIncompleteWarning(false);
-    setIncompleteItemIds(new Set());
-  };
-
   const handleDismissWelcome = () => {
     localStorage.setItem('my2cents_welcome_dismissed', 'true');
     setShowWelcome(false);
