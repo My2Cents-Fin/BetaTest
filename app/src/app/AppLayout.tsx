@@ -64,6 +64,14 @@ export function AppLayout() {
     setQuickAddTrigger(prev => prev + 1);
   }, []);
 
+  // Auto-reset quick add trigger after it's been delivered to the active tab
+  // (child effects run before parent effects, so the active tab sees the trigger first)
+  useEffect(() => {
+    if (quickAddTrigger > 0) {
+      setQuickAddTrigger(0);
+    }
+  }, [quickAddTrigger]);
+
   const handleFundTransfer = useCallback(() => {
     setFundTransferTrigger(prev => prev + 1);
   }, []);
