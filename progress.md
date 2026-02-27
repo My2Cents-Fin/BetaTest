@@ -6,30 +6,49 @@
 2026-02-28
 
 ## Last Session Summary
-**Session 36: Month Rollover Bug Fixes + Transactions UX Overhaul**
+**Session 37: Transactions UX Polish + Bug Fixes + Deploy to Prod**
 
 ### What Was Done
-1. **Income not saving on fresh budget** — `InlineIncomeSection.tsx` used `new Date().toISOString().split('T')[0]` for transaction date, but `getActualIncomeForMonth` queries by selected month's range. Fixed to use `${month}-01`.
-2. **Cloned income persisting on fresh start** — `handleFreshBudget` only zeroed UI state. Added DB delete of income transactions for the month before resetting.
-3. **Future transactions invisible** — Date filter inputs had `max={today}` preventing future dates. Removed `max` from both Transactions filter and QuickAddTransaction date picker.
-4. **All transactions shown by default** — Changed from current-month-only to loading all transactions. Filters available for narrowing.
-5. **Transaction modal opening on wrong tabs** — All always-mounted tabs reacted to `quickAddTrigger`. Fixed by only passing triggers to the active tab in AppLayout.
-6. **Dashboard/Budget default to current month** — Added month reset on tab activation (wasActiveRef pattern) for both DashboardTab and BudgetTab.
-7. **Collapsible date groups with auto-expand** — Groups auto-expand until ~10 transactions fill the screen. Remaining groups collapsed below the fold.
-8. **Glass-card date headers** — Restyled collapsed/expanded date headers as sleek glass-card rows with purple chevron, bold date label, and txn count + total.
+1. **Date group header color differentiation** — Added subtle purple-tint background (`bg-[rgba(124,58,237,0.04)]`) to date group headers in Transactions tab for visual separation from transaction rows.
+2. **Default to current month filter** — Transactions tab now defaults to current month with date filter pre-applied. Badge shows "1", date inputs pre-filled, "Clear filters" resets to all transactions.
+3. **"Showing X of Y" total count fix** — Added separate count-only Supabase query (`select('*', { count: 'exact', head: true })`) so "Y" shows total across all months, not just filtered set.
+4. **Smart month subtitle** — Shows "February 2026" under heading when full-month filter active, custom range like "3 Feb – 15 Feb" for partial ranges, nothing when unfiltered.
+5. **Ghost transaction modal fix** — `quickAddTrigger` wasn't reset after consumption. Switching tabs would re-deliver stale trigger value. Added auto-reset useEffect in AppLayout (child effects run before parent).
+6. **Transaction modal field reorder** — Moved Date before Category since date determines which budget month's categories are relevant. New order: Amount → Date → Category → CC toggle → Paid by → Notes.
 
 ### Key Changes
 1. **Modified files:**
-   - `app/src/modules/budget/components/InlineIncomeSection.tsx` — Fixed income transaction date to use selected month
-   - `app/src/modules/budget/components/BudgetTab.tsx` — Added `isActive` prop, DB delete in handleFreshBudget, month reset on tab activation
+   - `app/src/modules/transactions/components/TransactionsTab.tsx` — Current month default filter, `totalTransactionCount` state + count query, `dateFilterLabel` useMemo, purple-tint date headers
+   - `app/src/app/AppLayout.tsx` — Auto-reset `quickAddTrigger` to 0 after delivery to active tab
+   - `app/src/modules/dashboard/components/QuickAddTransaction.tsx` — Reordered fields: date before category
+   - `app/src/modules/budget/components/BudgetTab.tsx` — isActive prop, DB delete in handleFreshBudget, month reset
+   - `app/src/modules/budget/components/InlineIncomeSection.tsx` — Fixed income transaction date
    - `app/src/modules/dashboard/components/DashboardTab.tsx` — Month reset on tab switch
-   - `app/src/modules/dashboard/components/QuickAddTransaction.tsx` — Removed future date restriction
-   - `app/src/modules/transactions/components/TransactionsTab.tsx` — All transactions by default, collapsible date groups, auto-expand algorithm, glass-card styling
-   - `app/src/app/AppLayout.tsx` — Conditional trigger passing per active tab, isActive for BudgetTab
+
+### Deployed
+- ✅ Merged to `main` and pushed — Vercel auto-deploy to prod
 
 ### Build Status
 - TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
-- Preview: ✅ Verified — auto-expand, glass-card headers, expand/collapse all working
+- Preview: ✅ Verified — field reorder, modal opening, dashboard data all working
+
+### Pending Discussion
+- **End-of-month nudge** — Last 2 days: nudge user to set up next month's budget (dashboard banner + budget tab badge)
+- **First day of new month** — Land on dashboard even without budget (show CTA), vs auto-redirect to budget tab
+
+---
+
+### Previous Session 36: Month Rollover Bug Fixes + Transactions UX Overhaul
+
+### What Was Done (Session 36)
+1. Income not saving on fresh budget — fixed transaction date to use selected month
+2. Cloned income persisting on fresh start — added DB delete before reset
+3. Future transactions invisible — removed `max` from date inputs
+4. All transactions shown by default — changed from current-month-only
+5. Transaction modal opening on wrong tabs — conditional trigger passing
+6. Dashboard/Budget default to current month — wasActiveRef pattern
+7. Collapsible date groups with auto-expand — ~10 txn threshold
+8. Glass-card date headers — restyled with purple chevron, count + total
 
 ---
 
