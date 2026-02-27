@@ -290,27 +290,19 @@ export function QuickAddTransaction({
             />
           </div>
 
-          {/* Credit Card Toggle — only for expense transactions */}
-          {selectedCategory?.categoryType !== 'income' && (
-            <div className="mb-4 flex items-center justify-between px-1">
-              <label className="text-xs text-gray-500 flex items-center gap-1.5">
-                <span>💳</span> Paid with Credit Card?
-              </label>
-              <button
-                type="button"
-                onClick={() => setIsCreditCard(!isCreditCard)}
-                className={`relative w-10 h-[22px] rounded-full transition-colors ${
-                  isCreditCard
-                    ? 'bg-[var(--color-primary)]'
-                    : 'bg-gray-200'
-                }`}
-              >
-                <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
-                  isCreditCard ? 'translate-x-[18px]' : 'translate-x-0'
-                }`} />
-              </button>
-            </div>
-          )}
+          {/* Date — before category so user picks the month context first */}
+          <div className="mb-5">
+            <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+              <span>📅</span> Date of Payment
+            </label>
+            <input
+              type="date"
+              value={transactionDate}
+              onChange={(e) => setTransactionDate(e.target.value)}
+              onKeyDown={handleFieldKeyDown}
+              className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
+            />
+          </div>
 
           {/* Category Search Dropdown */}
           <div className="mb-5 relative" ref={dropdownRef}>
@@ -401,19 +393,27 @@ export function QuickAddTransaction({
             )}
           </div>
 
-          {/* Date */}
-          <div className="mb-4">
-            <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
-              <span>📅</span> Date of Payment
-            </label>
-            <input
-              type="date"
-              value={transactionDate}
-              onChange={(e) => setTransactionDate(e.target.value)}
-              onKeyDown={handleFieldKeyDown}
-              className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
-            />
-          </div>
+          {/* Credit Card Toggle — only for expense transactions */}
+          {selectedCategory?.categoryType !== 'income' && (
+            <div className="mb-4 flex items-center justify-between px-1">
+              <label className="text-xs text-gray-500 flex items-center gap-1.5">
+                <span>💳</span> Paid with Credit Card?
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsCreditCard(!isCreditCard)}
+                className={`relative w-10 h-[22px] rounded-full transition-colors ${
+                  isCreditCard
+                    ? 'bg-[var(--color-primary)]'
+                    : 'bg-gray-200'
+                }`}
+              >
+                <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                  isCreditCard ? 'translate-x-[18px]' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+          )}
 
           {/* Paid By */}
           {householdUsers.length > 1 && (
