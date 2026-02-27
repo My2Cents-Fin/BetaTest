@@ -15,6 +15,8 @@ interface MonthSelectorProps {
   showDropdown?: boolean;
   /** Minimum swipe distance in px to trigger navigation (default: 50) */
   swipeThreshold?: number;
+  /** Earliest month allowed (YYYY-MM). Disables backward navigation past this. */
+  minMonth?: string;
 }
 
 /**
@@ -27,6 +29,7 @@ export function MonthSelector({
   availableMonths,
   showDropdown = true,
   swipeThreshold = 50,
+  minMonth,
 }: MonthSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -44,13 +47,18 @@ export function MonthSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Check if we're at the minimum allowed month
+  const atMinMonth = minMonth ? selectedMonth <= minMonth : false;
+
   // Navigate to adjacent month by offset (-1 = prev, +1 = next)
   const navigateMonth = useCallback((offset: number) => {
     const [year, month] = selectedMonth.split('-').map(Number);
     const date = new Date(year, month - 1 + offset, 1);
     const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    // Block backward navigation past minMonth
+    if (minMonth && newMonth < minMonth) return;
     onMonthChange(newMonth);
-  }, [selectedMonth, onMonthChange]);
+  }, [selectedMonth, onMonthChange, minMonth]);
 
   const goToPrevious = () => navigateMonth(-1);
   const goToNext = () => navigateMonth(1);
@@ -72,8 +80,8 @@ export function MonthSelector({
       if (deltaX < 0) {
         // Swipe left → go to next month
         goToNext();
-      } else {
-        // Swipe right → go to previous month
+      } else if (!atMinMonth) {
+        // Swipe right → go to previous month (blocked at min)
         goToPrevious();
       }
     }
@@ -95,7 +103,12 @@ export function MonthSelector({
       {/* Previous Arrow */}
       <button
         onClick={goToPrevious}
-        className="p-1.5 rounded-md transition-colors text-gray-500 hover:bg-white/60 hover:text-gray-700"
+        disabled={atMinMonth}
+        className={`p-1.5 rounded-md transition-colors ${
+          atMinMonth
+            ? 'text-gray-300 cursor-not-allowed'
+            : 'text-gray-500 hover:bg-white/60 hover:text-gray-700'
+        }`}
         aria-label="Previous month"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

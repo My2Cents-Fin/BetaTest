@@ -35,6 +35,8 @@ export function AppLayout() {
   const [fundTransferTrigger, setFundTransferTrigger] = useState(0);
   // Track if household has other members
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
+  // Budget tab: initial month when navigating from Dashboard → Budget
+  const [budgetInitialMonth, setBudgetInitialMonth] = useState<string | null>(null);
   // Drill-down: initial sub-category filter when navigating from Dashboard → Transactions
   const [drillDownSubCategoryId, setDrillDownSubCategoryId] = useState<string | null>(null);
   // Drill-down: show only uncategorized transactions
@@ -85,7 +87,8 @@ export function AppLayout() {
 
       {/* Content Area - dynamic margin based on sidebar state */}
       <div className={`pb-20 md:pb-0 min-h-screen transition-all duration-200 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
-        {activeTab === 'dashboard' && (
+        {/* Tabs stay mounted (CSS hidden) so switching is instant after first load */}
+        <div style={{ display: activeTab === 'dashboard' ? undefined : 'none' }}>
           <DashboardTab
             onOpenMenu={() => setIsMenuOpen(true)}
             quickAddTrigger={quickAddTrigger}
@@ -94,10 +97,14 @@ export function AppLayout() {
             onHasOtherMembersChange={setHasOtherMembers}
             onCategoryDrillDown={handleCategoryDrillDown}
             onUncategorizedDrillDown={handleUncategorizedDrillDown}
-            onNavigateToBudget={() => setActiveTab('budget')}
+            onNavigateToBudget={(month) => {
+              if (month) setBudgetInitialMonth(month);
+              setActiveTab('budget');
+            }}
+            isActive={activeTab === 'dashboard'}
           />
-        )}
-        {activeTab === 'budget' && (
+        </div>
+        <div style={{ display: activeTab === 'budget' ? undefined : 'none' }}>
           <BudgetTab
             onOpenMenu={() => setIsMenuOpen(true)}
             sidebarCollapsed={sidebarCollapsed}
@@ -105,9 +112,11 @@ export function AppLayout() {
             fundTransferTrigger={fundTransferTrigger}
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
+            initialMonth={budgetInitialMonth}
+            onInitialMonthConsumed={() => setBudgetInitialMonth(null)}
           />
-        )}
-        {activeTab === 'transactions' && (
+        </div>
+        <div style={{ display: activeTab === 'transactions' ? undefined : 'none' }}>
           <TransactionsTab
             quickAddTrigger={quickAddTrigger}
             fundTransferTrigger={fundTransferTrigger}
@@ -117,7 +126,7 @@ export function AppLayout() {
             drillDownUncategorized={drillDownUncategorized}
             onDrillDownConsumed={handleDrillDownConsumed}
           />
-        )}
+        </div>
       </div>
 
       {/* Mobile: Bottom Nav */}

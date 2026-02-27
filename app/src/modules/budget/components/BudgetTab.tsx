@@ -26,7 +26,6 @@ import { formatNumber } from './AmountInput';
 import { MonthSelector, formatMonthOption, getCurrentMonth } from './MonthSelector';
 import { BudgetViewMode } from './BudgetViewMode';
 import { BudgetEmptyState } from './BudgetEmptyState';
-import { NewBudgetSetup } from './NewBudgetSetup';
 import { InlineIncomeSection } from './InlineIncomeSection';
 import { WelcomeCard } from '../../dashboard/components/WelcomeCard';
 import { BudgetSection } from '../../dashboard/components/BudgetSection';
@@ -44,6 +43,9 @@ interface BudgetTabProps {
   fundTransferTrigger?: number;
   onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
+  /** When navigating from Dashboard "Plan Now", this passes the month to plan */
+  initialMonth?: string | null;
+  onInitialMonthConsumed?: () => void;
 }
 
 interface BudgetItem {
@@ -63,9 +65,9 @@ interface Household {
   name: string;
 }
 
-type BudgetStep = 'edit' | 'view' | 'empty' | 'setup';
+type BudgetStep = 'edit' | 'view' | 'empty';
 
-export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: BudgetTabProps) {
+export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<Household | null>(null);
@@ -153,6 +155,8 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       const offset = deltaX < 0 ? 1 : -1;
       const date = new Date(year, month - 1 + offset, 1);
       const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      // Block backward navigation past minMonth
+      if (offset === -1 && minMonth && newMonth < minMonth) return;
       setSelectedMonth(newMonth);
     }
     contentTouchStartX.current = null;
@@ -163,6 +167,19 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const hasLoadedRef = useRef(false);
 
   const currentMonth = getCurrentMonth();
+
+  // Earliest month the user has a budget for — used to block backward navigation
+  const minMonth = availableMonths.length > 0
+    ? availableMonths[availableMonths.length - 1]
+    : currentMonth;
+
+  // Consume initialMonth from Dashboard "Plan Now" navigation
+  useEffect(() => {
+    if (initialMonth) {
+      setSelectedMonth(initialMonth);
+      onInitialMonthConsumed?.();
+    }
+  }, [initialMonth]);
 
   useEffect(() => {
     if (hasLoadedRef.current) return;
@@ -247,12 +264,8 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         // Frozen plan → view mode
         setBudgetStep('view');
         await loadViewData(hh);
-      } else if (plan) {
-        // Draft plan exists → edit mode
-        setBudgetStep('edit');
-        await loadEditData(hh);
       } else {
-        // No plan → empty state
+        // No plan or draft plan → show empty state (user chooses clone/fresh via "Plan your budget")
         setBudgetStep('empty');
       }
     } catch (e) {
@@ -508,11 +521,6 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     setSelectedMonth(month);
   };
 
-  // New budget flow handlers
-  const handlePlanBudget = () => {
-    setBudgetStep('setup');
-  };
-
   const handleCloneBudget = async (sourceMonth: string) => {
     if (!household) return;
     setIsLoading(true);
@@ -532,12 +540,20 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     }
   };
 
-  const handleFreshBudget = () => {
+  const handleFreshBudget = async () => {
     setBudgetStep('edit');
-    loadEditData();
+    await loadEditData();
+    // Zero out all planned amounts — user fills in everything from scratch
+    setExpenseItems(prev => prev.map(item => ({
+      ...item,
+      amount: 0,
+      monthlyAmount: 0,
+    })));
+    // Zero out income display too
+    setActualIncome({ totalIncome: 0, incomeItems: [] });
   };
 
-  const handleBackFromSetup = () => {
+  const handleCancelDraft = () => {
     setBudgetStep('empty');
   };
 
@@ -890,34 +906,58 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     );
   }
 
-  // New Budget Setup — full page takeover
-  if (budgetStep === 'setup' && household) {
-    return (
-      <NewBudgetSetup
-        householdId={household.id}
-        targetMonth={selectedMonth}
-        onClone={handleCloneBudget}
-        onFresh={handleFreshBudget}
-        onBack={handleBackFromSetup}
-      />
-    );
-  }
+  // 'setup' step eliminated — clone/fresh options are now inline in BudgetEmptyState
 
   return (
     <div className="min-h-screen bg-[var(--color-page-bg)]">
       {/* Header - Mobile only */}
       <header className="glass-header px-4 py-3 md:hidden">
-        <h1 className="text-xl font-semibold text-gray-900">Budget</h1>
+        {isEditing && planStatus !== 'frozen' ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCancelDraft}
+              className="p-1.5 rounded-lg hover:bg-black/[0.04] transition-colors"
+              aria-label="Go back"
+            >
+              <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900">
+              Plan {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h1>
+          </div>
+        ) : (
+          <h1 className="text-xl font-semibold text-gray-900">Budget</h1>
+        )}
       </header>
 
       {/* Desktop Header */}
       <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header">
-        <h1 className="text-xl font-semibold text-gray-900">Budget</h1>
+        {isEditing && planStatus !== 'frozen' ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCancelDraft}
+              className="p-1.5 rounded-lg hover:bg-black/[0.04] transition-colors"
+              aria-label="Go back"
+            >
+              <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Plan {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h1>
+          </div>
+        ) : (
+          <h1 className="text-xl font-semibold text-gray-900">Budget</h1>
+        )}
 
         <div className="flex items-center gap-4">
           <MonthSelector
             selectedMonth={selectedMonth}
             onMonthChange={handleMonthChange}
+            minMonth={minMonth}
           />
 
           {budgetStep === 'view' && canEdit && planStatus === 'frozen' && (
@@ -954,12 +994,14 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         </div>
       </header>
 
-      {/* Mobile Month Selector + Edit Button + Filter */}
+      {/* Mobile Month Selector + Edit Button + Filter (hidden in draft edit — month shown in header) */}
+      {!(isEditing && planStatus !== 'frozen') && (
       <div className="md:hidden bg-white/60 backdrop-blur-md border-b border-[rgba(124,58,237,0.08)]">
         <div className="px-4 py-3 flex items-center justify-between">
           <MonthSelector
             selectedMonth={selectedMonth}
             onMonthChange={handleMonthChange}
+            minMonth={minMonth}
           />
           <div className="flex items-center gap-1">
             {budgetStep === 'view' && canEdit && planStatus === 'frozen' && (
@@ -995,6 +1037,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           </div>
         </div>
       </div>
+      )}
 
       {/* Budget Filter Dropdown — rendered via portal at document body to escape all containing blocks */}
       {showBudgetFilter && budgetStep === 'view' && hasOtherMembers && createPortal(
@@ -1040,11 +1083,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         onTouchEnd={handleContentTouchEnd}
       >
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* EMPTY STATE — no budget for this month */}
-          {budgetStep === 'empty' && (
+          {/* EMPTY STATE — no budget for this month (includes clone/fresh options) */}
+          {budgetStep === 'empty' && household && (
             <BudgetEmptyState
               month={selectedMonth}
-              onPlanBudget={handlePlanBudget}
+              householdId={household.id}
+              onClone={handleCloneBudget}
+              onFresh={handleFreshBudget}
             />
           )}
 

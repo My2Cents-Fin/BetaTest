@@ -18,7 +18,9 @@ interface DashboardTabProps {
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
   onCategoryDrillDown?: (subCategoryId: string) => void;
   onUncategorizedDrillDown?: () => void;
-  onNavigateToBudget?: () => void;
+  onNavigateToBudget?: (month?: string) => void;
+  /** When true, this tab is the currently visible tab (triggers data refresh) */
+  isActive?: boolean;
 }
 
 interface CategorySpending {
@@ -42,7 +44,7 @@ interface UserBalance {
   expectedCashBalance: number; // income - cashSpent + netTransfer
 }
 
-export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown, onNavigateToBudget }: DashboardTabProps) {
+export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown, onNavigateToBudget, isActive }: DashboardTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
@@ -56,6 +58,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
   const [planStatus, setPlanStatus] = useState<'draft' | 'frozen'>('draft');
   const [hasFrozenAnyBudget, setHasFrozenAnyBudget] = useState(true); // assume true to avoid flash
+  const [earliestMonth, setEarliestMonth] = useState<string | null>(null);
   const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showOtherMembers, setShowOtherMembers] = useState(false);
@@ -91,11 +94,14 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       const offset = deltaX < 0 ? 1 : -1;
       const date = new Date(year, month - 1 + offset, 1);
       const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      // Block backward navigation past earliest month
+      const min = earliestMonth || currentMonthStr;
+      if (offset === -1 && newMonth < min) return;
       setSelectedMonth(newMonth);
     }
     touchStartX.current = null;
     touchStartY.current = null;
-  }, [selectedMonth]);
+  }, [selectedMonth, earliestMonth, currentMonthStr]);
 
   // Derived month values
   const monthDate = new Date(selectedMonth + '-01');
@@ -123,6 +129,15 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
     }
   }, [selectedMonth]);
 
+  // Refresh data when tab becomes active (user switches back to Dashboard)
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current && hasLoadedRef.current && household) {
+      loadDashboardData(true); // silent refresh — no spinner
+    }
+    wasActiveRef.current = !!isActive;
+  }, [isActive]);
+
   // Respond to quick add trigger from bottom nav
   useEffect(() => {
     if (quickAddTrigger && quickAddTrigger > 0 && household) {
@@ -145,8 +160,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
     }
   }, [hasOtherMembers, onHasOtherMembersChange]);
 
-  async function loadDashboardData() {
-    setIsLoading(true);
+  async function loadDashboardData(silent = false) {
+    if (!silent) setIsLoading(true);
     try {
       // Step 1: Get auth user and household in parallel
       const [authResult, householdData] = await Promise.all([
@@ -166,14 +181,25 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       const [yr, mo] = selectedMonth.split('-').map(Number);
       const endOfMonth = new Date(yr, mo, 0).toISOString().split('T')[0];
 
-      // Check if any frozen budget exists (for first-time gating)
-      const { data: anyFrozen } = await supabase
-        .from('monthly_plans')
-        .select('id')
-        .eq('household_id', householdData.id)
-        .eq('status', 'frozen')
-        .limit(1);
+      // Check if any frozen budget exists (for first-time gating) + get earliest plan month
+      const [{ data: anyFrozen }, { data: earliestPlan }] = await Promise.all([
+        supabase
+          .from('monthly_plans')
+          .select('id')
+          .eq('household_id', householdData.id)
+          .eq('status', 'frozen')
+          .limit(1),
+        supabase
+          .from('monthly_plans')
+          .select('plan_month')
+          .eq('household_id', householdData.id)
+          .order('plan_month', { ascending: true })
+          .limit(1),
+      ]);
       setHasFrozenAnyBudget(!!(anyFrozen && anyFrozen.length > 0));
+      if (earliestPlan && earliestPlan.length > 0) {
+        setEarliestMonth(earliestPlan[0].plan_month.substring(0, 7));
+      }
 
       // Step 2: All these only need householdData.id — run in parallel
       const [planResult, subCategoriesResult, allocationsResult, transactionsResult, usersResult, uncatCountResult] = await Promise.all([
@@ -189,6 +215,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       if (planResult.plan) {
         setPlanStatus(planResult.plan.status);
         setTotalPlanned(planResult.plan.total_allocated || 0);
+      } else {
+        // No plan for this month — reset to draft so Dashboard shows "No budget yet"
+        setPlanStatus('draft');
+        setTotalPlanned(0);
       }
 
       // Process sub-categories
@@ -443,6 +473,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             <MonthSelector
               selectedMonth={selectedMonth}
               onMonthChange={setSelectedMonth}
+              minMonth={earliestMonth || currentMonthStr}
             />
             {isCurrentMonth && (
               <span className="text-[11px] font-medium text-[var(--color-text-secondary)] bg-white/60 backdrop-blur-sm border border-[var(--color-border)] px-3 py-1 rounded-full">{daysRemaining} days left</span>
@@ -451,35 +482,33 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
           {/* If budget not frozen for this month, show prompt instead of metrics */}
           {planStatus !== 'frozen' ? (
-            <div className="glass-card glass-card-elevated p-6 text-center">
-              {/* Decorative top accent */}
-              <div className="flex justify-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.12), rgba(124,58,237,0.04))' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            <div className="glass-card glass-card-elevated p-8 text-center">
+              {/* Themed illustration */}
+              <div className="relative w-20 h-20 mx-auto mb-5">
+                <div className="absolute inset-0 bg-primary-gradient rounded-2xl rotate-6 opacity-20" />
+                <div className="relative w-20 h-20 bg-primary-gradient rounded-2xl flex items-center justify-center shadow-[0_4px_16px_rgba(124,58,237,0.25)]">
+                  <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                   </svg>
                 </div>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(5,150,105,0.12), rgba(5,150,105,0.04))' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                  </svg>
-                </div>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(217,119,6,0.12), rgba(217,119,6,0.04))' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                {/* Decorative sparkle */}
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(251,191,36,0.4)]">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
                   </svg>
                 </div>
               </div>
 
-              <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1.5">No budget for this month</h3>
+              <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1.5">
+                No budget yet
+              </h3>
               <p className="text-sm text-[var(--color-text-secondary)] mb-5 leading-relaxed">
-                Create a budget to start tracking your spending and savings.
+                Plan your budget to start tracking spending this month.
               </p>
               {onNavigateToBudget && (
                 <button
-                  onClick={onNavigateToBudget}
-                  className="px-8 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_2px_8px_rgba(124,58,237,0.25)] hover:shadow-[0_4px_16px_rgba(124,58,237,0.35)] transition-all inline-flex items-center gap-2"
+                  onClick={() => onNavigateToBudget(selectedMonth)}
+                  className="px-6 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 active:scale-[0.98] transition-all"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 5v14M5 12h14"/>
