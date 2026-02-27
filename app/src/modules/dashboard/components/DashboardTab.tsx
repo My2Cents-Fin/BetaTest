@@ -451,18 +451,39 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
           {/* If budget not frozen for this month, show prompt instead of metrics */}
           {planStatus !== 'frozen' ? (
-            <div className="glass-card p-8 text-center">
-              <div className="w-16 h-16 mx-auto bg-[var(--color-primary-bg)] rounded-full flex items-center justify-center mb-4">
-                <span className="text-3xl">📋</span>
+            <div className="glass-card glass-card-elevated p-6 text-center">
+              {/* Decorative top accent */}
+              <div className="flex justify-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.12), rgba(124,58,237,0.04))' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(5,150,105,0.12), rgba(5,150,105,0.04))' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(217,119,6,0.12), rgba(217,119,6,0.04))' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                </div>
               </div>
-              <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-                Budget for this month is not planned yet.
+
+              <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1.5">No budget for this month</h3>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-5 leading-relaxed">
+                Create a budget to start tracking your spending and savings.
               </p>
               {onNavigateToBudget && (
                 <button
                   onClick={onNavigateToBudget}
-                  className="px-6 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_2px_8px_rgba(124,58,237,0.25)] hover:shadow-[0_4px_16px_rgba(124,58,237,0.35)] transition-all"
+                  className="px-8 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_2px_8px_rgba(124,58,237,0.25)] hover:shadow-[0_4px_16px_rgba(124,58,237,0.35)] transition-all inline-flex items-center gap-2"
                 >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
                   Plan Now
                 </button>
               )}
