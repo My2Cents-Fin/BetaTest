@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories, getAllocations, getMonthlyPlan } from '../../budget/services/budget';
-import { getCurrentMonthTransactions, getHouseholdUsers, getUncategorizedCount } from '../../budget/services/transactions';
+import { getTransactions, getHouseholdUsers, getUncategorizedCount } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
+import { MonthSelector, getCurrentMonth } from '../../budget/components/MonthSelector';
 import { QuickAddTransaction } from './QuickAddTransaction';
 import { FundTransferModal } from './FundTransferModal';
 import { supabase } from '../../../lib/supabase';
@@ -53,6 +54,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [showFundTransfer, setShowFundTransfer] = useState(false);
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
   const [planStatus, setPlanStatus] = useState<'draft' | 'frozen'>('draft');
+  const [hasFrozenAnyBudget, setHasFrozenAnyBudget] = useState(true); // assume true to avoid flash
   const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showOtherMembers, setShowOtherMembers] = useState(false);
@@ -64,22 +66,61 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [totalCCSpent, setTotalCCSpent] = useState(0);
   const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
 
+  // Month navigation
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const currentMonthStr = getCurrentMonth();
+
   const hasLoadedRef = useRef(false);
 
-  // Current month
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  const monthDisplay = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  // Swipe gesture for month navigation
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
-  // Days remaining in month
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const offset = deltaX < 0 ? 1 : -1;
+      const date = new Date(year, month - 1 + offset, 1);
+      const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      setSelectedMonth(newMonth);
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  }, [selectedMonth]);
+
+  // Derived month values
+  const monthDate = new Date(selectedMonth + '-01');
+  const currentMonth = selectedMonth + '-01';
+  const monthDisplay = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Days remaining in month (only meaningful for current month)
+  const isCurrentMonth = selectedMonth === currentMonthStr;
   const today = new Date();
-  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const daysRemaining = Math.max(0, lastDayOfMonth.getDate() - today.getDate());
+  const lastDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+  const daysRemaining = isCurrentMonth
+    ? Math.max(0, lastDayOfMonth.getDate() - today.getDate())
+    : 0;
 
   useEffect(() => {
     if (hasLoadedRef.current) return;
     hasLoadedRef.current = true;
     loadDashboardData();
   }, []);
+
+  // Reload when month changes
+  useEffect(() => {
+    if (hasLoadedRef.current && household) {
+      loadDashboardData();
+    }
+  }, [selectedMonth]);
 
   // Respond to quick add trigger from bottom nav
   useEffect(() => {
@@ -119,12 +160,26 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       if (!householdData) return;
       setHousehold(householdData);
 
+      // Compute date range for selected month
+      const startOfMonth = `${selectedMonth}-01`;
+      const [yr, mo] = selectedMonth.split('-').map(Number);
+      const endOfMonth = new Date(yr, mo, 0).toISOString().split('T')[0];
+
+      // Check if any frozen budget exists (for first-time gating)
+      const { data: anyFrozen } = await supabase
+        .from('monthly_plans')
+        .select('id')
+        .eq('household_id', householdData.id)
+        .eq('status', 'frozen')
+        .limit(1);
+      setHasFrozenAnyBudget(!!(anyFrozen && anyFrozen.length > 0));
+
       // Step 2: All these only need householdData.id — run in parallel
       const [planResult, subCategoriesResult, allocationsResult, transactionsResult, usersResult, uncatCountResult] = await Promise.all([
-        getMonthlyPlan(householdData.id, currentMonth),
+        getMonthlyPlan(householdData.id, startOfMonth),
         getHouseholdSubCategories(householdData.id),
-        getAllocations(householdData.id, currentMonth),
-        getCurrentMonthTransactions(householdData.id),
+        getAllocations(householdData.id, startOfMonth),
+        getTransactions(householdData.id, startOfMonth, endOfMonth),
         getHouseholdUsers(householdData.id),
         getUncategorizedCount(householdData.id),
       ]);
@@ -303,9 +358,9 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const netPosition = cashInHand - totalCCSpent;
 
   // Calculate spending velocity metrics based on VARIABLE expenses only (day-to-day spending)
-  const daysElapsed = today.getDate();
-  const dailyAverage = daysElapsed > 0 ? Math.ceil(variableSpent / daysElapsed) : 0;
   const totalDaysInMonth = lastDayOfMonth.getDate();
+  const daysElapsed = isCurrentMonth ? today.getDate() : totalDaysInMonth; // Past months: all days elapsed
+  const dailyAverage = daysElapsed > 0 ? Math.ceil(variableSpent / daysElapsed) : 0;
   const projectedSpend = Math.ceil(dailyAverage * totalDaysInMonth);
   const variableRemaining = variablePlanned - variableSpent;
   const projectedOverspend = Math.ceil(projectedSpend - variablePlanned);
@@ -328,8 +383,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
     );
   }
 
-  // If plan is not frozen, show prompt to set up budget
-  if (planStatus === 'draft') {
+  // If no frozen budget has ever existed, show first-time setup prompt
+  if (!hasFrozenAnyBudget) {
     return (
       <div className="min-h-screen bg-[var(--color-page-bg)]">
         <header className="glass-header px-4 py-3 md:hidden">
@@ -376,12 +431,21 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       </header>
 
       {/* Content */}
-      <main className="p-4 pb-24">
+      <main
+        className="p-4 pb-24"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="max-w-2xl mx-auto space-y-3">
-          {/* Month & Days Remaining */}
+          {/* Month Navigation & Days Remaining */}
           <div className="flex items-center justify-between">
-            <h2 className="text-[17px] font-bold text-[var(--color-text-primary)]">{monthDisplay}</h2>
-            <span className="text-[11px] font-medium text-[var(--color-text-secondary)] bg-white/60 backdrop-blur-sm border border-[var(--color-border)] px-3 py-1 rounded-full">{daysRemaining} days left</span>
+            <MonthSelector
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
+            />
+            {isCurrentMonth && (
+              <span className="text-[11px] font-medium text-[var(--color-text-secondary)] bg-white/60 backdrop-blur-sm border border-[var(--color-border)] px-3 py-1 rounded-full">{daysRemaining} days left</span>
+            )}
           </div>
 
           {/* Row 1: Income Summary — Total Income with budgeted/unbudgeted bar */}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface MonthOption {
   value: string; // Format: YYYY-MM
@@ -8,23 +8,30 @@ interface MonthOption {
 
 interface MonthSelectorProps {
   selectedMonth: string; // Format: YYYY-MM
-  availableMonths: MonthOption[];
   onMonthChange: (month: string) => void;
-  onCreateBudget?: () => void;
+  /** Optional: list of months to show in the dropdown. If omitted, only arrows/swipe work. */
+  availableMonths?: MonthOption[];
+  /** Whether to show the dropdown on tap (default: true) */
+  showDropdown?: boolean;
+  /** Minimum swipe distance in px to trigger navigation (default: 50) */
+  swipeThreshold?: number;
 }
 
+/**
+ * Month navigation component with < > arrows and swipe gesture support.
+ * Allows continuous navigation to any month (prev/next) regardless of plan existence.
+ */
 export function MonthSelector({
   selectedMonth,
-  availableMonths,
   onMonthChange,
-  onCreateBudget,
+  availableMonths,
+  showDropdown = true,
+  swipeThreshold = 50,
 }: MonthSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Find current selection
-  const currentOption = availableMonths.find(m => m.value === selectedMonth);
-  const currentIndex = availableMonths.findIndex(m => m.value === selectedMonth);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -37,34 +44,58 @@ export function MonthSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Navigate to previous month
-  const goToPrevious = () => {
-    if (currentIndex < availableMonths.length - 1) {
-      onMonthChange(availableMonths[currentIndex + 1].value);
-    }
-  };
+  // Navigate to adjacent month by offset (-1 = prev, +1 = next)
+  const navigateMonth = useCallback((offset: number) => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 + offset, 1);
+    const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    onMonthChange(newMonth);
+  }, [selectedMonth, onMonthChange]);
 
-  // Navigate to next month
-  const goToNext = () => {
-    if (currentIndex > 0) {
-      onMonthChange(availableMonths[currentIndex - 1].value);
-    }
-  };
+  const goToPrevious = () => navigateMonth(-1);
+  const goToNext = () => navigateMonth(1);
 
-  const hasPrevious = currentIndex < availableMonths.length - 1;
-  const hasNext = currentIndex > 0;
+  // Swipe gesture handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+
+    // Only trigger if horizontal swipe is dominant (not scrolling)
+    if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX < 0) {
+        // Swipe left → go to next month
+        goToNext();
+      } else {
+        // Swipe right → go to previous month
+        goToPrevious();
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+  }, [swipeThreshold, goToNext, goToPrevious]);
+
+  // Format the current month label
+  const currentLabel = formatMonthLabel(selectedMonth);
 
   return (
-    <div className="flex items-center gap-1" ref={dropdownRef}>
+    <div
+      className="flex items-center gap-1"
+      ref={dropdownRef}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Previous Arrow */}
       <button
         onClick={goToPrevious}
-        disabled={!hasPrevious}
-        className={`p-1.5 rounded-md transition-colors ${
-          hasPrevious
-            ? 'text-gray-500 hover:bg-white/60 hover:text-gray-700'
-            : 'text-gray-200 cursor-not-allowed'
-        }`}
+        className="p-1.5 rounded-md transition-colors text-gray-500 hover:bg-white/60 hover:text-gray-700"
         aria-label="Previous month"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -72,26 +103,32 @@ export function MonthSelector({
         </svg>
       </button>
 
-      {/* Month Dropdown */}
+      {/* Month Label / Dropdown */}
       <div className="relative">
         <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 hover:bg-white/80 rounded-xl transition-colors text-sm font-medium text-gray-700"
+          onClick={() => showDropdown && availableMonths && availableMonths.length > 0 && setIsOpen(!isOpen)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors text-sm font-medium text-gray-700 ${
+            showDropdown && availableMonths && availableMonths.length > 0
+              ? 'bg-white/60 hover:bg-white/80 cursor-pointer'
+              : 'cursor-default'
+          }`}
         >
-          <span>{currentOption?.label || 'Select'}</span>
-          <svg
-            className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <span>{currentLabel}</span>
+          {showDropdown && availableMonths && availableMonths.length > 0 && (
+            <svg
+              className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
         </button>
 
         {/* Dropdown Menu */}
-        {isOpen && (
+        {isOpen && availableMonths && availableMonths.length > 0 && (
           <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-36 bg-white/90 backdrop-blur-xl border border-[rgba(124,58,237,0.1)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 py-1 max-h-56 overflow-y-auto">
             {availableMonths.map((month) => (
               <button
@@ -117,25 +154,6 @@ export function MonthSelector({
                 )}
               </button>
             ))}
-
-            {/* Create Budget Option */}
-            {onCreateBudget && (
-              <>
-                <div className="border-t border-gray-100 my-1" />
-                <button
-                  onClick={() => {
-                    onCreateBudget();
-                    setIsOpen(false);
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-primary-bg)] transition-colors flex items-center gap-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>New Budget</span>
-                </button>
-              </>
-            )}
           </div>
         )}
       </div>
@@ -143,12 +161,7 @@ export function MonthSelector({
       {/* Next Arrow */}
       <button
         onClick={goToNext}
-        disabled={!hasNext}
-        className={`p-1.5 rounded-md transition-colors ${
-          hasNext
-            ? 'text-gray-500 hover:bg-white/60 hover:text-gray-700'
-            : 'text-gray-200 cursor-not-allowed'
-        }`}
+        className="p-1.5 rounded-md transition-colors text-gray-500 hover:bg-white/60 hover:text-gray-700"
         aria-label="Next month"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -157,6 +170,14 @@ export function MonthSelector({
       </button>
     </div>
   );
+}
+
+/**
+ * Format YYYY-MM to human-readable label like "Feb 2026"
+ */
+function formatMonthLabel(month: string): string {
+  const date = new Date(month + '-01');
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 /**

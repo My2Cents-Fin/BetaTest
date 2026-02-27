@@ -1080,6 +1080,101 @@ function getLastDayOfMonth(month: string): string {
 // ============================================
 
 /**
+ * Clone budget allocations from one month to another.
+ * Copies all expense allocations (amounts + periods) from sourceMonth to targetMonth.
+ * Creates a draft monthly_plan for the target month.
+ */
+export async function cloneBudgetAllocations(
+  householdId: string,
+  sourceMonth: string, // Format: YYYY-MM
+  targetMonth: string  // Format: YYYY-MM
+): Promise<ServiceResult> {
+  try {
+    const sourcePlanMonth = `${sourceMonth}-01`;
+    const targetPlanMonth = `${targetMonth}-01`;
+
+    // Get source allocations
+    const { data: sourceAllocations, error: fetchError } = await supabase
+      .from('budget_allocations')
+      .select('sub_category_id, amount, period, monthly_amount')
+      .eq('household_id', householdId)
+      .eq('plan_month', sourcePlanMonth);
+
+    if (fetchError) {
+      console.error('cloneBudgetAllocations fetch error:', fetchError);
+      return { success: false, error: 'Failed to fetch source allocations' };
+    }
+
+    if (!sourceAllocations || sourceAllocations.length === 0) {
+      return { success: false, error: 'No allocations found in source month' };
+    }
+
+    // Insert cloned allocations for target month
+    const { error: insertError } = await supabase
+      .from('budget_allocations')
+      .upsert(
+        sourceAllocations.map(a => ({
+          household_id: householdId,
+          sub_category_id: a.sub_category_id,
+          amount: a.amount,
+          period: a.period,
+          monthly_amount: a.monthly_amount,
+          plan_month: targetPlanMonth,
+        })),
+        { onConflict: 'sub_category_id,plan_month' }
+      );
+
+    if (insertError) {
+      console.error('cloneBudgetAllocations insert error:', insertError);
+      return { success: false, error: 'Failed to clone allocations' };
+    }
+
+    // Create draft plan for target month
+    const totalAllocated = sourceAllocations.reduce((sum, a) => sum + (a.monthly_amount || 0), 0);
+    await upsertMonthlyPlan(householdId, targetPlanMonth, 0, totalAllocated);
+
+    return { success: true };
+  } catch (e) {
+    console.error('cloneBudgetAllocations error:', e);
+    return { success: false, error: 'Failed to clone budget' };
+  }
+}
+
+/**
+ * Get all months that have a frozen plan (for clone source dropdown).
+ * Returns in descending order (newest first).
+ */
+export async function getPlannedMonths(
+  householdId: string
+): Promise<{ success: boolean; error?: string; months?: { value: string; label: string }[] }> {
+  try {
+    const { data, error } = await supabase
+      .from('monthly_plans')
+      .select('plan_month, status')
+      .eq('household_id', householdId)
+      .eq('status', 'frozen')
+      .order('plan_month', { ascending: false });
+
+    if (error) {
+      console.error('getPlannedMonths error:', error);
+      return { success: false, error: 'Failed to load planned months' };
+    }
+
+    const months = (data || []).map(d => {
+      const monthStr = d.plan_month.substring(0, 7); // YYYY-MM
+      const date = new Date(d.plan_month);
+      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      return { value: monthStr, label };
+    });
+
+    return { success: true, months };
+  } catch (e) {
+    console.error('getPlannedMonths error:', e);
+    return { success: false, error: 'Failed to load planned months' };
+  }
+}
+
+/**
  * Get first day of current month as ISO string
  */
 export function getCurrentPlanMonth(): string {

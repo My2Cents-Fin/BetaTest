@@ -17,6 +17,7 @@ import {
   freezePlan,
   getAvailableBudgetMonths,
   getBudgetViewData,
+  cloneBudgetAllocations,
 } from '../services/budget';
 import { getHouseholdUsers, getActualIncomeForMonth } from '../services/transactions';
 import type { ActualIncomeItem } from '../services/transactions';
@@ -24,6 +25,8 @@ import { calculateMonthlyAmount, EXPENSE_CATEGORIES } from '../data/defaultCateg
 import { formatNumber } from './AmountInput';
 import { MonthSelector, formatMonthOption, getCurrentMonth } from './MonthSelector';
 import { BudgetViewMode } from './BudgetViewMode';
+import { BudgetEmptyState } from './BudgetEmptyState';
+import { NewBudgetSetup } from './NewBudgetSetup';
 import { InlineIncomeSection } from './InlineIncomeSection';
 import { WelcomeCard } from '../../dashboard/components/WelcomeCard';
 import { BudgetSection } from '../../dashboard/components/BudgetSection';
@@ -60,7 +63,7 @@ interface Household {
   name: string;
 }
 
-type BudgetStep = 'edit' | 'view';
+type BudgetStep = 'edit' | 'view' | 'empty' | 'setup';
 
 export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
@@ -125,6 +128,36 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Auto-save debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Swipe gesture for month navigation
+  const contentTouchStartX = useRef<number | null>(null);
+  const contentTouchStartY = useRef<number | null>(null);
+
+  const handleContentTouchStart = useCallback((e: React.TouchEvent) => {
+    contentTouchStartX.current = e.touches[0].clientX;
+    contentTouchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleContentTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (contentTouchStartX.current === null || contentTouchStartY.current === null) return;
+    // Don't swipe during edit mode (interferes with inputs)
+    if (budgetStep === 'edit') {
+      contentTouchStartX.current = null;
+      contentTouchStartY.current = null;
+      return;
+    }
+    const deltaX = e.changedTouches[0].clientX - contentTouchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - contentTouchStartY.current;
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const offset = deltaX < 0 ? 1 : -1;
+      const date = new Date(year, month - 1 + offset, 1);
+      const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      setSelectedMonth(newMonth);
+    }
+    contentTouchStartX.current = null;
+    contentTouchStartY.current = null;
+  }, [budgetStep, selectedMonth]);
 
   // Prevent double-execution in React StrictMode
   const hasLoadedRef = useRef(false);
@@ -214,10 +247,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         // Frozen plan → view mode
         setBudgetStep('view');
         await loadViewData(hh);
-      } else {
-        // Draft plan or no plan → edit mode (income + expenses together)
+      } else if (plan) {
+        // Draft plan exists → edit mode
         setBudgetStep('edit');
         await loadEditData(hh);
+      } else {
+        // No plan → empty state
+        setBudgetStep('empty');
       }
     } catch (e) {
       console.error('Error loading for month:', e);
@@ -330,10 +366,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       if (plan?.status === 'frozen') {
         setBudgetStep('view');
         await loadViewData(householdData);
-      } else {
-        // Draft plan or no plan → edit mode (income + expenses together)
+      } else if (plan) {
+        // Draft plan exists → edit mode
         setBudgetStep('edit');
         await loadEditData(householdData);
+      } else {
+        // No plan for current month → empty state
+        setBudgetStep('empty');
       }
 
       const welcomeDismissed = localStorage.getItem('my2cents_welcome_dismissed');
@@ -396,24 +435,26 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       });
 
       // Clean up orphaned sub-categories (ones with no allocations)
-      // Only consider expense sub-categories as orphaned
-      const orphanedSubCats = subCategories.filter((subCat: HouseholdSubCategory & { categories?: { type: string } }) => {
-        // Skip income sub-categories — they're not managed through allocations anymore
-        if (subCat.categories?.type === 'income') return false;
-        const hasAllocation = allocations.some(a => a.sub_category_id === subCat.id);
-        return !hasAllocation;
-      });
+      // Only when there are existing allocations (skip for fresh months)
+      if (allocations.length > 0) {
+        const orphanedSubCats = subCategories.filter((subCat: HouseholdSubCategory & { categories?: { type: string } }) => {
+          // Skip income sub-categories — they're not managed through allocations anymore
+          if (subCat.categories?.type === 'income') return false;
+          const hasAllocation = allocations.some(a => a.sub_category_id === subCat.id);
+          return !hasAllocation;
+        });
 
-      // Delete orphaned expense sub-categories
-      for (const orphan of orphanedSubCats) {
-        console.log('[loadEditData] Deleting orphaned sub-category:', orphan.name);
-        await deleteSubCategory(orphan.id);
+        // Delete orphaned expense sub-categories
+        for (const orphan of orphanedSubCats) {
+          console.log('[loadEditData] Deleting orphaned sub-category:', orphan.name);
+          await deleteSubCategory(orphan.id);
+        }
+
+        // Filter out orphaned sub-categories from the list
+        subCategories = subCategories.filter(subCat =>
+          !orphanedSubCats.some(o => o.id === subCat.id)
+        );
       }
-
-      // Filter out orphaned sub-categories from the list
-      subCategories = subCategories.filter(subCat =>
-        !orphanedSubCats.some(o => o.id === subCat.id)
-      );
 
       // Map sub-categories to budget items — EXPENSES ONLY
       const expenses: BudgetItem[] = [];
@@ -465,6 +506,39 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
   const handleMonthChange = (month: string) => {
     setSelectedMonth(month);
+  };
+
+  // New budget flow handlers
+  const handlePlanBudget = () => {
+    setBudgetStep('setup');
+  };
+
+  const handleCloneBudget = async (sourceMonth: string) => {
+    if (!household) return;
+    setIsLoading(true);
+    try {
+      const result = await cloneBudgetAllocations(household.id, sourceMonth, selectedMonth);
+      if (result.success) {
+        setBudgetStep('edit');
+        await loadEditData();
+      } else {
+        console.error('Clone failed:', result.error);
+        alert('Failed to clone budget. Please try again.');
+      }
+    } catch (e) {
+      console.error('Clone error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFreshBudget = () => {
+    setBudgetStep('edit');
+    loadEditData();
+  };
+
+  const handleBackFromSetup = () => {
+    setBudgetStep('empty');
   };
 
   const handleEnterEditMode = () => {
@@ -810,6 +884,19 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     );
   }
 
+  // New Budget Setup — full page takeover
+  if (budgetStep === 'setup' && household) {
+    return (
+      <NewBudgetSetup
+        householdId={household.id}
+        targetMonth={selectedMonth}
+        onClone={handleCloneBudget}
+        onFresh={handleFreshBudget}
+        onBack={handleBackFromSetup}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-page-bg)]">
       {/* Header - Mobile only */}
@@ -826,9 +913,10 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             selectedMonth={selectedMonth}
             availableMonths={monthOptions}
             onMonthChange={handleMonthChange}
+            showDropdown={monthOptions.length > 0}
           />
 
-          {budgetStep === 'view' && canEdit && (
+          {budgetStep === 'view' && canEdit && planStatus === 'frozen' && (
             <button
               onClick={handleEnterEditMode}
               className="px-4 py-2 text-sm text-[var(--color-primary)] font-medium border border-[rgba(124,58,237,0.2)] rounded-xl hover:bg-[var(--color-primary-bg)] flex items-center gap-2 transition-colors"
@@ -869,9 +957,10 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             selectedMonth={selectedMonth}
             availableMonths={monthOptions}
             onMonthChange={handleMonthChange}
+            showDropdown={monthOptions.length > 0}
           />
           <div className="flex items-center gap-1">
-            {budgetStep === 'view' && canEdit && (
+            {budgetStep === 'view' && canEdit && planStatus === 'frozen' && (
               <button
                 onClick={handleEnterEditMode}
                 className="p-2 text-[var(--color-primary)] hover:bg-[var(--color-primary-bg)] rounded-xl transition-colors"
@@ -943,8 +1032,20 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       )}
 
       {/* Content */}
-      <main className="p-4 pb-24">
+      <main
+        className="p-4 pb-24"
+        onTouchStart={handleContentTouchStart}
+        onTouchEnd={handleContentTouchEnd}
+      >
         <div className="max-w-2xl mx-auto space-y-6">
+          {/* EMPTY STATE — no budget for this month */}
+          {budgetStep === 'empty' && (
+            <BudgetEmptyState
+              month={selectedMonth}
+              onPlanBudget={handlePlanBudget}
+            />
+          )}
+
           {/* Welcome Card (only in edit mode, first time) */}
           {showWelcome && budgetStep === 'edit' && (
             <WelcomeCard
