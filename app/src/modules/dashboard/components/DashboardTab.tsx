@@ -18,6 +18,7 @@ interface DashboardTabProps {
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
   onCategoryDrillDown?: (subCategoryId: string) => void;
   onUncategorizedDrillDown?: () => void;
+  onNavigateToBudget?: () => void;
 }
 
 interface CategorySpending {
@@ -41,7 +42,7 @@ interface UserBalance {
   expectedCashBalance: number; // income - cashSpent + netTransfer
 }
 
-export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown }: DashboardTabProps) {
+export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown, onNavigateToBudget }: DashboardTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
@@ -448,6 +449,26 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             )}
           </div>
 
+          {/* If budget not frozen for this month, show prompt instead of metrics */}
+          {planStatus !== 'frozen' ? (
+            <div className="glass-card p-8 text-center">
+              <div className="w-16 h-16 mx-auto bg-[var(--color-primary-bg)] rounded-full flex items-center justify-center mb-4">
+                <span className="text-3xl">📋</span>
+              </div>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+                Budget for this month is not planned yet.
+              </p>
+              {onNavigateToBudget && (
+                <button
+                  onClick={onNavigateToBudget}
+                  className="px-6 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_2px_8px_rgba(124,58,237,0.25)] hover:shadow-[0_4px_16px_rgba(124,58,237,0.35)] transition-all"
+                >
+                  Plan Now
+                </button>
+              )}
+            </div>
+          ) : (
+          <>
           {/* Row 1: Income Summary — Total Income with budgeted/unbudgeted bar */}
           <div className="glass-card glass-card-elevated px-4 py-3">
             <div className="flex items-center justify-between mb-2">
@@ -780,6 +801,9 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">All Categories Healthy</h3>
               <p className="text-xs text-[var(--color-text-tertiary)]">No categories are at risk of exceeding budget</p>
             </div>
+          )}
+
+          </>
           )}
 
           {/* Trust indicator */}

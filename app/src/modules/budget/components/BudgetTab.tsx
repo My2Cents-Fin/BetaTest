@@ -911,9 +911,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         <div className="flex items-center gap-4">
           <MonthSelector
             selectedMonth={selectedMonth}
-            availableMonths={monthOptions}
             onMonthChange={handleMonthChange}
-            showDropdown={monthOptions.length > 0}
           />
 
           {budgetStep === 'view' && canEdit && planStatus === 'frozen' && (
@@ -955,9 +953,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         <div className="px-4 py-3 flex items-center justify-between">
           <MonthSelector
             selectedMonth={selectedMonth}
-            availableMonths={monthOptions}
             onMonthChange={handleMonthChange}
-            showDropdown={monthOptions.length > 0}
           />
           <div className="flex items-center gap-1">
             {budgetStep === 'view' && canEdit && planStatus === 'frozen' && (

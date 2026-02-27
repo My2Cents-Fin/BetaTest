@@ -94,6 +94,7 @@ export function AppLayout() {
             onHasOtherMembersChange={setHasOtherMembers}
             onCategoryDrillDown={handleCategoryDrillDown}
             onUncategorizedDrillDown={handleUncategorizedDrillDown}
+            onNavigateToBudget={() => setActiveTab('budget')}
           />
         )}
         {activeTab === 'budget' && (
