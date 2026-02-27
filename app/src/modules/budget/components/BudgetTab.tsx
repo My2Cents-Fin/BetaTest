@@ -1236,20 +1236,12 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCancelDraft}
-                  className="px-4 py-2.5 text-gray-600 text-sm font-medium rounded-xl border border-[rgba(124,58,237,0.15)] bg-white/60 backdrop-blur-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleFreezePlan}
-                  className="px-5 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] hover:-translate-y-0.5 transition-all whitespace-nowrap"
-                >
-                  Freeze Plan
-                </button>
-              </div>
+              <button
+                onClick={handleFreezePlan}
+                className="px-5 py-2.5 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] hover:-translate-y-0.5 transition-all whitespace-nowrap"
+              >
+                Freeze Plan
+              </button>
             )}
           </div>
         </div>

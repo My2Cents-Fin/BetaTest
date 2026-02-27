@@ -1135,8 +1135,19 @@ export async function cloneBudgetAllocations(
     }
 
     // Clone income transactions into target month
+    // First delete any existing income transactions for this target month to prevent duplicates
     let totalIncome = 0;
     if (incomeResult.success && incomeResult.incomeItems.length > 0) {
+      const targetStart = targetPlanMonth; // YYYY-MM-01
+      const targetEnd = `${targetMonth}-31`; // safe upper bound
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('household_id', householdId)
+        .eq('transaction_type', 'income')
+        .gte('transaction_date', targetStart)
+        .lte('transaction_date', targetEnd);
+
       const incomeInserts = incomeResult.incomeItems.map(item => ({
         household_id: householdId,
         sub_category_id: item.subCategoryId,

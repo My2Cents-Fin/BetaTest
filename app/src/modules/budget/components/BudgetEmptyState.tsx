@@ -79,9 +79,9 @@ export function BudgetEmptyState({ month, householdId, onClone, onFresh }: Budge
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={() => onClone(selectedSource)}
-                className="px-5 py-2 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.25)] hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                className="px-5 py-2 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.25)] hover:-translate-y-0.5 active:scale-[0.98] transition-all whitespace-nowrap"
               >
-                Clone from {isSingleMonth ? singleMonthLabel : 'selected month'}
+                {isSingleMonth ? `Clone ${singleMonthLabel}` : 'Clone budget'}
               </button>
               {/* Month picker (only if multiple source months) */}
               {!isSingleMonth && (
