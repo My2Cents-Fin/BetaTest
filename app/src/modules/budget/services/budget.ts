@@ -1081,8 +1081,8 @@ function getLastDayOfMonth(month: string): string {
 
 /**
  * Clone budget allocations from one month to another.
- * Copies all expense allocations (amounts + periods) from sourceMonth to targetMonth.
- * Creates a draft monthly_plan for the target month.
+ * Copies all expense allocations (amounts + periods) AND income transactions
+ * from sourceMonth to targetMonth. Creates a draft monthly_plan for the target month.
  */
 export async function cloneBudgetAllocations(
   householdId: string,
@@ -1093,12 +1093,17 @@ export async function cloneBudgetAllocations(
     const sourcePlanMonth = `${sourceMonth}-01`;
     const targetPlanMonth = `${targetMonth}-01`;
 
-    // Get source allocations
-    const { data: sourceAllocations, error: fetchError } = await supabase
-      .from('budget_allocations')
-      .select('sub_category_id, amount, period, monthly_amount')
-      .eq('household_id', householdId)
-      .eq('plan_month', sourcePlanMonth);
+    // Get source allocations and income in parallel
+    const [allocResult, incomeResult] = await Promise.all([
+      supabase
+        .from('budget_allocations')
+        .select('sub_category_id, amount, period, monthly_amount')
+        .eq('household_id', householdId)
+        .eq('plan_month', sourcePlanMonth),
+      getActualIncomeForMonth(householdId, sourceMonth),
+    ]);
+
+    const { data: sourceAllocations, error: fetchError } = allocResult;
 
     if (fetchError) {
       console.error('cloneBudgetAllocations fetch error:', fetchError);
@@ -1129,9 +1134,36 @@ export async function cloneBudgetAllocations(
       return { success: false, error: 'Failed to clone allocations' };
     }
 
+    // Clone income transactions into target month
+    let totalIncome = 0;
+    if (incomeResult.success && incomeResult.incomeItems.length > 0) {
+      const incomeInserts = incomeResult.incomeItems.map(item => ({
+        household_id: householdId,
+        sub_category_id: item.subCategoryId,
+        amount: item.amount,
+        transaction_type: 'income' as const,
+        transaction_date: targetPlanMonth, // 1st of target month
+        payment_method: 'other' as const,
+        logged_by: item.loggedBy,
+        remarks: null,
+        source: 'manual' as const,
+      }));
+
+      const { error: incomeInsertError } = await supabase
+        .from('transactions')
+        .insert(incomeInserts);
+
+      if (incomeInsertError) {
+        console.error('cloneBudgetAllocations income insert error:', incomeInsertError);
+        // Don't fail the whole clone — expenses were already cloned
+      } else {
+        totalIncome = incomeResult.incomeItems.reduce((sum, item) => sum + item.amount, 0);
+      }
+    }
+
     // Create draft plan for target month
     const totalAllocated = sourceAllocations.reduce((sum, a) => sum + (a.monthly_amount || 0), 0);
-    await upsertMonthlyPlan(householdId, targetPlanMonth, 0, totalAllocated);
+    await upsertMonthlyPlan(householdId, targetPlanMonth, totalIncome, totalAllocated);
 
     return { success: true };
   } catch (e) {
