@@ -3,12 +3,39 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-22
+2026-02-28
 
 ## Last Session Summary
-**Session 35: Trust & Security Messaging Quick Wins + PROD Migration Fix**
+**Session 36: Month Rollover Bug Fixes + Transactions UX Overhaul**
 
 ### What Was Done
+1. **Income not saving on fresh budget** — `InlineIncomeSection.tsx` used `new Date().toISOString().split('T')[0]` for transaction date, but `getActualIncomeForMonth` queries by selected month's range. Fixed to use `${month}-01`.
+2. **Cloned income persisting on fresh start** — `handleFreshBudget` only zeroed UI state. Added DB delete of income transactions for the month before resetting.
+3. **Future transactions invisible** — Date filter inputs had `max={today}` preventing future dates. Removed `max` from both Transactions filter and QuickAddTransaction date picker.
+4. **All transactions shown by default** — Changed from current-month-only to loading all transactions. Filters available for narrowing.
+5. **Transaction modal opening on wrong tabs** — All always-mounted tabs reacted to `quickAddTrigger`. Fixed by only passing triggers to the active tab in AppLayout.
+6. **Dashboard/Budget default to current month** — Added month reset on tab activation (wasActiveRef pattern) for both DashboardTab and BudgetTab.
+7. **Collapsible date groups with auto-expand** — Groups auto-expand until ~10 transactions fill the screen. Remaining groups collapsed below the fold.
+8. **Glass-card date headers** — Restyled collapsed/expanded date headers as sleek glass-card rows with purple chevron, bold date label, and txn count + total.
+
+### Key Changes
+1. **Modified files:**
+   - `app/src/modules/budget/components/InlineIncomeSection.tsx` — Fixed income transaction date to use selected month
+   - `app/src/modules/budget/components/BudgetTab.tsx` — Added `isActive` prop, DB delete in handleFreshBudget, month reset on tab activation
+   - `app/src/modules/dashboard/components/DashboardTab.tsx` — Month reset on tab switch
+   - `app/src/modules/dashboard/components/QuickAddTransaction.tsx` — Removed future date restriction
+   - `app/src/modules/transactions/components/TransactionsTab.tsx` — All transactions by default, collapsible date groups, auto-expand algorithm, glass-card styling
+   - `app/src/app/AppLayout.tsx` — Conditional trigger passing per active tab, isActive for BudgetTab
+
+### Build Status
+- TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
+- Preview: ✅ Verified — auto-expand, glass-card headers, expand/collapse all working
+
+---
+
+### Previous Session 35: Trust & Security Messaging Quick Wins + PROD Migration Fix
+
+### What Was Done (Session 35)
 - **PROD migration fix** — `original_narration` column missing on PROD Supabase (migration `011_csv_import_support.sql` hadn't been run). User ran the SQL on PROD SQL editor. Transaction creation + fund transfers now work on prod.
 - **Trust & security messaging (Quick Wins)** — Added 6 contextual trust indicators across the app:
   1. **Login screen** (`PhoneEntryScreen.tsx`) — "Indian data laws compliant" with lock icon, center-justified below Privacy/Terms links

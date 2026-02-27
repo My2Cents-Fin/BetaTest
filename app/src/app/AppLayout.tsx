@@ -91,8 +91,8 @@ export function AppLayout() {
         <div style={{ display: activeTab === 'dashboard' ? undefined : 'none' }}>
           <DashboardTab
             onOpenMenu={() => setIsMenuOpen(true)}
-            quickAddTrigger={quickAddTrigger}
-            fundTransferTrigger={fundTransferTrigger}
+            quickAddTrigger={activeTab === 'dashboard' ? quickAddTrigger : 0}
+            fundTransferTrigger={activeTab === 'dashboard' ? fundTransferTrigger : 0}
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
             onCategoryDrillDown={handleCategoryDrillDown}
@@ -108,18 +108,19 @@ export function AppLayout() {
           <BudgetTab
             onOpenMenu={() => setIsMenuOpen(true)}
             sidebarCollapsed={sidebarCollapsed}
-            quickAddTrigger={quickAddTrigger}
-            fundTransferTrigger={fundTransferTrigger}
+            quickAddTrigger={activeTab === 'budget' ? quickAddTrigger : 0}
+            fundTransferTrigger={activeTab === 'budget' ? fundTransferTrigger : 0}
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
             initialMonth={budgetInitialMonth}
             onInitialMonthConsumed={() => setBudgetInitialMonth(null)}
+            isActive={activeTab === 'budget'}
           />
         </div>
         <div style={{ display: activeTab === 'transactions' ? undefined : 'none' }}>
           <TransactionsTab
-            quickAddTrigger={quickAddTrigger}
-            fundTransferTrigger={fundTransferTrigger}
+            quickAddTrigger={activeTab === 'transactions' ? quickAddTrigger : 0}
+            fundTransferTrigger={activeTab === 'transactions' ? fundTransferTrigger : 0}
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
             drillDownSubCategoryId={drillDownSubCategoryId}

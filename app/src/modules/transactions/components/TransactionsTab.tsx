@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories } from '../../budget/services/budget';
-import { getCurrentMonthTransactions, getTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
+import { getTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
@@ -30,6 +30,17 @@ interface GroupedTransactions {
   transactions: TransactionWithDetails[];
 }
 
+// Helper: get current month's first and last day as YYYY-MM-DD strings
+function getCurrentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-based
+  const from = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const to = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { from, to };
+}
+
 export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, onDrillDownConsumed }: TransactionsTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
@@ -45,9 +56,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
   const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
 
-  // Filter states
-  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
-  const [filterDateTo, setFilterDateTo] = useState<string>('');
+  // Filter states — default to current month
+  const [filterDateFrom, setFilterDateFrom] = useState<string>(() => getCurrentMonthRange().from);
+  const [filterDateTo, setFilterDateTo] = useState<string>(() => getCurrentMonthRange().to);
   const [filterRecordedBy, setFilterRecordedBy] = useState<string[]>([]);
   // Category filter (replaces previous filterTypes toggle buttons — see commit 71d3c01 for revert)
   const [filterSubCategoryIds, setFilterSubCategoryIds] = useState<Set<string>>(new Set());
@@ -56,13 +67,42 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [filterPaidVia, setFilterPaidVia] = useState<'cc' | 'non_cc' | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [uniqueRecorders, setUniqueRecorders] = useState<{ id: string; name: string }[]>([]);
+  const [totalTransactionCount, setTotalTransactionCount] = useState<number>(0);
 
   const hasLoadedRef = useRef(false);
 
-  // Today's date for max date constraint
-  const today = new Date().toISOString().split('T')[0];
+  // Collapsible date groups — auto-expand enough to fill the screen
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
-  const monthDisplay = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const toggleDateGroup = (date: string) => {
+    setExpandedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  };
+
+  // Compute a human-readable label for the active date filter
+  const dateFilterLabel = useMemo(() => {
+    if (!filterDateFrom && !filterDateTo) return null; // no date filter
+    // Check if it's a full-month range (first to last day of same month)
+    if (filterDateFrom && filterDateTo) {
+      const from = new Date(filterDateFrom + 'T00:00:00');
+      const to = new Date(filterDateTo + 'T00:00:00');
+      if (from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear() && from.getDate() === 1) {
+        const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+        if (to.getDate() === lastDay) {
+          return from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+      }
+    }
+    // Custom range — show compact dates
+    const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    if (filterDateFrom && filterDateTo) return `${fmt(filterDateFrom)} – ${fmt(filterDateTo)}`;
+    if (filterDateFrom) return `From ${fmt(filterDateFrom)}`;
+    return `Until ${fmt(filterDateTo)}`;
+  }, [filterDateFrom, filterDateTo]);
 
   useEffect(() => {
     if (hasLoadedRef.current) return;
@@ -131,14 +171,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
    */
   async function refetchTransactions(householdId: string, dateFrom?: string, dateTo?: string) {
     try {
-      // If both date filters are cleared, revert to current month
-      let startDate = dateFrom || undefined;
-      let endDate = dateTo || undefined;
-      if (!startDate && !endDate) {
-        const now = new Date();
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      }
+      // Fetch with date filters if set, otherwise fetch all
+      const startDate = dateFrom || undefined;
+      const endDate = dateTo || undefined;
 
       const result = await getTransactions(householdId, startDate, endDate);
       const txns = result.transactions || [];
@@ -175,16 +210,15 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
         startDate = filterDateFrom || undefined;
         endDate = filterDateTo || undefined;
       }
-      // If no date range specified, getCurrentMonthTransactions will be used
+      // If no date range specified, fetch all transactions
 
       // Step 2: All independent — run in parallel
-      const [subCategoriesResult, transactionsResult, authResult, usersResult] = await Promise.all([
+      const [subCategoriesResult, transactionsResult, authResult, usersResult, countResult] = await Promise.all([
         getHouseholdSubCategories(householdData.id),
-        startDate || endDate
-          ? getTransactions(householdData.id, startDate, endDate)
-          : getCurrentMonthTransactions(householdData.id),
+        getTransactions(householdData.id, startDate, endDate),
         supabase.auth.getUser(),
         getHouseholdUsers(householdData.id),
+        supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('household_id', householdData.id),
       ]);
 
       // Process sub-categories
@@ -213,6 +247,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       // Process transactions
       const txns = transactionsResult.transactions || [];
       setTransactions(txns);
+      setTotalTransactionCount(countResult.count ?? txns.length);
 
       // Extract unique recorders
       const recordersMap = new Map<string, string>();
@@ -320,6 +355,19 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     return groupTransactionsByDate(filteredTransactions);
   }, [filteredTransactions]);
 
+  // Auto-expand enough groups to fill the screen (~10 transactions)
+  useEffect(() => {
+    if (filteredGroupedTransactions.length === 0) return;
+    let count = 0;
+    const autoExpand = new Set<string>();
+    for (const group of filteredGroupedTransactions) {
+      autoExpand.add(group.date);
+      count += group.transactions.length;
+      if (count >= 10) break;
+    }
+    setExpandedDates(autoExpand);
+  }, [filteredGroupedTransactions]);
+
   // Check if any filter is active
   const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterPaidVia || filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly);
 
@@ -332,13 +380,12 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
-    // Clear non-date filters immediately
+    // Clear all filters — show all transactions
     setFilterRecordedBy([]);
     setFilterPaidVia(null);
     setFilterSubCategoryIds(new Set());
     setFilterIncludeTransfers(false);
     setFilterUncategorizedOnly(false);
-    // Clear date filters — the useEffect will trigger a re-fetch to current month
     setFilterDateFrom('');
     setFilterDateTo('');
   };
@@ -423,7 +470,10 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     <div className="min-h-screen bg-[var(--color-page-bg)]">
       {/* Header - Mobile */}
       <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden">
-        <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
+          {dateFilterLabel && <p className="text-xs text-[var(--color-text-secondary)]">{dateFilterLabel}</p>}
+        </div>
         <div className="flex items-center gap-2">
           {/* Import Statement Button */}
           <button
@@ -456,7 +506,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
       {/* Header - Desktop */}
       <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header">
-        <h1 className="text-lg font-semibold text-gray-900">Transactions • {filterDateFrom || filterDateTo ? 'Filtered' : monthDisplay}</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Transactions{dateFilterLabel ? ` • ${dateFilterLabel}` : ''}</h1>
         <div className="flex items-center gap-2">
           {/* Import Statement Button */}
           <button
@@ -508,7 +558,6 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               hasUncategorized={transactions.some(t => t.sub_category_id === null && t.transaction_type !== 'transfer')}
               uniqueRecorders={uniqueRecorders}
               hasActiveFilters={hasActiveFilters}
-              maxDate={today}
               setFilterDateFrom={setFilterDateFrom}
               setFilterDateTo={setFilterDateTo}
               toggleRecorder={toggleRecorder}
@@ -574,7 +623,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           {hasActiveFilters && (
             <div className="flex items-center justify-between px-1">
               <p className="text-xs text-gray-500">
-                Showing {filteredTransactions.length} of {transactions.length} transactions
+                Showing {filteredTransactions.length} of {totalTransactionCount} transactions
               </p>
               <button
                 onClick={clearFilters}
@@ -619,10 +668,31 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               )}
             </div>
           ) : (
-            filteredGroupedTransactions.map(group => (
-              <div key={group.date}>
-                <h3 className="text-xs font-medium text-gray-400 mb-2 px-1 uppercase tracking-wide">{group.label}</h3>
-                <div className="glass-card divide-y divide-[rgba(124,58,237,0.04)] !p-0 overflow-hidden">
+            filteredGroupedTransactions.map(group => {
+              const isExpanded = expandedDates.has(group.date);
+              const groupTotal = group.transactions.reduce((sum, t) => sum + t.amount, 0);
+              return (
+              <div key={group.date} className="glass-card !p-0 overflow-hidden mb-3">
+                {/* Date header — always visible */}
+                <button
+                  onClick={() => toggleDateGroup(group.date)}
+                  className={`w-full px-3 py-2.5 flex items-center gap-2 bg-[rgba(124,58,237,0.04)] hover:bg-[rgba(124,58,237,0.07)] active:bg-[rgba(124,58,237,0.10)] transition-colors ${isExpanded ? 'border-b border-[rgba(124,58,237,0.08)]' : ''}`}
+                >
+                  <svg
+                    className={`w-4 h-4 text-[var(--color-primary)] transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)]">{group.label}</h3>
+                  <span className="text-xs text-[var(--color-text-secondary)] ml-auto">
+                    {group.transactions.length} txn{group.transactions.length !== 1 ? 's' : ''} · ₹{formatNumber(groupTotal)}
+                  </span>
+                </button>
+
+                {/* Transaction rows — only when expanded */}
+                {isExpanded && (
+                <div className="divide-y divide-[rgba(124,58,237,0.04)]">
                   {group.transactions.map(txn => (
                     <div
                       key={txn.id}
@@ -683,8 +753,10 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                     </div>
                   ))}
                 </div>
+                )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </main>
@@ -806,7 +878,6 @@ interface FilterContentProps {
   hasUncategorized: boolean;
   uniqueRecorders: { id: string; name: string }[];
   hasActiveFilters: boolean;
-  maxDate: string;
   setFilterDateFrom: (date: string) => void;
   setFilterDateTo: (date: string) => void;
   toggleRecorder: (id: string) => void;
@@ -832,7 +903,6 @@ function FilterContent({
   hasUncategorized,
   uniqueRecorders,
   hasActiveFilters,
-  maxDate,
   setFilterDateFrom,
   setFilterDateTo,
   toggleRecorder,
@@ -870,7 +940,7 @@ function FilterContent({
               type="date"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
-              max={filterDateTo || maxDate}
+              max={filterDateTo || undefined}
               className="w-[96%] md:w-full px-2 py-1.5 text-xs border border-[rgba(124,58,237,0.15)] rounded-xl bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
               style={{ colorScheme: 'light', fontSize: '12px' }}
             />
@@ -882,7 +952,7 @@ function FilterContent({
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
               min={filterDateFrom}
-              max={maxDate}
+              max={undefined}
               className="w-[96%] md:w-full px-2 py-1.5 text-xs border border-[rgba(124,58,237,0.15)] rounded-xl bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
               style={{ colorScheme: 'light', fontSize: '12px' }}
             />

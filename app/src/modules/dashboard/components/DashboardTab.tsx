@@ -133,6 +133,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const wasActiveRef = useRef(false);
   useEffect(() => {
     if (isActive && !wasActiveRef.current && hasLoadedRef.current && household) {
+      setSelectedMonth(getCurrentMonth()); // reset to current month
       loadDashboardData(true); // silent refresh — no spinner
     }
     wasActiveRef.current = !!isActive;

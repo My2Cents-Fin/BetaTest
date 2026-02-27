@@ -315,7 +315,7 @@ export function InlineIncomeSection({
         subCategoryId: addSubCategoryId,
         amount: numAmount,
         transactionType: 'income',
-        transactionDate: new Date().toISOString().split('T')[0],
+        transactionDate: `${month}-01`,
         paymentMethod: 'other',
         loggedBy: addPaidBy || currentUserId,
       });

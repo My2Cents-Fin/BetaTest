@@ -46,6 +46,8 @@ interface BudgetTabProps {
   /** When navigating from Dashboard "Plan Now", this passes the month to plan */
   initialMonth?: string | null;
   onInitialMonthConsumed?: () => void;
+  /** When true, this tab is the currently visible tab */
+  isActive?: boolean;
 }
 
 interface BudgetItem {
@@ -67,7 +69,7 @@ interface Household {
 
 type BudgetStep = 'edit' | 'view' | 'empty';
 
-export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed }: BudgetTabProps) {
+export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed, isActive }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
   const [isLoading, setIsLoading] = useState(true);
   const [household, setHousehold] = useState<Household | null>(null);
@@ -180,6 +182,15 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       onInitialMonthConsumed?.();
     }
   }, [initialMonth]);
+
+  // Reset to current month when tab becomes active (unless navigated via initialMonth)
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current && hasLoadedRef.current && !initialMonth) {
+      setSelectedMonth(getCurrentMonth());
+    }
+    wasActiveRef.current = !!isActive;
+  }, [isActive]);
 
   useEffect(() => {
     if (hasLoadedRef.current) return;
@@ -549,7 +560,20 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       amount: 0,
       monthlyAmount: 0,
     })));
-    // Zero out income display too
+
+    // Delete any existing income transactions for this month (e.g. from a previous clone)
+    if (household) {
+      const [yr, mo] = selectedMonth.split('-').map(Number);
+      const nextMonthFirst = `${mo === 12 ? yr + 1 : yr}-${String(mo === 12 ? 1 : mo + 1).padStart(2, '0')}-01`;
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('household_id', household.id)
+        .eq('transaction_type', 'income')
+        .gte('transaction_date', `${selectedMonth}-01`)
+        .lt('transaction_date', nextMonthFirst);
+    }
+    // Zero out income display
     setActualIncome({ totalIncome: 0, incomeItems: [] });
   };
 

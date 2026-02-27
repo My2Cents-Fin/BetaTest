@@ -411,7 +411,6 @@ export function QuickAddTransaction({
               value={transactionDate}
               onChange={(e) => setTransactionDate(e.target.value)}
               onKeyDown={handleFieldKeyDown}
-              max={getTodayDate()}
               className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
             />
           </div>
