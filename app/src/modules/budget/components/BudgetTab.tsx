@@ -256,6 +256,27 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
   const activeFilterCount = filterMemberIds.length > 0 ? 1 : 0;
 
+  // Refresh allSubCategories from DB — ensures QuickAdd modal always has fresh data
+  async function refreshAllSubCategories() {
+    if (!household) return;
+    const result = await getHouseholdSubCategories(household.id);
+    const subCatList = (result.subCategories || []).map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
+      id: sc.id,
+      name: sc.name,
+      icon: sc.icon || '📦',
+      categoryName: sc.categories?.name || 'Other',
+      categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+    }));
+    setAllSubCategories(subCatList);
+  }
+
+  // Refresh sub-categories when QuickAdd modal opens (allSubCategories may be stale)
+  useEffect(() => {
+    if (showQuickAdd && household) {
+      refreshAllSubCategories();
+    }
+  }, [showQuickAdd]);
+
   async function loadForMonth(householdOverride?: Household) {
     const hh = householdOverride || household;
     if (!hh) return;
@@ -348,9 +369,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
       if (subCategories.length === 0) {
         setShowWelcome(true);
-        await createDefaultExpenseTemplate(householdData.id);
+        await createDefaultExpenseTemplate(household.id);
         // Reload sub-categories after creating defaults
-        const refreshedSubCats = await getHouseholdSubCategories(householdData.id);
+        const refreshedSubCats = await getHouseholdSubCategories(household.id);
         const refreshedList = (refreshedSubCats.subCategories || [])
           .map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
             id: sc.id,
@@ -372,16 +393,16 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
       // Determine initial step
       const planMonth = `${currentMonth}-01`;
-      const planResult = await getMonthlyPlan(householdData.id, planMonth);
+      const planResult = await getMonthlyPlan(household.id, planMonth);
       const plan = planResult.plan;
 
       if (plan?.status === 'frozen') {
         setBudgetStep('view');
-        await loadViewData(householdData);
+        await loadViewData(household);
       } else if (plan) {
         // Draft plan exists → edit mode
         setBudgetStep('edit');
-        await loadEditData(householdData);
+        await loadEditData(household);
       } else {
         // No plan for current month → empty state
         setBudgetStep('empty');
@@ -446,27 +467,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         incomeItems: incomeResult.incomeItems,
       });
 
-      // Clean up orphaned sub-categories (ones with no allocations)
-      // Only when there are existing allocations (skip for fresh months)
-      if (allocations.length > 0) {
-        const orphanedSubCats = subCategories.filter((subCat: HouseholdSubCategory & { categories?: { type: string } }) => {
-          // Skip income sub-categories — they're not managed through allocations anymore
-          if (subCat.categories?.type === 'income') return false;
-          const hasAllocation = allocations.some(a => a.sub_category_id === subCat.id);
-          return !hasAllocation;
-        });
-
-        // Delete orphaned expense sub-categories
-        for (const orphan of orphanedSubCats) {
-          console.log('[loadEditData] Deleting orphaned sub-category:', orphan.name);
-          await deleteSubCategory(orphan.id);
-        }
-
-        // Filter out orphaned sub-categories from the list
-        subCategories = subCategories.filter(subCat =>
-          !orphanedSubCats.some(o => o.id === subCat.id)
-        );
-      }
+      // Note: Orphan cleanup was removed — it permanently deleted expense sub-categories
+      // from household_sub_categories (household-level) based on a single month's allocations,
+      // causing data loss across all months. Users can delete unwanted sub-categories manually.
 
       // Map sub-categories to budget items — EXPENSES ONLY
       const expenses: BudgetItem[] = [];
@@ -633,6 +636,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         monthlyAmount: 0,
       };
       setExpenseItems([...expenseItems, newItem]);
+      refreshAllSubCategories(); // Keep QuickAdd categories in sync
     }
 
     setExpenseAddingState({ active: false });
@@ -846,6 +850,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       setIncompleteItemIds(new Set());
       setBudgetStep('view');
       loadViewData();
+      refreshAllSubCategories(); // Ensure QuickAdd has fresh categories after freeze
 
       // Update available months if needed
       if (!availableMonths.includes(selectedMonth)) {
@@ -1155,6 +1160,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
                       )
                       .map(sc => ({ id: sc.id, name: sc.name, icon: sc.icon || '💰' }));
                     setIncomeSubCategories(incomeSubCats);
+                    refreshAllSubCategories(); // Keep QuickAdd categories in sync
                   }}
                 />
               )}

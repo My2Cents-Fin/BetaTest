@@ -150,6 +150,23 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
     }
   }, [quickAddTrigger]);
 
+  // Refresh sub-categories when QuickAdd modal opens (allSubCategories may be stale)
+  useEffect(() => {
+    if (showQuickAdd && household) {
+      (async () => {
+        const result = await getHouseholdSubCategories(household.id);
+        const subCatList = (result.subCategories || []).map((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => ({
+          id: sc.id,
+          name: sc.name,
+          icon: sc.icon || '📦',
+          categoryName: sc.categories?.name || 'Other',
+          categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+        }));
+        setAllSubCategories(subCatList);
+      })();
+    }
+  }, [showQuickAdd]);
+
   // Respond to fund transfer trigger from bottom nav
   useEffect(() => {
     if (fundTransferTrigger && fundTransferTrigger > 0 && household && hasOtherMembers) {
