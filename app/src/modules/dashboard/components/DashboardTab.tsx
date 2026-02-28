@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories, getAllocations, getMonthlyPlan } from '../../budget/services/budget';
-import { getTransactions, getHouseholdUsers, getUncategorizedCount } from '../../budget/services/transactions';
+import { getTransactions, getUncategorizedCount } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { MonthSelector, getCurrentMonth } from '../../budget/components/MonthSelector';
 import { QuickAddTransaction } from './QuickAddTransaction';
 import { FundTransferModal } from './FundTransferModal';
 import { supabase } from '../../../lib/supabase';
 import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
+import { useHousehold } from '../../../app/providers/HouseholdProvider';
 import type { BudgetAllocation, HouseholdSubCategory } from '../../budget/types';
 
 interface DashboardTabProps {
@@ -45,8 +45,8 @@ interface UserBalance {
 }
 
 export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown, onNavigateToBudget, isActive }: DashboardTabProps) {
+  const { household: hhData, householdUsers: hhUsers, userMap, currentUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
-  const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [totalPlanned, setTotalPlanned] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
   const [totalActualIncome, setTotalActualIncome] = useState(0);
@@ -60,15 +60,17 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [hasFrozenAnyBudget, setHasFrozenAnyBudget] = useState(true); // assume true to avoid flash
   const [earliestMonth, setEarliestMonth] = useState<string | null>(null);
   const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showOtherMembers, setShowOtherMembers] = useState(false);
-  const [hasOtherMembers, setHasOtherMembers] = useState(false);
-  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [uncategorizedTotal, setUncategorizedTotal] = useState(0);
   const [uncategorizedCountAll, setUncategorizedCountAll] = useState(0);
   const [uncategorizedCountThisMonth, setUncategorizedCountThisMonth] = useState(0);
   const [totalCCSpent, setTotalCCSpent] = useState(0);
   const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
+
+  // Derive from HouseholdProvider context
+  const household = hhData ? { id: hhData.id, name: hhData.name } : null;
+  const householdUsers = hhUsers;
+  const hasOtherMembers = currentUserId ? hhUsers.filter(u => u.id !== currentUserId).length > 0 : false;
 
   // Month navigation
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -116,11 +118,13 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
     ? Math.max(0, lastDayOfMonth.getDate() - today.getDate())
     : 0;
 
+  // Load once when household becomes available from context
   useEffect(() => {
     if (hasLoadedRef.current) return;
+    if (!household) return; // wait for HouseholdProvider
     hasLoadedRef.current = true;
     loadDashboardData();
-  }, []);
+  }, [household]);
 
   // Reload when month changes
   useEffect(() => {
@@ -164,53 +168,39 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   async function loadDashboardData(silent = false) {
     if (!silent) setIsLoading(true);
     try {
-      // Step 1: Get auth user and household in parallel
-      const [authResult, householdData] = await Promise.all([
-        supabase.auth.getUser(),
-        getUserHousehold(),
-      ]);
-
-      const user = authResult.data?.user;
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-      if (!householdData) return;
-      setHousehold(householdData);
+      // household, currentUserId, householdUsers come from HouseholdProvider context
+      if (!household) return;
+      const householdId = household.id;
 
       // Compute date range for selected month
       const startOfMonth = `${selectedMonth}-01`;
       const [yr, mo] = selectedMonth.split('-').map(Number);
       const endOfMonth = new Date(yr, mo, 0).toISOString().split('T')[0];
 
-      // Check if any frozen budget exists (for first-time gating) + get earliest plan month
-      const [{ data: anyFrozen }, { data: earliestPlan }] = await Promise.all([
+      // All independent queries — run in parallel (includes frozen check + earliest month)
+      const [{ data: anyFrozen }, { data: earliestPlan }, planResult, subCategoriesResult, allocationsResult, transactionsResult, uncatCountResult] = await Promise.all([
         supabase
           .from('monthly_plans')
           .select('id')
-          .eq('household_id', householdData.id)
+          .eq('household_id', householdId)
           .eq('status', 'frozen')
           .limit(1),
         supabase
           .from('monthly_plans')
           .select('plan_month')
-          .eq('household_id', householdData.id)
+          .eq('household_id', householdId)
           .order('plan_month', { ascending: true })
           .limit(1),
+        getMonthlyPlan(householdId, startOfMonth),
+        getHouseholdSubCategories(householdId),
+        getAllocations(householdId, startOfMonth),
+        getTransactions(householdId, startOfMonth, endOfMonth, userMap),
+        getUncategorizedCount(householdId),
       ]);
       setHasFrozenAnyBudget(!!(anyFrozen && anyFrozen.length > 0));
       if (earliestPlan && earliestPlan.length > 0) {
         setEarliestMonth(earliestPlan[0].plan_month.substring(0, 7));
       }
-
-      // Step 2: All these only need householdData.id — run in parallel
-      const [planResult, subCategoriesResult, allocationsResult, transactionsResult, usersResult, uncatCountResult] = await Promise.all([
-        getMonthlyPlan(householdData.id, startOfMonth),
-        getHouseholdSubCategories(householdData.id),
-        getAllocations(householdData.id, startOfMonth),
-        getTransactions(householdData.id, startOfMonth, endOfMonth),
-        getHouseholdUsers(householdData.id),
-        getUncategorizedCount(householdData.id),
-      ]);
 
       // Process plan
       if (planResult.plan) {
@@ -309,19 +299,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         .reduce((sum, c) => sum + c.planned, 0);
       setVariablePlanned(varPlanned);
 
-      // Calculate user balances — use display names from transactions themselves
+      // Calculate user balances — use userMap from HouseholdProvider (no extra query)
       const userIds = [...new Set(transactions.map(t => t.logged_by).filter(Boolean))];
-
-      // Fetch user display names
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, display_name')
-        .in('id', userIds);
-
-      const userMap = new Map<string, string>();
-      (usersData || []).forEach((u: any) => {
-        userMap.set(u.id, u.display_name || 'Unknown');
-      });
 
       // Calculate balance for each user (split CC vs cash expenses)
       const balances: UserBalance[] = userIds.map(userId => {
@@ -363,13 +342,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       }).sort((a, b) => a.userName.localeCompare(b.userName));
 
       setUserBalances(balances);
-
-      // Process household users (already loaded in parallel above)
-      if (user && usersResult.success && usersResult.users) {
-        setHouseholdUsers(usersResult.users);
-        const otherMembers = usersResult.users.filter(u => u.id !== user.id);
-        setHasOtherMembers(otherMembers.length > 0);
-      }
 
     } catch (e) {
       console.error('Error loading dashboard:', e);

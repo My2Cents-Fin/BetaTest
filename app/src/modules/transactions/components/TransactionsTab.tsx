@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { getHouseholdSubCategories } from '../../budget/services/budget';
-import { getTransactions, deleteTransaction, getHouseholdUsers } from '../../budget/services/transactions';
+import { getTransactions, deleteTransaction } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
@@ -11,6 +10,7 @@ import { supabase } from '../../../lib/supabase';
 import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 import { CategoryMultiSelect } from '../../../shared/components/CategoryMultiSelect';
 import { StatementImportModal } from './StatementImportModal';
+import { useHousehold } from '../../../app/providers/HouseholdProvider';
 
 interface TransactionsTabProps {
   quickAddTrigger?: number;
@@ -42,19 +42,22 @@ function getCurrentMonthRange(): { from: string; to: string } {
 }
 
 export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, onDrillDownConsumed }: TransactionsTabProps) {
+  const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
-  const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithDetails | null>(null);
-  const [hasOtherMembers, setHasOtherMembers] = useState(false);
-  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [showImport, setShowImport] = useState(false);
   const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
   const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
+
+  // Derive from HouseholdProvider context
+  const household = hhData ? { id: hhData.id, name: hhData.name } : null;
+  const householdUsers = hhUsers;
+  const currentUserId = ctxUserId || '';
+  const hasOtherMembers = ctxUserId ? hhUsers.filter(u => u.id !== ctxUserId).length > 0 : false;
 
   // Filter states — default to current month
   const [filterDateFrom, setFilterDateFrom] = useState<string>(() => getCurrentMonthRange().from);
@@ -104,11 +107,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     return `Until ${fmt(filterDateTo)}`;
   }, [filterDateFrom, filterDateTo]);
 
+  // Load once when household becomes available from context
   useEffect(() => {
     if (hasLoadedRef.current) return;
+    if (!household) return; // wait for HouseholdProvider
     hasLoadedRef.current = true;
     loadTransactions();
-  }, []);
+  }, [household]);
 
   // Apply drill-down filter from Dashboard (pre-filter by sub-category)
   useEffect(() => {
@@ -175,7 +180,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       const startDate = dateFrom || undefined;
       const endDate = dateTo || undefined;
 
-      const result = await getTransactions(householdId, startDate, endDate);
+      const result = await getTransactions(householdId, startDate, endDate, userMap);
       const txns = result.transactions || [];
       setTransactions(txns);
 
@@ -195,10 +200,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   async function loadTransactions(overrideDateFrom?: string, overrideDateTo?: string) {
     setIsLoading(true);
     try {
-      // Step 1: Get household (sequential — needs user internally)
-      const householdData = await getUserHousehold();
-      if (!householdData) return;
-      setHousehold(householdData);
+      // household, currentUserId, householdUsers come from HouseholdProvider context
+      if (!household) return;
+      const householdId = household.id;
 
       // Determine date range: use overrides if provided, else date filters, else current month
       let startDate: string | undefined;
@@ -212,13 +216,11 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       }
       // If no date range specified, fetch all transactions
 
-      // Step 2: All independent — run in parallel
-      const [subCategoriesResult, transactionsResult, authResult, usersResult, countResult] = await Promise.all([
-        getHouseholdSubCategories(householdData.id),
-        getTransactions(householdData.id, startDate, endDate),
-        supabase.auth.getUser(),
-        getHouseholdUsers(householdData.id),
-        supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('household_id', householdData.id),
+      // All independent — run in parallel (no getUserHousehold or getHouseholdUsers needed)
+      const [subCategoriesResult, transactionsResult, countResult] = await Promise.all([
+        getHouseholdSubCategories(householdId),
+        getTransactions(householdId, startDate, endDate, userMap),
+        supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('household_id', householdId),
       ]);
 
       // Process sub-categories
@@ -257,17 +259,6 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
         }
       });
       setUniqueRecorders(Array.from(recordersMap.entries()).map(([id, name]) => ({ id, name })));
-
-      // Process auth + household users
-      const user = authResult.data?.user;
-      if (user) {
-        setCurrentUserId(user.id);
-        if (usersResult.success && usersResult.users) {
-          setHouseholdUsers(usersResult.users);
-          const otherMembers = usersResult.users.filter(u => u.id !== user.id);
-          setHasOtherMembers(otherMembers.length > 0);
-        }
-      }
 
     } catch (e) {
       console.error('Error loading transactions:', e);

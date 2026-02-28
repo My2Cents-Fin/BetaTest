@@ -96,7 +96,8 @@ export async function createTransaction(
 export async function getTransactions(
   householdId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  providedUserMap?: Map<string, string>
 ): Promise<TransactionsListResult> {
   try {
     let query = supabase
@@ -139,17 +140,22 @@ export async function getTransactions(
     const transferToIds = (data || []).map((t: any) => t.transfer_to).filter(Boolean);
     const userIds = [...new Set([...loggedByIds, ...transferToIds])];
 
-    // Fetch user display names
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('id, display_name')
-      .in('id', userIds);
+    // Use provided userMap or fetch from DB
+    let userMap: Map<string, string>;
+    if (providedUserMap && providedUserMap.size > 0) {
+      userMap = providedUserMap;
+    } else {
+      // Fetch user display names
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, display_name')
+        .in('id', userIds);
 
-    // Create a map of user ID to display name
-    const userMap = new Map<string, string>();
-    (usersData || []).forEach((u: any) => {
-      userMap.set(u.id, u.display_name || 'Unknown');
-    });
+      userMap = new Map<string, string>();
+      (usersData || []).forEach((u: any) => {
+        userMap.set(u.id, u.display_name || 'Unknown');
+      });
+    }
 
     // Transform to TransactionWithDetails
     const transactions: TransactionWithDetails[] = (data || []).map((t: any) => ({
@@ -497,7 +503,8 @@ export interface ActualIncomeResult {
  */
 export async function getActualIncomeForMonth(
   householdId: string,
-  month: string // Format: YYYY-MM
+  month: string, // Format: YYYY-MM
+  providedUserMap?: Map<string, string>
 ): Promise<ActualIncomeResult> {
   try {
     const startDate = `${month}-01`;
@@ -538,16 +545,22 @@ export async function getActualIncomeForMonth(
     // Get unique user IDs
     const userIds = [...new Set(data.map((t: any) => t.logged_by).filter(Boolean))];
 
-    // Fetch user display names
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('id, display_name')
-      .in('id', userIds);
+    // Use provided userMap or fetch from DB
+    let userMap: Map<string, string>;
+    if (providedUserMap && providedUserMap.size > 0) {
+      userMap = providedUserMap;
+    } else {
+      // Fetch user display names
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, display_name')
+        .in('id', userIds);
 
-    const userMap = new Map<string, string>();
-    (usersData || []).forEach((u: any) => {
-      userMap.set(u.id, u.display_name || 'Unknown');
-    });
+      userMap = new Map<string, string>();
+      (usersData || []).forEach((u: any) => {
+        userMap.set(u.id, u.display_name || 'Unknown');
+      });
+    }
 
     const incomeItems: ActualIncomeItem[] = data.map((t: any) => ({
       id: t.id,

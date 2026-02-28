@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { getUserHousehold } from '../../onboarding/services/onboarding';
 import { supabase } from '../../../lib/supabase';
 import {
   getHouseholdSubCategories,
@@ -19,7 +18,7 @@ import {
   getBudgetViewData,
   cloneBudgetAllocations,
 } from '../services/budget';
-import { getHouseholdUsers, getActualIncomeForMonth } from '../services/transactions';
+import { getActualIncomeForMonth } from '../services/transactions';
 import type { ActualIncomeItem } from '../services/transactions';
 import { calculateMonthlyAmount, EXPENSE_CATEGORIES } from '../data/defaultCategories';
 import { formatNumber } from './AmountInput';
@@ -33,6 +32,7 @@ import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransact
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
 import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 import { useBudget } from '../../../app/providers/BudgetProvider';
+import { useHousehold } from '../../../app/providers/HouseholdProvider';
 import type { AddingState } from '../../dashboard/components/BudgetSection';
 import type { HouseholdSubCategory, BudgetAllocation, Period, PlanStatus, MonthlyPlan } from '../types';
 
@@ -71,9 +71,15 @@ type BudgetStep = 'edit' | 'view' | 'empty';
 
 export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed, isActive }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
+  const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
-  const [household, setHousehold] = useState<Household | null>(null);
   const [isFirstFreeze, setIsFirstFreeze] = useState(false);
+
+  // Derive from HouseholdProvider context
+  const household: Household | null = hhData ? { id: hhData.id, name: hhData.name } : null;
+  const householdUsers = hhUsers;
+  const currentUserId = ctxUserId || '';
+  const hasOtherMembers = ctxUserId ? hhUsers.filter(u => u.id !== ctxUserId).length > 0 : false;
 
   // Month selection
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -120,9 +126,6 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
-  const [householdUsers, setHouseholdUsers] = useState<{ id: string; displayName: string }[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [hasOtherMembers, setHasOtherMembers] = useState(false);
 
   // Member filter (view mode only) — empty array means "All"
   const [filterMemberIds, setFilterMemberIds] = useState<string[]>([]);
@@ -192,11 +195,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     wasActiveRef.current = !!isActive;
   }, [isActive]);
 
+  // Load once when household becomes available from context
   useEffect(() => {
     if (hasLoadedRef.current) return;
+    if (!household) return; // wait for HouseholdProvider
     hasLoadedRef.current = true;
     loadInitialData();
-  }, []);
+  }, [household]);
 
   // Load data when month changes
   useEffect(() => {
@@ -261,7 +266,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       const planMonth = `${selectedMonth}-01`;
       const [planResult, incomeResult] = await Promise.all([
         getMonthlyPlan(hh.id, planMonth),
-        getActualIncomeForMonth(hh.id, selectedMonth),
+        getActualIncomeForMonth(hh.id, selectedMonth, userMap),
       ]);
 
       setActualIncome({
@@ -289,34 +294,17 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   async function loadInitialData() {
     setIsLoading(true);
     try {
-      // Step 1: Get household (sequential — needs user internally)
-      const householdData = await getUserHousehold();
-      if (!householdData) {
-        console.error('[Budget] No household found');
-        return;
-      }
-      setHousehold(householdData);
+      // household, currentUserId, householdUsers come from HouseholdProvider context
+      if (!household) return;
+      const householdId = household.id;
 
-      // Step 2: All independent — run in parallel
-      const [authResult, usersResult, monthsResult, categoriesResult, subCategoriesResult, incomeResult] = await Promise.all([
-        supabase.auth.getUser(),
-        getHouseholdUsers(householdData.id),
-        getAvailableBudgetMonths(householdData.id),
-        getCategoryList(householdData.id),
-        getHouseholdSubCategories(householdData.id),
-        getActualIncomeForMonth(householdData.id, currentMonth),
+      // All independent — run in parallel (no getUserHousehold or getHouseholdUsers needed)
+      const [monthsResult, categoriesResult, subCategoriesResult, incomeResult] = await Promise.all([
+        getAvailableBudgetMonths(householdId),
+        getCategoryList(householdId),
+        getHouseholdSubCategories(householdId),
+        getActualIncomeForMonth(householdId, currentMonth, userMap),
       ]);
-
-      // Process auth + household users
-      const user = authResult.data?.user;
-      if (user) {
-        setCurrentUserId(user.id);
-        if (usersResult.success && usersResult.users) {
-          setHouseholdUsers(usersResult.users);
-          const otherMembers = usersResult.users.filter(u => u.id !== user.id);
-          setHasOtherMembers(otherMembers.length > 0);
-        }
-      }
 
       // Process available months
       let months = monthsResult.months || [];
@@ -446,7 +434,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       const [subCategoriesResult, allocationsResult, incomeResult] = await Promise.all([
         getHouseholdSubCategories(hh.id),
         getAllocations(hh.id, planMonth),
-        getActualIncomeForMonth(hh.id, selectedMonth),
+        getActualIncomeForMonth(hh.id, selectedMonth, userMap),
       ]);
 
       let subCategories = subCategoriesResult.subCategories || [];
@@ -601,7 +589,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Handle income changed — refresh income data (used by InlineIncomeSection)
   const handleIncomeChanged = async () => {
     if (!household) return;
-    const result = await getActualIncomeForMonth(household.id, selectedMonth);
+    const result = await getActualIncomeForMonth(household.id, selectedMonth, userMap);
     setActualIncome({
       totalIncome: result.totalIncome,
       incomeItems: result.incomeItems,
@@ -786,7 +774,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
     // Refresh actual income before freeze validation
     if (household) {
-      const freshIncome = await getActualIncomeForMonth(household.id, selectedMonth);
+      const freshIncome = await getActualIncomeForMonth(household.id, selectedMonth, userMap);
       setActualIncome({
         totalIncome: freshIncome.totalIncome,
         incomeItems: freshIncome.incomeItems,

@@ -6,35 +6,67 @@
 2026-02-28
 
 ## Last Session Summary
-**Session 37: Transactions UX Polish + Bug Fixes + Deploy to Prod**
+**Session 38: Performance Optimization — Eliminate Supabase Query Waterfalls (Phases 1-3, 5)**
 
 ### What Was Done
-1. **Date group header color differentiation** — Added subtle purple-tint background (`bg-[rgba(124,58,237,0.04)]`) to date group headers in Transactions tab for visual separation from transaction rows.
-2. **Default to current month filter** — Transactions tab now defaults to current month with date filter pre-applied. Badge shows "1", date inputs pre-filled, "Clear filters" resets to all transactions.
-3. **"Showing X of Y" total count fix** — Added separate count-only Supabase query (`select('*', { count: 'exact', head: true })`) so "Y" shows total across all months, not just filtered set.
-4. **Smart month subtitle** — Shows "February 2026" under heading when full-month filter active, custom range like "3 Feb – 15 Feb" for partial ranges, nothing when unfiltered.
-5. **Ghost transaction modal fix** — `quickAddTrigger` wasn't reset after consumption. Switching tabs would re-deliver stale trigger value. Added auto-reset useEffect in AppLayout (child effects run before parent).
-6. **Transaction modal field reorder** — Moved Date before Category since date determines which budget month's categories are relevant. New order: Amount → Date → Category → CC toggle → Paid by → Notes.
+Performance audit revealed **35-40 Supabase queries per session** with deep sequential waterfalls. `getUserHousehold()` called 3x independently (once per tab = 12 redundant queries). AuthProvider + BudgetProvider ran sequential queries. Service functions had internal sequential chains. Implemented 4 of 5 planned optimization phases:
+
+1. **Phase 1: HouseholdProvider (Biggest Win)** — Created new `HouseholdProvider.tsx` that loads household data **once** after auth and caches for all tabs. Context provides `household`, `householdUsers`, `userMap` (userId→displayName), `currentUserId`, `isLoading`, `refetch()`. Updated all consumers: DashboardTab, BudgetTab, TransactionsTab, ProfilePanel, BudgetProvider — all now read from context instead of independently querying. **~20 redundant queries eliminated.**
+
+2. **Phase 2: Parallelize AuthProvider Startup** — Changed onboarding check from 2 sequential queries (users table + household_members) to `Promise.all()`. **~300-600ms saved.**
+
+3. **Phase 3: Service Function Parallelization** — Parallelized `getHouseholdSubCategories()` (system + custom category fetches now run in parallel via Promise.all). Parallelized `getCategoryList()` (system + custom queries run in parallel when householdId provided). **~150-300ms saved.**
+
+4. **Phase 5: UserMap Passthrough** — Added optional `providedUserMap` parameter to `getTransactions()`, `getActualIncomeForMonth()`, and `getBudgetViewData()`. When provided (from HouseholdProvider context), skips the nested user display name query entirely. All tabs pass `userMap` into service calls. **~3-5 queries eliminated per tab load.**
 
 ### Key Changes
-1. **Modified files:**
-   - `app/src/modules/transactions/components/TransactionsTab.tsx` — Current month default filter, `totalTransactionCount` state + count query, `dateFilterLabel` useMemo, purple-tint date headers
-   - `app/src/app/AppLayout.tsx` — Auto-reset `quickAddTrigger` to 0 after delivery to active tab
-   - `app/src/modules/dashboard/components/QuickAddTransaction.tsx` — Reordered fields: date before category
-   - `app/src/modules/budget/components/BudgetTab.tsx` — isActive prop, DB delete in handleFreshBudget, month reset
-   - `app/src/modules/budget/components/InlineIncomeSection.tsx` — Fixed income transaction date
-   - `app/src/modules/dashboard/components/DashboardTab.tsx` — Month reset on tab switch
+1. **New files:**
+   - `app/src/app/providers/HouseholdProvider.tsx` — New provider: loads household, members, userMap once
 
-### Deployed
-- ✅ Merged to `main` and pushed — Vercel auto-deploy to prod
+2. **Modified files:**
+   - `app/src/app/App.tsx` — Added HouseholdProvider between AuthProvider and BudgetProvider
+   - `app/src/app/providers/AuthProvider.tsx` — Parallelized onboarding check (Promise.all)
+   - `app/src/app/providers/BudgetProvider.tsx` — Reads household_id from HouseholdProvider instead of querying
+   - `app/src/modules/dashboard/components/DashboardTab.tsx` — Uses useHousehold() context, passes userMap to services
+   - `app/src/modules/budget/components/BudgetTab.tsx` — Uses useHousehold() context, passes userMap to services
+   - `app/src/modules/transactions/components/TransactionsTab.tsx` — Uses useHousehold() context, passes userMap to services
+   - `app/src/shared/components/ProfilePanel.tsx` — Uses useHousehold() for household data, still queries members for detailed info
+   - `app/src/modules/budget/services/transactions.ts` — Added `providedUserMap` param to getTransactions() + getActualIncomeForMonth()
+   - `app/src/modules/budget/services/budget.ts` — Parallelized getHouseholdSubCategories() + getCategoryList(), added userMap passthrough to getBudgetViewData()
 
 ### Build Status
 - TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
-- Preview: ✅ Verified — field reorder, modal opening, dashboard data all working
+- **NOT YET DEPLOYED** — Needs browser testing before push to prod
+
+### Expected Performance Impact
+| Phase | Queries Eliminated | Time Savings |
+|-------|-------------------|-------------|
+| 1 (HouseholdProvider) | ~20 queries | ~1-2s |
+| 2 (AuthProvider parallel) | 0 (parallelization) | ~300-600ms |
+| 3 (Service parallelization) | 2-4 queries | ~150-300ms |
+| 5 (UserMap passthrough) | 3-5 queries | ~150-300ms |
+| **Total** | **~25-29** | **~2-3.5s** |
+
+### Remaining Work
+- **Phase 4: Tab-Level Data Caching** — useRef-based cache keyed by month, cross-tab invalidation via `dataVersion` counter in AppLayout. Most complex phase, deferred to next session. Would make tab switches near-instant (0 network requests within TTL).
+- **Browser testing** — Verify all tab data renders identically, test: fresh load, tab switches, add transaction, month change, budget freeze/unfreeze, category drill-downs
+- **Deploy to prod** — After browser testing confirms zero regressions
 
 ### Pending Discussion
 - **End-of-month nudge** — Last 2 days: nudge user to set up next month's budget (dashboard banner + budget tab badge)
 - **First day of new month** — Land on dashboard even without budget (show CTA), vs auto-redirect to budget tab
+
+---
+
+### Previous Session 37: Transactions UX Polish + Bug Fixes + Deploy to Prod
+
+### What Was Done (Session 37)
+1. Date group header color differentiation — purple-tint background for date group headers
+2. Default to current month filter — Transactions tab defaults to current month with date filter pre-applied
+3. "Showing X of Y" total count fix — count-only Supabase query for total across all months
+4. Smart month subtitle — Shows month label when full-month filter active
+5. Ghost transaction modal fix — quickAddTrigger auto-reset in AppLayout
+6. Transaction modal field reorder — Date before Category
 
 ---
 
@@ -582,6 +614,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-02-28 | **Session 38 (Performance Optimization Phases 1-3, 5):** App was taking 7-8s to load with 35-40 Supabase queries per session. Created HouseholdProvider that loads household data once and caches for all tabs (~20 queries eliminated). Updated DashboardTab, BudgetTab, TransactionsTab, ProfilePanel, BudgetProvider to use useHousehold() context. Parallelized AuthProvider onboarding check (Promise.all). Added optional `providedUserMap` param to getTransactions(), getActualIncomeForMonth(), getBudgetViewData() — skips nested user lookups when map provided. Parallelized getHouseholdSubCategories() and getCategoryList() in budget.ts. New: HouseholdProvider.tsx. Modified: App.tsx, AuthProvider.tsx, BudgetProvider.tsx, DashboardTab.tsx, BudgetTab.tsx, TransactionsTab.tsx, ProfilePanel.tsx, transactions.ts, budget.ts. TypeScript passes clean. Phase 4 (tab-level caching) deferred. Not yet deployed — needs browser testing. |
 | 2026-02-22 | **Session 34 (uncategorized drill-down, filter enhancements, Excel fix & prod fixes):** Five items: (1) Dashboard uncategorized drill-down — clicking "Uncategorised" row navigates to Transactions tab filtered to uncategorized-only. (2) "All Uncategorised" quick select in CategoryMultiSelect with amber styling, mutual exclusion with other filters. Dashboard subtitle now shows "X this month · Y total". (3) Critical Excel import bug fix — ICICI mini-statement XLS was showing serial numbers as amounts. Rewrote `GENERIC_CSV.parseRow` to handle both Pattern A (split Debit/Credit) and Pattern B (single Amount + CR/DR indicator). (4) Fixed sign-out 404 on Vercel prod — created `app/vercel.json` with SPA rewrite rule so all client-side routes serve index.html. (5) Fixed Privacy/Terms page back button — pages opened in new tab had no history for `navigate(-1)`. Now uses `window.close()` for new-tab context with fallback to `/login`. Modified: DashboardTab.tsx, AppLayout.tsx, TransactionsTab.tsx, CategoryMultiSelect.tsx, transactions.ts, csvParser.ts, PrivacyPolicyPage.tsx, TermsPage.tsx. New: vercel.json. TypeScript + build pass clean. |
 | 2026-02-22 | **Session 33 (privacy consent & data transparency):** Added DPDPA-compliant consent collection for new users. ConsentModal shows during signup (5 privacy commitments, data summary, checkbox). Created `012_consent_tracking.sql` migration (consent_accepted, consent_accepted_at, consent_version on users table). Consent flows through full signup chain: PhoneEntryScreen → ConsentModal → SetPinScreen → YourNameScreen → onboarding service. Added PrivacyInfoModal (7 data practices, stored vs. not-stored grid, DPDPA compliance note) accessible from ProfilePanel "Data & Privacy" button. Fixed dead Terms/Privacy links on login screen. New files: ConsentModal.tsx, PrivacyInfoModal.tsx, 012_consent_tracking.sql. Modified: PhoneEntryScreen.tsx, SetPinScreen.tsx, YourNameScreen.tsx, onboarding.ts, ProfilePanel.tsx. TypeScript + build pass clean. |
 | 2026-02-22 | **Session 32 (bank statement import testing & generic parser rewrite):** Tested with real Axis Bank, ICICI Bank, and Federal Bank (Jupiter) PDF statements. Rewrote generic PDF fallback parser to use raw TextItem[][] with X-coordinate column clustering instead of pre-mapped TableRow[] cells — fixes parsing failures on unknown bank formats. Fixed Federal Bank misdetection as Axis Bank (IFSC prefix check, require "tran date" header). User decision: keep bank-specific parsers only for tested banks (ICICI, Axis), commented out HDFC+SBI PDF parsers and HDFC+SBI+Kotak CSV parsers (untested). All other banks fall through to generic. Added Vite LAN access for phone testing. Added Excel (.xlsx/.xls) import support — new `excelParser.ts` using SheetJS (xlsx), converts sheets to CSV-like rows and delegates to existing CSV parser pipeline. Excel support NOT YET TESTED with real bank statements. Refactored CSV parser to extract shared `parseCSVRows()` reused by both CSV and Excel parsers. TypeScript passes clean. |

@@ -164,18 +164,18 @@ export async function getHouseholdSubCategories(
     // Get all unique category IDs
     const categoryIds = [...new Set(subCats.map(sc => sc.category_id))];
 
-    // Fetch system categories
-    const { data: systemCategories } = await supabase
-      .from('categories')
-      .select('id, name, type, icon')
-      .in('id', categoryIds);
-
-    // Fetch custom categories
-    const { data: customCategories } = await supabase
-      .from('household_categories')
-      .select('id, name, type, icon')
-      .in('id', categoryIds)
-      .eq('household_id', householdId);
+    // Fetch system categories and custom categories in parallel
+    const [{ data: systemCategories }, { data: customCategories }] = await Promise.all([
+      supabase
+        .from('categories')
+        .select('id, name, type, icon')
+        .in('id', categoryIds),
+      supabase
+        .from('household_categories')
+        .select('id, name, type, icon')
+        .in('id', categoryIds)
+        .eq('household_id', householdId),
+    ]);
 
     // Create a map of all categories
     const categoryMap = new Map();
@@ -579,34 +579,50 @@ export async function createSubCategory(
  */
 export async function getCategoryList(householdId?: string): Promise<{ success: boolean; error?: string; categories?: { id: string; name: string; type: string; icon: string; isCustom?: boolean }[] }> {
   try {
-    // Get system categories
-    const { data: systemCategories, error: systemError } = await supabase
+    // Run system + custom category queries in parallel when householdId is provided
+    const systemQuery = supabase
       .from('categories')
       .select('id, name, type, icon')
       .order('display_order');
 
-    if (systemError) {
-      console.error('getCategoryList error:', systemError);
-      return { success: false, error: 'Failed to load categories' };
-    }
-
-    const categories: { id: string; name: string; type: string; icon: string; isCustom?: boolean }[] =
-      (systemCategories || []).map(c => ({ ...c, isCustom: false }));
-
-    // If householdId provided, also get custom categories
     if (householdId) {
-      const { data: customCategories, error: customError } = await supabase
+      const customQuery = supabase
         .from('household_categories')
         .select('id, name, type, icon')
         .eq('household_id', householdId)
         .order('display_order');
 
+      const [{ data: systemCategories, error: systemError }, { data: customCategories, error: customError }] = await Promise.all([
+        systemQuery,
+        customQuery,
+      ]);
+
+      if (systemError) {
+        console.error('getCategoryList error:', systemError);
+        return { success: false, error: 'Failed to load categories' };
+      }
+
+      const categories: { id: string; name: string; type: string; icon: string; isCustom?: boolean }[] =
+        (systemCategories || []).map(c => ({ ...c, isCustom: false }));
+
       if (!customError && customCategories) {
         categories.push(...customCategories.map(c => ({ ...c, isCustom: true })));
       }
-    }
 
-    return { success: true, categories };
+      return { success: true, categories };
+    } else {
+      const { data: systemCategories, error: systemError } = await systemQuery;
+
+      if (systemError) {
+        console.error('getCategoryList error:', systemError);
+        return { success: false, error: 'Failed to load categories' };
+      }
+
+      const categories: { id: string; name: string; type: string; icon: string; isCustom?: boolean }[] =
+        (systemCategories || []).map(c => ({ ...c, isCustom: false }));
+
+      return { success: true, categories };
+    }
   } catch (e) {
     console.error('getCategoryList error:', e);
     return { success: false, error: 'Failed to load categories' };
@@ -944,7 +960,8 @@ export async function getActualsBySubCategory(
  */
 export async function getBudgetViewData(
   householdId: string,
-  month: string // Format: YYYY-MM
+  month: string, // Format: YYYY-MM
+  providedUserMap?: Map<string, string>
 ): Promise<{
   success: boolean;
   error?: string;
@@ -1004,7 +1021,7 @@ export async function getBudgetViewData(
         .eq('household_id', householdId)
         .eq('plan_month', planMonth),
       getActualsBySubCategory(householdId, month),
-      getActualIncomeForMonth(householdId, month),
+      getActualIncomeForMonth(householdId, month, providedUserMap),
     ]);
 
     const { data: plan, error: planError } = planResult;

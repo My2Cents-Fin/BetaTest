@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from './AuthProvider';
+import { useHousehold } from './HouseholdProvider';
 
 interface BudgetContextValue {
   hasFrozenBudget: boolean;
@@ -15,31 +15,18 @@ interface BudgetProviderProps {
 }
 
 export function BudgetProvider({ children }: BudgetProviderProps) {
-  const { user } = useAuth();
+  const { household, isLoading: householdLoading } = useHousehold();
   const [hasFrozenBudget, setHasFrozenBudget] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkBudgetStatus = async () => {
-    if (!user) {
+  const checkBudgetStatus = useCallback(async () => {
+    if (!household) {
       setHasFrozenBudget(false);
       setIsLoading(false);
       return;
     }
 
     try {
-      // Get user's household
-      const { data: membership } = await supabase
-        .from('household_members')
-        .select('household_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!membership) {
-        setHasFrozenBudget(false);
-        setIsLoading(false);
-        return;
-      }
-
       // Check if there's a frozen budget for current month
       // Format as YYYY-MM-01 to match how budgets are stored
       const currentMonth = new Date().toISOString().slice(0, 7) + '-01'; // YYYY-MM-01 format
@@ -47,7 +34,7 @@ export function BudgetProvider({ children }: BudgetProviderProps) {
       const { data: plan, error } = await supabase
         .from('monthly_plans')
         .select('id, status, plan_month')
-        .eq('household_id', membership.household_id)
+        .eq('household_id', household.id)
         .eq('plan_month', currentMonth)
         .eq('status', 'frozen')
         .maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 error
@@ -65,16 +52,18 @@ export function BudgetProvider({ children }: BudgetProviderProps) {
       setHasFrozenBudget(false);
       setIsLoading(false);
     }
-  };
+  }, [household]);
 
   useEffect(() => {
-    checkBudgetStatus();
-  }, [user]);
+    if (!householdLoading) {
+      checkBudgetStatus();
+    }
+  }, [householdLoading, checkBudgetStatus]);
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     setIsLoading(true);
     await checkBudgetStatus();
-  };
+  }, [checkBudgetStatus]);
 
   return (
     <BudgetContext.Provider

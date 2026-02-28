@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useHousehold, type HouseholdInfo } from '../../app/providers/HouseholdProvider';
 import { signOut, deleteAccount } from '../../modules/auth/services/auth';
-import { getUserHousehold, updateHouseholdName, updateDisplayName, getHouseholdMembers, type HouseholdInfo, type HouseholdMember } from '../../modules/onboarding/services/onboarding';
+import { updateHouseholdName, updateDisplayName, getHouseholdMembers, type HouseholdMember } from '../../modules/onboarding/services/onboarding';
 import { isQREnabled } from '../../config/app.config';
 import { PrivacyInfoModal } from './PrivacyInfoModal';
 
@@ -26,6 +27,7 @@ function formatPhoneDisplay(phone: string): string {
 
 export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
   const { user } = useAuth();
+  const { household: hhData } = useHousehold();
   const [household, setHousehold] = useState<HouseholdInfo | null>(null);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
@@ -54,17 +56,20 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
       setIsMembersExpanded(false);
       setIsManageExpanded(false);
       setIsSettingsExpanded(false);
-      getUserHousehold().then(async (data) => {
-        setHousehold(data);
-        if (data) {
-          setEditedHouseholdName(data.name);
-          const membersList = await getHouseholdMembers(data.id);
+      // Use household from HouseholdProvider context instead of querying
+      if (hhData) {
+        setHousehold(hhData);
+        setEditedHouseholdName(hhData.name);
+        getHouseholdMembers(hhData.id).then((membersList) => {
           setMembers(membersList);
-        }
+          setIsLoading(false);
+        });
+      } else {
+        setHousehold(null);
         setIsLoading(false);
-      });
+      }
     }
-  }, [isOpen, displayName]);
+  }, [isOpen, displayName, hhData]);
 
   const getInviteUrl = () => {
     const { hostname, port, protocol } = window.location;

@@ -33,18 +33,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       try {
-        // Check database for user record and household membership
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('id, display_name')
-          .eq('id', user.id)
-          .single();
-
-        const { data: membership } = await supabase
-          .from('household_members')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
+        // Check database for user record and household membership (in parallel)
+        const [{ data: dbUser }, { data: membership }] = await Promise.all([
+          supabase
+            .from('users')
+            .select('id, display_name')
+            .eq('id', user.id)
+            .single(),
+          supabase
+            .from('household_members')
+            .select('id')
+            .eq('user_id', user.id)
+            .single(),
+        ]);
 
         const hasDisplayName = !!dbUser?.display_name;
         const hasHousehold = !!membership;
