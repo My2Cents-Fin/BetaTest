@@ -33,6 +33,7 @@ import { FundTransferModal } from '../../dashboard/components/FundTransferModal'
 import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 import { useBudget } from '../../../app/providers/BudgetProvider';
 import { useHousehold } from '../../../app/providers/HouseholdProvider';
+import { PushPermissionPrompt } from '../../notifications/components/PushPermissionPrompt';
 import type { AddingState } from '../../dashboard/components/BudgetSection';
 import type { HouseholdSubCategory, BudgetAllocation, Period, PlanStatus, MonthlyPlan } from '../types';
 
@@ -78,6 +79,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
   const [isFirstFreeze, setIsFirstFreeze] = useState(false);
+  const [showPostFreezePrompt, setShowPostFreezePrompt] = useState(false);
 
   // Derive from HouseholdProvider context
   const household: Household | null = hhData ? { id: hhData.id, name: hhData.name } : null;
@@ -920,6 +922,9 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         setAvailableMonths([selectedMonth, ...availableMonths]);
       }
 
+      // Show notification prompt after freeze
+      setShowPostFreezePrompt(true);
+
       // Show modal for first budget freeze
       if (isFirstBudget) {
         setIsFirstFreeze(true);
@@ -1172,6 +1177,15 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             <WelcomeCard
               userName={household?.name || 'there'}
               onDismiss={handleDismissWelcome}
+            />
+          )}
+
+          {/* Push notification prompt — shown after budget freeze */}
+          {showPostFreezePrompt && budgetStep === 'view' && currentUserId && (
+            <PushPermissionPrompt
+              userId={currentUserId}
+              householdId={household?.id}
+              trigger="budget_frozen"
             />
           )}
 

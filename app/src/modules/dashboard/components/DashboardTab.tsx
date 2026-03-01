@@ -9,6 +9,7 @@ import { supabase } from '../../../lib/supabase';
 import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
 import { useHousehold } from '../../../app/providers/HouseholdProvider';
 import { PushPermissionPrompt } from '../../notifications/components/PushPermissionPrompt';
+import type { NotificationTrigger } from '../../notifications/components/PushPermissionPrompt';
 import type { BudgetAllocation, HouseholdSubCategory } from '../../budget/types';
 
 interface DashboardTabProps {
@@ -70,6 +71,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [uncategorizedCountAll, setUncategorizedCountAll] = useState(0);
   const [uncategorizedCountThisMonth, setUncategorizedCountThisMonth] = useState(0);
   const [totalCCSpent, setTotalCCSpent] = useState(0);
+  const [hasTxnToday, setHasTxnToday] = useState(true); // assume true to avoid flash
   const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
 
   // Derive from HouseholdProvider context
@@ -102,6 +104,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       uncategorizedCountAll: number;
       uncategorizedCountThisMonth: number;
       totalCCSpent: number;
+      hasTxnToday: boolean;
       allSubCategories: typeof allSubCategories;
     };
   } | null>(null);
@@ -183,6 +186,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         setUncategorizedCountAll(d.uncategorizedCountAll);
         setUncategorizedCountThisMonth(d.uncategorizedCountThisMonth);
         setTotalCCSpent(d.totalCCSpent);
+        setHasTxnToday(d.hasTxnToday);
         setAllSubCategories(d.allSubCategories);
         if (selectedMonth !== currentM) setSelectedMonth(currentM);
       } else {
@@ -355,6 +359,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       setUncategorizedCountThisMonth(uncategorizedTxns.length);
       setUncategorizedCountAll(uncatCountResult.count);
 
+      // Check if user has any transactions today (for notification trigger)
+      const todayStr = new Date().toISOString().split('T')[0];
+      setHasTxnToday(transactions.some(t => t.transaction_date === todayStr));
+
       // Calculate variable-only spending for daily spending card
       // Include uncategorized expenses in the daily velocity (they're assumed as day-to-day spending)
       const varSpent = categoryList
@@ -430,6 +438,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           uncategorizedCountAll: uncatCountResult.count,
           uncategorizedCountThisMonth: uncategorizedTxns.length,
           totalCCSpent: ccSpent,
+          hasTxnToday: transactions.some(t => t.transaction_date === todayStr),
           allSubCategories: subCatList,
         },
       };
@@ -526,9 +535,18 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         <h1 className="text-lg font-bold text-[var(--color-text-primary)]">Home</h1>
       </header>
 
-      {/* Push notification opt-in prompt */}
+      {/* Push notification opt-in prompt — trigger varies by user state */}
       {currentUserId && (
-        <PushPermissionPrompt userId={currentUserId} householdId={household?.id} />
+        <PushPermissionPrompt
+          userId={currentUserId}
+          householdId={household?.id}
+          trigger={
+            !hasFrozenAnyBudget ? 'onboarding_complete'
+            : planStatus !== 'frozen' ? 'no_budget'
+            : !hasTxnToday ? 'no_txn_today'
+            : 'default'
+          }
+        />
       )}
 
       {/* Content */}
