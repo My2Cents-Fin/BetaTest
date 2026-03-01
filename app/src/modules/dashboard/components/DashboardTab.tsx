@@ -8,6 +8,7 @@ import { FundTransferModal } from './FundTransferModal';
 import { supabase } from '../../../lib/supabase';
 import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
 import { useHousehold } from '../../../app/providers/HouseholdProvider';
+import { PushPermissionPrompt } from '../../notifications/components/PushPermissionPrompt';
 import type { BudgetAllocation, HouseholdSubCategory } from '../../budget/types';
 
 interface DashboardTabProps {
@@ -524,6 +525,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden">
         <h1 className="text-lg font-bold text-[var(--color-text-primary)]">Home</h1>
       </header>
+
+      {/* Push notification opt-in prompt */}
+      {currentUserId && (
+        <PushPermissionPrompt userId={currentUserId} householdId={household?.id} />
+      )}
 
       {/* Content */}
       <main

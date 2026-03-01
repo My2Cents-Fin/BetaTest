@@ -1,6 +1,6 @@
 {
-  "name": "Finny - Household Budget Manager",
-  "short_name": "Finny",
+  "name": "My2cents - Household Budget Manager",
+  "short_name": "My2cents",
   "description": "Simple household budget planning and expense tracking for Indian families",
   "start_url": "/",
   "display": "standalone",

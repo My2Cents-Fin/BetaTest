@@ -1,4 +1,14 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/send-notifications",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/send-notifications",
+      "schedule": "30 14 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

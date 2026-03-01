@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { App } from './app/App'
+import { registerServiceWorker } from './modules/notifications/services/pushSubscription'
+
+// Register service worker for push notifications
+registerServiceWorker();
 
 // iOS keyboard dismiss fix: when an input loses focus, iOS Safari leaves the page
 // scrolled up with empty space at the bottom. Scrolling back resets the viewport.

@@ -6,43 +6,85 @@
 2026-03-01
 
 ## Last Session Summary
-**Session 41: Budget Creation Reminders — Use Case Definition (Product Design)**
+**Session 42: Notification Engine — Phase 1 Foundation (Implementation)**
 
 ### What Was Done
-1. **Budget Creation Reminders — fully defined** — Designed the complete escalation framework for monthly budget creation notifications:
-   - **Track A (no budget):** 6-phase escalation model with morning + evening notifications (2/day max):
-     - Phase 1: Proactive (last 3-5 days of prev month) — forward-looking, get ahead
-     - Phase 2: Grace Period (days 1-3) — fresh start energy, zero pressure
-     - Phase 3: Nudge (days 4-7) — gentle push, a week without a budget
-     - Phase 4: Urgency (days 8-15) — direct, half the month gone
-     - Phase 5: Intervention (days 16-25) — blunt, Duolingo-level passive-aggressive
-     - Phase 6: Month-End Pivot (days 26-EOM) — stop shaming, combine retrospective + next month planning
-   - **Track B (draft not frozen):** Separate gentler track — "you did the hard part, just freeze it"
-   - **Clone modifier:** Returning users get clone-specific CTAs at every phase — "one tap away" as the recurring theme. Clone is marketed as the primary action to reduce friction.
-   - **Transactions modifier:** Users spending without a budget get actual ₹amounts and transaction counts in messages — "₹X spent, ₹0 planned"
-   - **Notification behavior:** Tap opens budget creation (or clone flow, or next month, or draft with freeze button — context-dependent). Quiet hours (8am-10pm). Immediate suppression once frozen.
+Built the complete push notification pipeline from scratch — plumbing only, no business logic yet.
 
-2. **Updated notifications doc** — Added full section 3 to `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md`. Status updated from "Not started" to "Defined".
+#### New Files Created
+1. **Service Worker** — `app/public/sw.js`
+   - Handles `push` events → shows notification with title, body, icon, tag
+   - Handles `notificationclick` → focuses existing tab or opens new window at correct URL
 
-### Key Decisions Made
-- **Frequency:** 2/day (morning ~9am + evening ~8pm) — same across all phases
-- **Late-month strategy:** Combine current month review + next month creation (not separate)
-- **Draft-not-frozen:** Gets its own separate, gentler track (never punish progress)
-- **Auto-suggest from actuals:** Parked — needs budget creation logic first
-- **Clone shortcut:** Marketed heavily as "one tap away" — hero CTA for returning users
+2. **3 Supabase Migrations:**
+   - `014_push_subscriptions.sql` — Device/browser subscriptions (endpoint, keys, failure tracking). RLS: users manage own.
+   - `015_notification_log.sql` — Delivery log for dedup + audit. Unique index on `(user_id, notification_type, schedule_slot)`. RLS: users read own.
+   - `016_notification_preferences.sql` — Per-user toggle for push, budget reminders, expense reminders, release updates, quiet hours (default 10pm-8am).
 
-### No Code Changes
-This was a pure product design session. No files modified in `app/`.
+3. **Client-Side Notification Module** — `app/src/modules/notifications/`
+   - `services/pushSubscription.ts` — SW registration, VAPID key conversion, subscribe/unsubscribe with Supabase persistence. Fires welcome notification on first subscribe.
+   - `hooks/useNotifications.ts` — React hook exposing `isSupported`, `permissionState`, `subscribe`, `unsubscribe`.
+   - `components/PushPermissionPrompt.tsx` — In-app banner ("Stay on top of your budget") with enable/dismiss. Shown on dashboard until acted on. Uses `bg-primary-gradient` pattern.
 
-### Remaining Work (Notifications)
-- **#4: Add to Homescreen Prompt** — Not started (in-app UX, not push)
-- **#5: Tutorials** — Not started (in-app UX, not push)
-- **Architecture design** — Push subscription storage, service worker, scheduling (pg_cron / Edge Functions), schemas
-- **Implementation** — All of the above
+4. **Vercel API Routes** — `app/api/`
+   - `lib/supabaseAdmin.ts` — Server-side Supabase client with `service_role` key (bypasses RLS).
+   - `lib/delivery.ts` — `sendPushToUser()` using `web-push` library. Auto-cleans expired subscriptions (404/410). Removes after 3 consecutive failures.
+   - `lib/messages/types.ts` — Shared types for notification messages.
+   - `cron/send-notifications.ts` — Cron handler. Verifies `CRON_SECRET`, determines schedule slot (morning/evening IST), queries eligible users. **Phase 1: logs "no evaluators" — ready for Phase 2 budget evaluators.**
+   - `send-welcome.ts` — POST endpoint. Sends one-time welcome notification on first subscribe. Deduped via `notification_log`.
+
+#### Files Modified
+- **`app/src/main.tsx`** — Added SW registration on app startup
+- **`app/src/modules/dashboard/components/DashboardTab.tsx`** — Added `PushPermissionPrompt` component (shown above dashboard content)
+- **`app/vercel.json`** — Added 2 cron jobs: `03:30 UTC` (9am IST morning) + `14:30 UTC` (8pm IST evening)
+- **`app/public/manifest.json`** — Rebranded: "Finny" → "My2cents"
+- **`app/package.json`** — Added `web-push` (runtime) + `@vercel/node` (dev types)
+
+#### VAPID Keys Generated
+- Public: `BNiQMpmdIdhA_We8L5_MIqy8W7HCcYNUZ0o-NLG7AogN2FAZHHS8-c6YuSS27Lieh0mLwHDk6OAHA5aFJd3VYNI`
+- Private: `IvZd53fH4ot7JVS_38S79e58INeyaprbeBipUr9SsVQ`
+
+#### Build Status
+- Vite build: passes
+- No new TypeScript errors introduced (all existing errors are pre-existing)
+
+### User Action Required Before Deploy
+1. **Run migrations** 014, 015, 016 on DEV + PROD Supabase
+2. **Set Vercel environment variables:**
+   - `VAPID_PUBLIC_KEY` (server-side)
+   - `VAPID_PRIVATE_KEY` (server-side, secret)
+   - `VAPID_SUBJECT=mailto:noreply@my2cents.app` (server-side)
+   - `VITE_VAPID_PUBLIC_KEY` (client-side, same value as VAPID_PUBLIC_KEY)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server-side, secret)
+   - `SUPABASE_URL` (server-side)
+   - `CRON_SECRET` (server-side, protects cron endpoints)
+
+### Architecture (Reference)
+```
+Client (sw.js) ← web-push ← Vercel Serverless (api/)
+                              ↕
+                           Supabase (push_subscriptions, notification_log, notification_preferences)
+                              ↑
+                           Vercel Cron (2 jobs: morning 9am IST + evening 8pm IST)
+```
+
+### Remaining Work (Notification Engine)
+- **Phase 2:** Budget Creation Reminders — evaluator + messages (next)
+- **Phase 3:** Expense Logging Reminders — evaluator + messages
+- **Phase 4:** Release Updates + Preferences UI in ProfilePanel
+- **Phase 5:** Scale + Polish (4 cron slots, analytics, sub cleanup)
 
 ### Pending Discussion (Carried Forward)
 - **Phase 4: Tab-Level Data Caching** — deferred from Session 38
 - **First day of new month** — Land on dashboard even without budget (show CTA), vs auto-redirect to budget tab
+
+---
+
+### Previous Session 41: Budget Creation Reminders — Use Case Definition (Product Design)
+
+### What Was Done (Session 41)
+1. Budget Creation Reminders fully defined — 6-phase escalation, Track A/B, Clone + Transactions modifiers.
+2. Updated notifications doc section 3. Status: "Defined".
 
 ---
 
