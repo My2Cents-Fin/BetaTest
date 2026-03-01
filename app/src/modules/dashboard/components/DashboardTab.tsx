@@ -21,6 +21,10 @@ interface DashboardTabProps {
   onNavigateToBudget?: (month?: string) => void;
   /** When true, this tab is the currently visible tab (triggers data refresh) */
   isActive?: boolean;
+  /** Global data-mutation version — used for tab-level cache invalidation */
+  dataVersion?: number;
+  /** Called after any data mutation (transaction add/edit/delete, fund transfer) */
+  onDataMutated?: () => void;
 }
 
 interface CategorySpending {
@@ -44,7 +48,7 @@ interface UserBalance {
   expectedCashBalance: number; // income - cashSpent + netTransfer
 }
 
-export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown, onNavigateToBudget, isActive }: DashboardTabProps) {
+export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, onCategoryDrillDown, onUncategorizedDrillDown, onNavigateToBudget, isActive, dataVersion, onDataMutated }: DashboardTabProps) {
   const { household: hhData, householdUsers: hhUsers, userMap, currentUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
   const [totalPlanned, setTotalPlanned] = useState(0);
@@ -77,6 +81,29 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const currentMonthStr = getCurrentMonth();
 
   const hasLoadedRef = useRef(false);
+
+  // Tab-level cache: stores last-loaded month's data to avoid re-fetching on tab switch
+  const cacheRef = useRef<{
+    month: string;
+    version: number;
+    data: {
+      totalPlanned: number;
+      totalSpent: number;
+      totalActualIncome: number;
+      variablePlanned: number;
+      variableSpent: number;
+      categorySpending: CategorySpending[];
+      planStatus: 'draft' | 'frozen';
+      hasFrozenAnyBudget: boolean;
+      earliestMonth: string | null;
+      userBalances: UserBalance[];
+      uncategorizedTotal: number;
+      uncategorizedCountAll: number;
+      uncategorizedCountThisMonth: number;
+      totalCCSpent: number;
+      allSubCategories: typeof allSubCategories;
+    };
+  } | null>(null);
 
   // Swipe gesture for month navigation
   const touchStartX = useRef<number | null>(null);
@@ -137,8 +164,31 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const wasActiveRef = useRef(false);
   useEffect(() => {
     if (isActive && !wasActiveRef.current && hasLoadedRef.current && household) {
-      setSelectedMonth(getCurrentMonth()); // reset to current month
-      loadDashboardData(true); // silent refresh — no spinner
+      const currentM = getCurrentMonth();
+      // Cache hit: same month + no mutations since last load → restore instantly, 0 network requests
+      if (cacheRef.current && cacheRef.current.month === currentM && cacheRef.current.version === (dataVersion ?? 0)) {
+        const d = cacheRef.current.data;
+        setTotalPlanned(d.totalPlanned);
+        setTotalSpent(d.totalSpent);
+        setTotalActualIncome(d.totalActualIncome);
+        setVariablePlanned(d.variablePlanned);
+        setVariableSpent(d.variableSpent);
+        setCategorySpending(d.categorySpending);
+        setPlanStatus(d.planStatus);
+        setHasFrozenAnyBudget(d.hasFrozenAnyBudget);
+        setEarliestMonth(d.earliestMonth);
+        setUserBalances(d.userBalances);
+        setUncategorizedTotal(d.uncategorizedTotal);
+        setUncategorizedCountAll(d.uncategorizedCountAll);
+        setUncategorizedCountThisMonth(d.uncategorizedCountThisMonth);
+        setTotalCCSpent(d.totalCCSpent);
+        setAllSubCategories(d.allSubCategories);
+        if (selectedMonth !== currentM) setSelectedMonth(currentM);
+      } else {
+        // Cache miss — full reload
+        setSelectedMonth(currentM);
+        loadDashboardData(true);
+      }
     }
     wasActiveRef.current = !!isActive;
   }, [isActive]);
@@ -360,6 +410,29 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
       setUserBalances(balances);
 
+      // Write cache — store all computed values for instant restore on tab switch
+      cacheRef.current = {
+        month: selectedMonth,
+        version: dataVersion ?? 0,
+        data: {
+          totalPlanned: planResult.plan?.total_allocated || 0,
+          totalSpent: spent,
+          totalActualIncome: actualIncome,
+          variablePlanned: varPlanned,
+          variableSpent: varSpent,
+          categorySpending: categoryList,
+          planStatus: planResult.plan?.status || 'draft',
+          hasFrozenAnyBudget: !!(anyFrozen && anyFrozen.length > 0),
+          earliestMonth: earliestPlan && earliestPlan.length > 0 ? earliestPlan[0].plan_month.substring(0, 7) : null,
+          userBalances: balances,
+          uncategorizedTotal: uncategorizedSpent,
+          uncategorizedCountAll: uncatCountResult.count,
+          uncategorizedCountThisMonth: uncategorizedTxns.length,
+          totalCCSpent: ccSpent,
+          allSubCategories: subCatList,
+        },
+      };
+
     } catch (e) {
       console.error('Error loading dashboard:', e);
     } finally {
@@ -368,6 +441,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   }
 
   const handleTransactionAdded = () => {
+    onDataMutated?.(); // Invalidate other tabs' caches
     hasLoadedRef.current = false;
     loadDashboardData();
   };

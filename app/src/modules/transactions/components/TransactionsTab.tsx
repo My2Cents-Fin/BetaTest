@@ -22,6 +22,12 @@ interface TransactionsTabProps {
   /** Pre-apply uncategorized-only filter (drill-down from Dashboard) */
   drillDownUncategorized?: boolean;
   onDrillDownConsumed?: () => void;
+  /** When true, this tab is the currently visible tab */
+  isActive?: boolean;
+  /** Global data-mutation version — used for tab-level cache invalidation */
+  dataVersion?: number;
+  /** Called after any data mutation (transaction add/edit/delete, statement import) */
+  onDataMutated?: () => void;
 }
 
 interface GroupedTransactions {
@@ -41,7 +47,7 @@ function getCurrentMonthRange(): { from: string; to: string } {
   return { from, to };
 }
 
-export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, onDrillDownConsumed }: TransactionsTabProps) {
+export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, onDrillDownConsumed, isActive, dataVersion, onDataMutated }: TransactionsTabProps) {
   const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
@@ -73,6 +79,42 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [totalTransactionCount, setTotalTransactionCount] = useState<number>(0);
 
   const hasLoadedRef = useRef(false);
+
+  // Tab-level cache: stores last-loaded date range's data to avoid re-fetching on tab switch
+  const cacheRef = useRef<{
+    dateKey: string; // filterDateFrom|filterDateTo
+    version: number;
+    data: {
+      transactions: TransactionWithDetails[];
+      allSubCategories: typeof allSubCategories;
+      rawSubCategories: HouseholdSubCategory[];
+      categoryMap: Map<string, { name: string; type: string }>;
+      uniqueRecorders: { id: string; name: string }[];
+      totalTransactionCount: number;
+    };
+  } | null>(null);
+
+  // Refresh data when tab becomes active (user switches back to Transactions)
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current && hasLoadedRef.current && household) {
+      const dateKey = `${filterDateFrom}|${filterDateTo}`;
+      // Cache hit: same date range + no mutations since last load → restore instantly
+      if (cacheRef.current && cacheRef.current.dateKey === dateKey && cacheRef.current.version === (dataVersion ?? 0)) {
+        const d = cacheRef.current.data;
+        setTransactions(d.transactions);
+        setAllSubCategories(d.allSubCategories);
+        setRawSubCategories(d.rawSubCategories);
+        setCategoryMap(d.categoryMap);
+        setUniqueRecorders(d.uniqueRecorders);
+        setTotalTransactionCount(d.totalTransactionCount);
+      } else {
+        // Cache miss — full reload
+        loadTransactions();
+      }
+    }
+    wasActiveRef.current = !!isActive;
+  }, [isActive]);
 
   // Collapsible date groups — auto-expand enough to fill the screen
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
@@ -275,7 +317,22 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           recordersMap.set(t.logged_by, t.logged_by_name);
         }
       });
-      setUniqueRecorders(Array.from(recordersMap.entries()).map(([id, name]) => ({ id, name })));
+      const recorders = Array.from(recordersMap.entries()).map(([id, name]) => ({ id, name }));
+      setUniqueRecorders(recorders);
+
+      // Write cache — store all loaded data for instant restore on tab switch
+      cacheRef.current = {
+        dateKey: `${startDate || filterDateFrom}|${endDate || filterDateTo}`,
+        version: dataVersion ?? 0,
+        data: {
+          transactions: txns,
+          allSubCategories: subCatList,
+          rawSubCategories: subCategories,
+          categoryMap: catMap,
+          uniqueRecorders: recorders,
+          totalTransactionCount: countResult.count ?? txns.length,
+        },
+      };
 
     } catch (e) {
       console.error('Error loading transactions:', e);
@@ -433,6 +490,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   };
 
   const handleTransactionAdded = () => {
+    onDataMutated?.(); // Invalidate other tabs' caches
     hasLoadedRef.current = false;
     loadTransactions();
     setShowQuickAdd(false);
@@ -453,6 +511,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
     const result = await deleteTransaction(txn.id);
     if (result.success) {
+      onDataMutated?.(); // Invalidate other tabs' caches
       hasLoadedRef.current = false;
       loadTransactions();
     }
@@ -835,6 +894,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           subCategories={allSubCategories}
           onClose={() => setShowImport(false)}
           onSuccess={(importedDateRange) => {
+            onDataMutated?.(); // Invalidate other tabs' caches
             setShowImport(false);
             hasLoadedRef.current = false;
             // Set date filters to cover the imported date range so user sees their imports

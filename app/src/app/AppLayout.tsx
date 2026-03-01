@@ -35,6 +35,12 @@ export function AppLayout() {
   const [fundTransferTrigger, setFundTransferTrigger] = useState(0);
   // Track if household has other members
   const [hasOtherMembers, setHasOtherMembers] = useState(false);
+  // Global data-mutation version — incremented on any data mutation (transaction add/edit/delete,
+  // plan freeze, fund transfer, statement import). Tabs compare this to their cached version to
+  // decide whether to reload or restore from cache on tab switch.
+  const [dataVersion, setDataVersion] = useState(0);
+  const incrementDataVersion = useCallback(() => setDataVersion(v => v + 1), []);
+
   // Budget tab: initial month when navigating from Dashboard → Budget
   const [budgetInitialMonth, setBudgetInitialMonth] = useState<string | null>(null);
   // Drill-down: initial sub-category filter when navigating from Dashboard → Transactions
@@ -110,6 +116,8 @@ export function AppLayout() {
               setActiveTab('budget');
             }}
             isActive={activeTab === 'dashboard'}
+            dataVersion={dataVersion}
+            onDataMutated={incrementDataVersion}
           />
         </div>
         <div style={{ display: activeTab === 'budget' ? undefined : 'none' }}>
@@ -123,6 +131,8 @@ export function AppLayout() {
             initialMonth={budgetInitialMonth}
             onInitialMonthConsumed={() => setBudgetInitialMonth(null)}
             isActive={activeTab === 'budget'}
+            dataVersion={dataVersion}
+            onDataMutated={incrementDataVersion}
           />
         </div>
         <div style={{ display: activeTab === 'transactions' ? undefined : 'none' }}>
@@ -134,6 +144,9 @@ export function AppLayout() {
             drillDownSubCategoryId={drillDownSubCategoryId}
             drillDownUncategorized={drillDownUncategorized}
             onDrillDownConsumed={handleDrillDownConsumed}
+            isActive={activeTab === 'transactions'}
+            dataVersion={dataVersion}
+            onDataMutated={incrementDataVersion}
           />
         </div>
       </div>

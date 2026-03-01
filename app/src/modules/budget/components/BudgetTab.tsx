@@ -48,6 +48,10 @@ interface BudgetTabProps {
   onInitialMonthConsumed?: () => void;
   /** When true, this tab is the currently visible tab */
   isActive?: boolean;
+  /** Global data-mutation version — used for tab-level cache invalidation */
+  dataVersion?: number;
+  /** Called after any data mutation (freeze, transaction add, fund transfer) */
+  onDataMutated?: () => void;
 }
 
 interface BudgetItem {
@@ -69,7 +73,7 @@ interface Household {
 
 type BudgetStep = 'edit' | 'view' | 'empty';
 
-export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed, isActive }: BudgetTabProps) {
+export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed, isActive, dataVersion, onDataMutated }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
   const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
@@ -171,6 +175,22 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Prevent double-execution in React StrictMode
   const hasLoadedRef = useRef(false);
 
+  // Tab-level cache: stores last-loaded month's view data (frozen plans only)
+  const cacheRef = useRef<{
+    month: string;
+    version: number;
+    budgetStep: BudgetStep;
+    data: {
+      viewPlan: MonthlyPlan | undefined;
+      viewItems: typeof viewItems;
+      viewExpenseTransactions: typeof viewExpenseTransactions;
+      actualIncome: typeof actualIncome;
+      planStatus: PlanStatus;
+      planId: string | null;
+      allSubCategories: typeof allSubCategories;
+    };
+  } | null>(null);
+
   const currentMonth = getCurrentMonth();
 
   // Earliest month the user has a budget for — used to block backward navigation
@@ -190,7 +210,32 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   const wasActiveRef = useRef(false);
   useEffect(() => {
     if (isActive && !wasActiveRef.current && hasLoadedRef.current && !initialMonth) {
-      setSelectedMonth(getCurrentMonth());
+      const currentM = getCurrentMonth();
+      // Cache hit: same month + no mutations + was in view mode → restore instantly
+      if (
+        cacheRef.current &&
+        cacheRef.current.month === currentM &&
+        cacheRef.current.version === (dataVersion ?? 0) &&
+        cacheRef.current.budgetStep === 'view'
+      ) {
+        const d = cacheRef.current.data;
+        setViewPlan(d.viewPlan);
+        setViewItems(d.viewItems);
+        setViewExpenseTransactions(d.viewExpenseTransactions);
+        setActualIncome(d.actualIncome);
+        setPlanStatus(d.planStatus);
+        setPlanId(d.planId);
+        setAllSubCategories(d.allSubCategories);
+        setBudgetStep('view');
+        if (selectedMonth !== currentM) setSelectedMonth(currentM);
+      } else {
+        // Cache miss — reset to current month (triggers loadForMonth via selectedMonth effect)
+        setSelectedMonth(currentM);
+        // If month didn't change, the selectedMonth effect won't fire — force reload
+        if (selectedMonth === currentM) {
+          loadForMonth();
+        }
+      }
     }
     wasActiveRef.current = !!isActive;
   }, [isActive]);
@@ -435,6 +480,22 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           setPlanStatus(result.plan.status);
           setPlanId(result.plan.id);
         }
+
+        // Write cache — store view data for instant restore on tab switch
+        cacheRef.current = {
+          month: selectedMonth,
+          version: dataVersion ?? 0,
+          budgetStep: 'view',
+          data: {
+            viewPlan: result.plan,
+            viewItems: result.items || [],
+            viewExpenseTransactions: result.expenseTransactions || [],
+            actualIncome: result.incomeData || actualIncome,
+            planStatus: result.plan?.status || 'draft',
+            planId: result.plan?.id || null,
+            allSubCategories,
+          },
+        };
       }
     } catch (e) {
       console.error('Error loading view data:', e);
@@ -543,6 +604,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   };
 
   const handleFreshBudget = async () => {
+    onDataMutated?.(); // Invalidate other tabs' caches (deletes income transactions)
     setBudgetStep('edit');
     await loadEditData();
     // Zero out all planned amounts — user fills in everything from scratch
@@ -845,6 +907,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     const result = await freezePlan(planId);
 
     if (result.success) {
+      onDataMutated?.(); // Invalidate other tabs' caches
       setPlanStatus('frozen');
       setShowIncompleteWarning(false);
       setIncompleteItemIds(new Set());
@@ -1293,6 +1356,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           currentUserId={currentUserId}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={() => {
+            onDataMutated?.(); // Invalidate other tabs' caches
             if (budgetStep === 'view') {
               loadViewData();
             }
@@ -1308,6 +1372,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
           currentUserId={currentUserId}
           onClose={() => setShowFundTransfer(false)}
           onSuccess={() => {
+            onDataMutated?.(); // Invalidate other tabs' caches
             if (budgetStep === 'view') {
               loadViewData();
             }

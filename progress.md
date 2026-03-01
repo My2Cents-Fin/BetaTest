@@ -3,58 +3,49 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-02-28
+2026-03-01
 
 ## Last Session Summary
-**Session 38: Performance Optimization — Eliminate Supabase Query Waterfalls (Phases 1-3, 5)**
+**Session 40: Notifications — Use Case Definition (Product Design)**
 
 ### What Was Done
-Performance audit revealed **35-40 Supabase queries per session** with deep sequential waterfalls. `getUserHousehold()` called 3x independently (once per tab = 12 redundant queries). AuthProvider + BudgetProvider ran sequential queries. Service functions had internal sequential chains. Implemented 4 of 5 planned optimization phases:
+1. **Defined notification types** — Identified 5 notification types: (1) Release Updates, (2) Expense Logging Reminders, (3) Budget Creation Reminders, (4) Add to Homescreen Prompt, (5) Tutorials. Clarified which are push notifications vs in-app UX patterns.
 
-1. **Phase 1: HouseholdProvider (Biggest Win)** — Created new `HouseholdProvider.tsx` that loads household data **once** after auth and caches for all tabs. Context provides `household`, `householdUsers`, `userMap` (userId→displayName), `currentUserId`, `isLoading`, `refetch()`. Updated all consumers: DashboardTab, BudgetTab, TransactionsTab, ProfilePanel, BudgetProvider — all now read from context instead of independently querying. **~20 redundant queries eliminated.**
+2. **Release Updates — fully defined** — In-app "What's New" swipeable carousel (dismissable, one feature per slide, marketing tone). Content stored in Supabase table (no redeploy needed). Push notification to pull back inactive users. Show once per announcement.
 
-2. **Phase 2: Parallelize AuthProvider Startup** — Changed onboarding check from 2 sequential queries (users table + household_members) to `Promise.all()`. **~300-600ms saved.**
+3. **Expense Logging Reminders — fully defined** — Duolingo-style gamified approach with two tracks:
+   - **Track A (zero txns today):** Escalating daily nudges across 4 time slots. Escalation persists across days (day 3+ starts aggressive). Resets only when a transaction is logged.
+   - **Track B (has txns, contextual):** Max 2-3/day. Triggers: meal times, sub-category silence, behavioral (logged then went quiet), weekends.
+   - **Tier 1:** Custom sassy messages for all predefined sub-categories (Income, EMI, Insurance, Savings, Fixed, Variable — ~30 sub-cats with specific triggers and frequencies).
+   - **Tier 2:** Generic sassy messages for user-created custom sub-categories.
+   - Every notification = Hook (sassy attention grab) + Action (varied CTA — Record, Add, Track, Capture, Punch in, etc.)
 
-3. **Phase 3: Service Function Parallelization** — Parallelized `getHouseholdSubCategories()` (system + custom category fetches now run in parallel via Promise.all). Parallelized `getCategoryList()` (system + custom queries run in parallel when householdId provided). **~150-300ms saved.**
+4. **Created notifications doc** — `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md` with all objectives, decisions, messages, triggers, and frequencies.
 
-4. **Phase 5: UserMap Passthrough** — Added optional `providedUserMap` parameter to `getTransactions()`, `getActualIncomeForMonth()`, and `getBudgetViewData()`. When provided (from HouseholdProvider context), skips the nested user display name query entirely. All tabs pass `userMap` into service calls. **~3-5 queries eliminated per tab load.**
+### No Code Changes
+This was a pure product design session. No files modified in `app/`.
 
-### Key Changes
-1. **New files:**
-   - `app/src/app/providers/HouseholdProvider.tsx` — New provider: loads household, members, userMap once
+### Remaining Work (Notifications)
+- **#3: Budget Creation Reminders** — Not started
+- **#4: Add to Homescreen Prompt** — Not started (in-app UX, not push)
+- **#5: Tutorials** — Not started (in-app UX, not push)
+- **Architecture design** — Push subscription storage, service worker, scheduling (pg_cron / Edge Functions), schemas
+- **Implementation** — All of the above
 
-2. **Modified files:**
-   - `app/src/app/App.tsx` — Added HouseholdProvider between AuthProvider and BudgetProvider
-   - `app/src/app/providers/AuthProvider.tsx` — Parallelized onboarding check (Promise.all)
-   - `app/src/app/providers/BudgetProvider.tsx` — Reads household_id from HouseholdProvider instead of querying
-   - `app/src/modules/dashboard/components/DashboardTab.tsx` — Uses useHousehold() context, passes userMap to services
-   - `app/src/modules/budget/components/BudgetTab.tsx` — Uses useHousehold() context, passes userMap to services
-   - `app/src/modules/transactions/components/TransactionsTab.tsx` — Uses useHousehold() context, passes userMap to services
-   - `app/src/shared/components/ProfilePanel.tsx` — Uses useHousehold() for household data, still queries members for detailed info
-   - `app/src/modules/budget/services/transactions.ts` — Added `providedUserMap` param to getTransactions() + getActualIncomeForMonth()
-   - `app/src/modules/budget/services/budget.ts` — Parallelized getHouseholdSubCategories() + getCategoryList(), added userMap passthrough to getBudgetViewData()
-
-### Build Status
-- TypeScript: ✅ Zero errors (`npx tsc --noEmit`)
-- **NOT YET DEPLOYED** — Needs browser testing before push to prod
-
-### Expected Performance Impact
-| Phase | Queries Eliminated | Time Savings |
-|-------|-------------------|-------------|
-| 1 (HouseholdProvider) | ~20 queries | ~1-2s |
-| 2 (AuthProvider parallel) | 0 (parallelization) | ~300-600ms |
-| 3 (Service parallelization) | 2-4 queries | ~150-300ms |
-| 5 (UserMap passthrough) | 3-5 queries | ~150-300ms |
-| **Total** | **~25-29** | **~2-3.5s** |
-
-### Remaining Work
-- **Phase 4: Tab-Level Data Caching** — useRef-based cache keyed by month, cross-tab invalidation via `dataVersion` counter in AppLayout. Most complex phase, deferred to next session. Would make tab switches near-instant (0 network requests within TTL).
-- **Browser testing** — Verify all tab data renders identically, test: fresh load, tab switches, add transaction, month change, budget freeze/unfreeze, category drill-downs
-- **Deploy to prod** — After browser testing confirms zero regressions
-
-### Pending Discussion
-- **End-of-month nudge** — Last 2 days: nudge user to set up next month's budget (dashboard banner + budget tab badge)
+### Pending Discussion (Carried Forward)
+- **Phase 4: Tab-Level Data Caching** — deferred from Session 38
+- **End-of-month nudge** — Last 2 days: nudge user to set up next month's budget (now part of #3 Budget Creation Reminders)
 - **First day of new month** — Land on dashboard even without budget (show CTA), vs auto-redirect to budget tab
+
+---
+
+### Previous Session 39: Bug Fix — Stale QuickAdd Categories + Destructive Orphan Cleanup Removal
+
+### What Was Done (Session 39)
+1. Fixed stale QuickAdd categories — sub-categories refreshed on modal open across all 3 tabs.
+2. Removed destructive orphan cleanup in BudgetTab (data-destroying bug).
+3. Deployed perf optimizations from Session 38.
+- **Deployed to prod** ✅ (commit `7fc812f`, pushed 2026-03-01)
 
 ---
 
@@ -614,6 +605,8 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-03-01 | **Session 40 (Notifications use case definition):** Pure product design session — no code changes. Defined 5 notification types (Release Updates, Expense Logging Reminders, Budget Creation Reminders, Add to Homescreen, Tutorials). Fully defined Release Updates: in-app "What's New" swipeable carousel + push to pull back inactive users, content in Supabase table. Fully defined Expense Logging Reminders: Duolingo-style gamified approach with Track A (zero txns today, escalating across days) and Track B (contextual nudges, max 2-3/day). Wrote custom sassy hook+action messages for all ~30 predefined sub-categories with specific triggers/frequencies. Generic messages for custom sub-cats. Created `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md`. Remaining: Budget Creation Reminders (#3), Add to Homescreen (#4), Tutorials (#5), architecture design. |
+| 2026-03-01 | **Session 39 (Bug fix + deploy):** Fixed stale QuickAdd categories — sub-categories weren't refreshing when modal opened, causing newly created sub-categories to be missing. Added useEffect on all 3 tabs to refresh from DB when QuickAdd opens. Removed destructive orphan cleanup in BudgetTab.loadEditData() that permanently deleted expense sub-categories from household_sub_categories based on a single month's missing allocations (data loss bug). Also deployed Session 38 perf optimizations (query waterfall elimination). Modified: BudgetTab.tsx, DashboardTab.tsx, TransactionsTab.tsx. Deployed to prod (commit `7fc812f`). |
 | 2026-02-28 | **Session 38 (Performance Optimization Phases 1-3, 5):** App was taking 7-8s to load with 35-40 Supabase queries per session. Created HouseholdProvider that loads household data once and caches for all tabs (~20 queries eliminated). Updated DashboardTab, BudgetTab, TransactionsTab, ProfilePanel, BudgetProvider to use useHousehold() context. Parallelized AuthProvider onboarding check (Promise.all). Added optional `providedUserMap` param to getTransactions(), getActualIncomeForMonth(), getBudgetViewData() — skips nested user lookups when map provided. Parallelized getHouseholdSubCategories() and getCategoryList() in budget.ts. New: HouseholdProvider.tsx. Modified: App.tsx, AuthProvider.tsx, BudgetProvider.tsx, DashboardTab.tsx, BudgetTab.tsx, TransactionsTab.tsx, ProfilePanel.tsx, transactions.ts, budget.ts. TypeScript passes clean. Phase 4 (tab-level caching) deferred. Not yet deployed — needs browser testing. |
 | 2026-02-22 | **Session 34 (uncategorized drill-down, filter enhancements, Excel fix & prod fixes):** Five items: (1) Dashboard uncategorized drill-down — clicking "Uncategorised" row navigates to Transactions tab filtered to uncategorized-only. (2) "All Uncategorised" quick select in CategoryMultiSelect with amber styling, mutual exclusion with other filters. Dashboard subtitle now shows "X this month · Y total". (3) Critical Excel import bug fix — ICICI mini-statement XLS was showing serial numbers as amounts. Rewrote `GENERIC_CSV.parseRow` to handle both Pattern A (split Debit/Credit) and Pattern B (single Amount + CR/DR indicator). (4) Fixed sign-out 404 on Vercel prod — created `app/vercel.json` with SPA rewrite rule so all client-side routes serve index.html. (5) Fixed Privacy/Terms page back button — pages opened in new tab had no history for `navigate(-1)`. Now uses `window.close()` for new-tab context with fallback to `/login`. Modified: DashboardTab.tsx, AppLayout.tsx, TransactionsTab.tsx, CategoryMultiSelect.tsx, transactions.ts, csvParser.ts, PrivacyPolicyPage.tsx, TermsPage.tsx. New: vercel.json. TypeScript + build pass clean. |
 | 2026-02-22 | **Session 33 (privacy consent & data transparency):** Added DPDPA-compliant consent collection for new users. ConsentModal shows during signup (5 privacy commitments, data summary, checkbox). Created `012_consent_tracking.sql` migration (consent_accepted, consent_accepted_at, consent_version on users table). Consent flows through full signup chain: PhoneEntryScreen → ConsentModal → SetPinScreen → YourNameScreen → onboarding service. Added PrivacyInfoModal (7 data practices, stored vs. not-stored grid, DPDPA compliance note) accessible from ProfilePanel "Data & Privacy" button. Fixed dead Terms/Privacy links on login screen. New files: ConsentModal.tsx, PrivacyInfoModal.tsx, 012_consent_tracking.sql. Modified: PhoneEntryScreen.tsx, SetPinScreen.tsx, YourNameScreen.tsx, onboarding.ts, ProfilePanel.tsx. TypeScript + build pass clean. |
