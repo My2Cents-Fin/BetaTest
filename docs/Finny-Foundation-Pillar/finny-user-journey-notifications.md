@@ -13,7 +13,7 @@
 |---|------|---------|--------|
 | 1 | Release Updates | In-app carousel + Push notification | Defined |
 | 2 | Expense Logging Reminders | Push notification | Defined |
-| 3 | Budget Creation Reminders | Push notification | Not started |
+| 3 | Budget Creation Reminders | Push notification | Defined |
 | 4 | Add to Homescreen Prompt | In-app banner (not a notification) | Not started |
 | 5 | Tutorials / How-to-use | In-app onboarding UX (not a notification) | Not started |
 
@@ -173,9 +173,236 @@ Smart, event-driven reminders based on existing data.
 
 ## 3. Budget Creation Reminders
 
-> **Status:** Not started. To be defined.
+### Summary
 
-Reminders at end of month / start of month to create and freeze the budget plan.
+Escalating push notifications to drive users to create and freeze their monthly budget. Two tracks: one for users with no budget at all (Track A), one for users with a draft that's not yet frozen (Track B). Clone shortcut for returning users is marketed as the primary CTA — reduce perceived effort to near zero.
+
+### Design Principles
+
+- **Escalation mirrors real urgency.** Early month = gentle. Mid month = serious. Late month = pivot to next month.
+- **Morning = inspire, set intention.** Evening = close the loop, get it done.
+- **2 notifications/day max.** Morning (~9am) + Evening (~8pm). Respects the user.
+- **Clone is the hero.** For returning users, every notification sells the one-tap clone. Reduce perceived effort to near zero. "One tap away" is the recurring CTA.
+- **Draft ≠ No budget.** Users who started a draft get a gentler, "almost there" track — never punish progress.
+- **Late month = pivot forward.** After day 25, stop shaming about this month. Combine "review what happened" + "plan next month."
+- **Same Duolingo energy as Type 2.** Passive-aggressive, guilt-tripping, playful. Consistent personality across all notification types.
+
+### Prerequisites
+
+System must know:
+1. Whether a **frozen budget** exists for current month
+2. Whether a **draft** exists (started but not frozen)
+3. Whether **last month had a frozen budget** (enables clone CTA)
+4. Whether **transactions exist** without a budget (spending-without-a-plan angle)
+5. **Transaction totals** (₹amount, count) for contextual messages
+
+### Track A: No Budget — Escalating Phases
+
+Track A fires when the user has **NO budget** (not even a draft) for the current month.
+
+**Two modifiers applied as overlays on any phase:**
+
+| Modifier | Condition | Effect |
+|---|---|---|
+| **Clone (M-Clone)** | User had a frozen budget last month | Replace generic CTA with clone-specific message — sell the one-tap shortcut |
+| **Transactions (M-Txn)** | User has logged transactions this month with no budget | Add spending-without-a-plan angle with actual ₹ amounts |
+
+---
+
+#### Phase 1: Proactive (Last 3-5 days of previous month)
+
+Only fires if user had a budget THIS month (we know they're engaged). Goal: get ahead of the curve.
+
+| Time | Message |
+|---|---|
+| Morning | "Next month is {X} days away. Get ahead — **plan your budget before the rush.**" |
+| Evening | "Month's wrapping up. Winning move? **Start next month's budget tonight.**" |
+
+**With Clone modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "Next month is {X} days away. **Clone this month's budget in one tap** and tweak from there." |
+| Evening | "Month's wrapping up. **One tap to clone → quick tweaks → done.** That's it." |
+
+---
+
+#### Phase 2: Grace Period (Days 1-3)
+
+Fresh start energy. Light, positive, zero pressure.
+
+| Day | Time | Message |
+|---|---|---|
+| 1 | Morning | "Happy new month! Fresh start, fresh budget. **10 minutes to set your plan.**" |
+| 1 | Evening | "Day 1 isn't over yet. **Create your budget before the spending starts.**" |
+| 2 | Morning | "Morning! Quick question — where's your budget? **Tap to create one now.**" |
+| 2 | Evening | "Two days in, zero budget. **Give your money a job tonight.**" |
+| 3 | Morning | "Day 3. Grace period's ending. **Set up your budget today.**" |
+| 3 | Evening | "Last chance before we start nagging. **Create your monthly plan.**" |
+
+**With Clone modifier:**
+
+| Day | Time | Message |
+|---|---|---|
+| 1 | Morning | "Happy new month! **Clone last month's budget in one tap** — adjust and you're done." |
+| 1 | Evening | "Day 1 isn't over yet. **One tap clone. Quick tweak. Budget done.** Easy." |
+| 2 | Morning | "Morning! **Last month's plan is waiting.** One tap to clone, adjust the numbers, freeze. Done." |
+| 2 | Evening | "Two days in. **Your old budget is one tap away.** Clone it, tweak it, freeze it." |
+| 3 | Morning | "Day 3. **Clone + tweak = 5 minutes.** Your last budget is ready to go." |
+| 3 | Evening | "Last call before we get pushy. **One tap clone. You know the drill.**" |
+
+---
+
+#### Phase 3: Nudge (Days 4-7)
+
+Gentle push becomes firmer. A week without a budget is suspicious.
+
+| Time | Message |
+|---|---|
+| Morning | "Week {X} and no budget. Your money is winging it. **Give it a plan.**" |
+| Evening | "Another day without a budget. Not judging. Okay, slightly judging. **Tap to create.**" |
+
+**With Clone modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "Week {X}. **One tap to clone last month's budget.** Your money shouldn't wing it." |
+| Evening | "Still no budget? **Last month's plan → one tap → done.** We timed it. Under 5 minutes." |
+
+**With Transactions modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "You've spent ₹{amount} this month with no budget. That's brave. **Create a plan before it gets scary.**" |
+| Evening | "₹{amount} spent. ₹0 planned. Math isn't mathing. **Set your budget now.**" |
+
+---
+
+#### Phase 4: Urgency (Days 8-15)
+
+Direct, no-nonsense. Half the month is gone.
+
+| Time | Message |
+|---|---|
+| Morning | "Half the month. No budget. Your wallet called — it's stressed. **Create your plan now.**" |
+| Evening | "We've been gentle. It's day {X}. **Make a budget or admit you like chaos.**" |
+
+**With Clone modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "Half the month gone. **Clone last month's budget — literally one tap.** Then tweak what changed." |
+| Evening | "Day {X}. No budget. **One. Tap. Clone.** That's all we're asking." |
+
+**With Transactions modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "₹{amount} spent with zero planning. Would you drive blindfolded? **Budget. Now.**" |
+| Evening | "You've logged {count} transactions. Great. Now imagine having a PLAN for them. **Create your budget.**" |
+
+---
+
+#### Phase 5: Intervention (Days 16-25)
+
+Blunt. Duolingo-level passive-aggressive. We're past being polite.
+
+| Time | Message |
+|---|---|
+| Morning | "Day {X}. More than half the month gone. No budget. We're not mad, we're concerned. **Tap to create.**" |
+| Evening | "At this point we admire your commitment to financial chaos. **Prove us wrong — make a budget.**" |
+
+**With Clone modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "Day {X}. **Your last budget is RIGHT THERE. One tap.** Please. We're begging." |
+| Evening | "One tap. That's all. **Clone → tweak → freeze.** Your future self will thank you." |
+
+**With Transactions modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "₹{amount} spent this month. No plan. No guardrails. **You're speedrunning financial regret.**" |
+| Evening | "{count} transactions. {X} days. Zero budget. The math is giving 'yikes'. **Create one now.**" |
+
+---
+
+#### Phase 6: Month-End Pivot (Days 26-EOM)
+
+Stop shaming about this month. Combine retrospective ("look what happened") with forward planning ("next month starts in X days"). This month is a write-off — channel the energy into next month.
+
+| Time | Message |
+|---|---|
+| Morning | "This month is wrapping up. Let's be honest — no budget happened. **But next month? Fresh start. Plan it now.**" |
+| Evening | "Month's almost over. Instead of regret, try action. **Start next month's budget tonight.**" |
+
+**With Clone modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "This month flew by. **Clone this month's spending into next month's budget** — one tap to get ahead." |
+| Evening | "Forget this month. **One tap to clone your budget for next month.** Start fresh." |
+
+**With Transactions modifier:**
+
+| Time | Message |
+|---|---|
+| Morning | "You spent ₹{amount} this month unplanned. Learn from it — **plan next month now.** Review vs reality starts with a budget." |
+| Evening | "This month: ₹{amount} spent, ₹0 budgeted. Next month doesn't have to be like this. **Create your plan.**" |
+
+---
+
+### Track B: Draft Exists, Not Frozen
+
+Gentler track. User started but didn't finish. The hard part (planning) is done — they just need to freeze. Never punish progress.
+
+Fires when: Draft budget exists for current month but **isn't frozen**.
+
+| Day | Time | Message |
+|---|---|---|
+| 1 | Morning | "Your budget draft is ready and waiting. **One tap to freeze and you're set for the month.**" |
+| 1 | Evening | "You did the planning. Now seal the deal. **Freeze your budget — takes 2 seconds.**" |
+| 2 | Morning | "Draft's still sitting there. It's good to go! **Tap to freeze your plan.**" |
+| 2 | Evening | "A budget in draft is like a parachute in the bag — useless until you pull the cord. **Freeze it now.**" |
+| 3 | Morning | "Day 3 with an unfrozen budget. So close! **Tap freeze and start tracking.**" |
+| 3 | Evening | "Your budget is literally one button away from being real. **Just. Tap. Freeze.**" |
+| 4+ | Morning | "Day {X}. Your draft is gathering dust. **Freeze it and let it do its job.**" |
+| 4+ | Evening | "We'll keep reminding you. You'll keep seeing this. **Freeze the budget.** It's right there." |
+
+**With Transactions modifier (logging expenses but draft not frozen):**
+
+| Time | Message |
+|---|---|
+| Morning | "You're logging expenses but your budget is still in draft. **Freeze it so we can track against the plan.**" |
+| Evening | "₹{amount} spent against an unfrozen plan. It's like running a race with no finish line. **Tap freeze.**" |
+
+---
+
+### Escalation Summary
+
+| Phase | Days | Tone | Freq | Clone CTA? | Transactions CTA? |
+|---|---|---|---|---|---|
+| Proactive | Last 3-5 of prev month | Encouraging, forward-looking | 2/day | ✅ Primary | N/A |
+| Grace | 1-3 | Fresh start, light | 2/day | ✅ Primary | ❌ Too early |
+| Nudge | 4-7 | Gentle push | 2/day | ✅ Primary | ✅ If applicable |
+| Urgency | 8-15 | Direct, no-nonsense | 2/day | ✅ Desperate | ✅ With ₹ amounts |
+| Intervention | 16-25 | Blunt, Duolingo-level | 2/day | ✅ Begging | ✅ With ₹ amounts |
+| Month-End Pivot | 26-EOM | Forward-looking, retrospective | 2/day | ✅ Next month | ✅ Retrospective |
+| Draft Not Frozen | Any | Warm, "almost there" | 2/day | N/A | ✅ If applicable |
+
+### Notification Behavior
+
+| Aspect | Behavior |
+|---|---|
+| **Tap action (default)** | Opens app → budget creation screen |
+| **Tap action (Clone modifier)** | Opens app → clone flow (pre-populated from last month's budget) |
+| **Tap action (Phase 6)** | Opens app → budget creation for NEXT month |
+| **Tap action (Draft track)** | Opens app → existing draft with freeze button prominent |
+| **Dynamic data** | ₹{amount} and {count} pulled from actual transaction data for the month |
+| **Quiet hours** | No notifications before 8am or after 10pm |
+| **Suppression** | Once budget is frozen, ALL budget creation reminders stop immediately |
+| **Track priority** | If draft exists, Track B overrides Track A (never run both simultaneously) |
 
 ---
 

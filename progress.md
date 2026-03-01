@@ -6,27 +6,35 @@
 2026-03-01
 
 ## Last Session Summary
-**Session 40: Notifications — Use Case Definition (Product Design)**
+**Session 41: Budget Creation Reminders — Use Case Definition (Product Design)**
 
 ### What Was Done
-1. **Defined notification types** — Identified 5 notification types: (1) Release Updates, (2) Expense Logging Reminders, (3) Budget Creation Reminders, (4) Add to Homescreen Prompt, (5) Tutorials. Clarified which are push notifications vs in-app UX patterns.
+1. **Budget Creation Reminders — fully defined** — Designed the complete escalation framework for monthly budget creation notifications:
+   - **Track A (no budget):** 6-phase escalation model with morning + evening notifications (2/day max):
+     - Phase 1: Proactive (last 3-5 days of prev month) — forward-looking, get ahead
+     - Phase 2: Grace Period (days 1-3) — fresh start energy, zero pressure
+     - Phase 3: Nudge (days 4-7) — gentle push, a week without a budget
+     - Phase 4: Urgency (days 8-15) — direct, half the month gone
+     - Phase 5: Intervention (days 16-25) — blunt, Duolingo-level passive-aggressive
+     - Phase 6: Month-End Pivot (days 26-EOM) — stop shaming, combine retrospective + next month planning
+   - **Track B (draft not frozen):** Separate gentler track — "you did the hard part, just freeze it"
+   - **Clone modifier:** Returning users get clone-specific CTAs at every phase — "one tap away" as the recurring theme. Clone is marketed as the primary action to reduce friction.
+   - **Transactions modifier:** Users spending without a budget get actual ₹amounts and transaction counts in messages — "₹X spent, ₹0 planned"
+   - **Notification behavior:** Tap opens budget creation (or clone flow, or next month, or draft with freeze button — context-dependent). Quiet hours (8am-10pm). Immediate suppression once frozen.
 
-2. **Release Updates — fully defined** — In-app "What's New" swipeable carousel (dismissable, one feature per slide, marketing tone). Content stored in Supabase table (no redeploy needed). Push notification to pull back inactive users. Show once per announcement.
+2. **Updated notifications doc** — Added full section 3 to `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md`. Status updated from "Not started" to "Defined".
 
-3. **Expense Logging Reminders — fully defined** — Duolingo-style gamified approach with two tracks:
-   - **Track A (zero txns today):** Escalating daily nudges across 4 time slots. Escalation persists across days (day 3+ starts aggressive). Resets only when a transaction is logged.
-   - **Track B (has txns, contextual):** Max 2-3/day. Triggers: meal times, sub-category silence, behavioral (logged then went quiet), weekends.
-   - **Tier 1:** Custom sassy messages for all predefined sub-categories (Income, EMI, Insurance, Savings, Fixed, Variable — ~30 sub-cats with specific triggers and frequencies).
-   - **Tier 2:** Generic sassy messages for user-created custom sub-categories.
-   - Every notification = Hook (sassy attention grab) + Action (varied CTA — Record, Add, Track, Capture, Punch in, etc.)
-
-4. **Created notifications doc** — `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md` with all objectives, decisions, messages, triggers, and frequencies.
+### Key Decisions Made
+- **Frequency:** 2/day (morning ~9am + evening ~8pm) — same across all phases
+- **Late-month strategy:** Combine current month review + next month creation (not separate)
+- **Draft-not-frozen:** Gets its own separate, gentler track (never punish progress)
+- **Auto-suggest from actuals:** Parked — needs budget creation logic first
+- **Clone shortcut:** Marketed heavily as "one tap away" — hero CTA for returning users
 
 ### No Code Changes
 This was a pure product design session. No files modified in `app/`.
 
 ### Remaining Work (Notifications)
-- **#3: Budget Creation Reminders** — Not started
 - **#4: Add to Homescreen Prompt** — Not started (in-app UX, not push)
 - **#5: Tutorials** — Not started (in-app UX, not push)
 - **Architecture design** — Push subscription storage, service worker, scheduling (pg_cron / Edge Functions), schemas
@@ -34,8 +42,16 @@ This was a pure product design session. No files modified in `app/`.
 
 ### Pending Discussion (Carried Forward)
 - **Phase 4: Tab-Level Data Caching** — deferred from Session 38
-- **End-of-month nudge** — Last 2 days: nudge user to set up next month's budget (now part of #3 Budget Creation Reminders)
 - **First day of new month** — Land on dashboard even without budget (show CTA), vs auto-redirect to budget tab
+
+---
+
+### Previous Session 40: Notifications — Use Case Definition (Product Design)
+
+### What Was Done (Session 40)
+1. Defined 5 notification types. Release Updates and Expense Logging Reminders fully defined.
+2. Expense Logging: Duolingo-style gamified approach, Track A (zero txns escalation) + Track B (contextual nudges), Tier 1 (predefined sub-cat sassy messages) + Tier 2 (generic for custom sub-cats).
+3. Created notifications doc at `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md`.
 
 ---
 
