@@ -63,3 +63,6 @@ nul
 add-income-inline.png
 design-previews/
 app/test-data/
+
+.vercel
+.env*.local

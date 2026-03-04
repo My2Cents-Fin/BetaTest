@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { sendPushToUser } from '../lib/delivery.js';
+import { buildBudgetContexts } from '../lib/evaluators/context.js';
+import { evaluateBudgetReminder } from '../lib/evaluators/budget-reminder.js';
+import type { ScheduleSlot } from '../lib/messages/types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret to prevent unauthorized calls
@@ -12,15 +15,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Determine schedule slot based on current IST time
   const now = new Date();
   const istHour = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getHours();
-  const slot = istHour < 12 ? 'morning' : 'evening';
+  const slot: ScheduleSlot = istHour < 12 ? 'morning' : 'evening';
   const today = now.toISOString().split('T')[0];
   const scheduleSlot = `${today}:${slot}`;
 
   try {
-    // Get all users with active push subscriptions who have push enabled
+    // Get all users with active push subscriptions (include household_id)
     const { data: subscriptions, error: subError } = await supabaseAdmin
       .from('push_subscriptions')
-      .select('user_id')
+      .select('user_id, household_id')
       .order('user_id');
 
     if (subError || !subscriptions?.length) {
@@ -30,13 +33,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Deduplicate user IDs
-    const userIds = [...new Set(subscriptions.map((s) => s.user_id))];
+    // Deduplicate to unique user+household pairs
+    const userMap = new Map<string, string>();
+    for (const s of subscriptions) {
+      if (s.household_id && !userMap.has(s.user_id)) {
+        userMap.set(s.user_id, s.household_id);
+      }
+    }
+    const userIds = [...userMap.keys()];
 
     // Check notification preferences
     const { data: preferences } = await supabaseAdmin
       .from('notification_preferences')
-      .select('user_id, push_enabled')
+      .select('user_id, push_enabled, budget_reminders_enabled')
       .in('user_id', userIds);
 
     const prefsMap = new Map(preferences?.map((p) => [p.user_id, p]) || []);
@@ -47,18 +56,93 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return !pref || pref.push_enabled;
     });
 
-    // Phase 1: No evaluators yet — log and return
-    // In Phase 2+, this is where budget/expense evaluators will run
+    // ─── Budget Reminder Evaluator ───────────────────────────────
+    const budgetEligible = eligibleUsers.filter((uid) => {
+      const pref = prefsMap.get(uid);
+      return !pref || pref.budget_reminders_enabled !== false;
+    });
+
+    const budgetUsers = budgetEligible
+      .filter((uid) => userMap.has(uid))
+      .map((uid) => ({ userId: uid, householdId: userMap.get(uid)! }));
+
+    const budgetContexts = await buildBudgetContexts(budgetUsers, slot, scheduleSlot);
+
+    let budgetSent = 0;
+    let budgetSkipped = 0;
+    let budgetFailed = 0;
+
+    for (const ctx of budgetContexts) {
+      try {
+        const result = evaluateBudgetReminder(ctx);
+        if (!result) {
+          budgetSkipped++;
+          continue;
+        }
+
+        // Log-before-send: insert as 'sent' first (dedup via unique index)
+        const { error: logError } = await supabaseAdmin.from('notification_log').insert({
+          user_id: ctx.userId,
+          household_id: ctx.householdId,
+          notification_type: result.notificationType,
+          notification_subtype: result.subtype,
+          title: result.message.title,
+          body: result.message.body,
+          status: 'sent',
+          schedule_slot: ctx.scheduleSlot,
+          message_data: result.messageData || null,
+        });
+
+        // Unique constraint violation = already sent this slot
+        if (logError?.code === '23505') {
+          budgetSkipped++;
+          continue;
+        }
+        if (logError) {
+          console.error(`Budget log insert error for ${ctx.userId}:`, logError.message);
+          budgetFailed++;
+          continue;
+        }
+
+        // Send the push notification
+        const pushResult = await sendPushToUser(ctx.userId, {
+          title: result.message.title,
+          body: result.message.body,
+          tag: result.message.tag,
+          data: { url: result.message.url || '/dashboard?tab=budget' },
+        });
+
+        if (pushResult.sent > 0) {
+          budgetSent++;
+        } else {
+          // Push failed — update log entry
+          await supabaseAdmin
+            .from('notification_log')
+            .update({ status: 'failed' })
+            .eq('user_id', ctx.userId)
+            .eq('notification_type', result.notificationType)
+            .eq('schedule_slot', ctx.scheduleSlot);
+          budgetFailed++;
+        }
+      } catch (userErr) {
+        console.error(`Budget evaluator error for ${ctx.userId}:`, userErr);
+        budgetFailed++;
+      }
+    }
+
     const results = {
       slot: scheduleSlot,
       subscribedUsers: userIds.length,
       eligibleUsers: eligibleUsers.length,
-      evaluators: 'none configured yet — Phase 1 foundation only',
-      sent: 0,
-      failed: 0,
+      budgetReminders: {
+        evaluated: budgetContexts.length,
+        sent: budgetSent,
+        skipped: budgetSkipped,
+        failed: budgetFailed,
+      },
     };
 
-    console.log('Cron notification run:', results);
+    console.log('Cron notification run:', JSON.stringify(results));
 
     return res.status(200).json(results);
   } catch (err) {
