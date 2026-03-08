@@ -785,9 +785,10 @@ export async function deleteSubCategory(subCategoryId: string): Promise<ServiceR
 const DEFAULT_TEMPLATE = [
   // Income
   { name: 'Salary', icon: '💼', categoryName: 'Income', displayOrder: 1 },
+  // Savings
+  { name: 'General Savings', icon: '💰', categoryName: 'Savings', displayOrder: 5 },
   // Fixed expenses
   { name: 'Rent', icon: '🏠', categoryName: 'Fixed', displayOrder: 10 },
-  { name: 'Electricity', icon: '⚡', categoryName: 'Fixed', displayOrder: 11 },
   { name: 'Internet', icon: '📶', categoryName: 'Fixed', displayOrder: 12 },
   { name: 'Phone Bill', icon: '📱', categoryName: 'Fixed', displayOrder: 13 },
   // Variable expenses

@@ -68,8 +68,8 @@ export function HouseholdScreen() {
       // Mark onboarding complete
       await markOnboardingComplete();
 
-      // Always go to budget tab to create first budget (both mobile and desktop)
-      navigate('/dashboard?tab=budget', { replace: true });
+      // Show explainer screen with plan/skip options
+      navigate('/onboarding/explainer', { replace: true });
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -100,8 +100,8 @@ export function HouseholdScreen() {
       // Mark onboarding complete
       await markOnboardingComplete();
 
-      // Always go to budget tab to create first budget (both mobile and desktop)
-      navigate('/dashboard?tab=budget', { replace: true });
+      // Show explainer screen with plan/skip options
+      navigate('/onboarding/explainer', { replace: true });
     } catch {
       setError('Something went wrong. Please try again.');
       setIsLoading(false);

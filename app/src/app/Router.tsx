@@ -13,6 +13,7 @@ import { SuccessScreen } from '../modules/auth/components/SuccessScreen';
 // Onboarding screens
 import { YourNameScreen } from '../modules/onboarding/components/YourNameScreen';
 import { HouseholdScreen } from '../modules/onboarding/components/HouseholdScreen';
+import { ExplainerScreen } from '../modules/onboarding/components/ExplainerScreen';
 
 // Main App Layout (with tab navigation)
 import { AppLayout } from './AppLayout';
@@ -177,6 +178,16 @@ export function AppRouter() {
             </RequireOnboarding>
           }
         />
+        {/* Explainer (post-onboarding, pre-dashboard interstitial) */}
+        <Route
+          path="/onboarding/explainer"
+          element={
+            <RequireOnboarded>
+              <ExplainerScreen />
+            </RequireOnboarded>
+          }
+        />
+
         {/* Protected routes */}
         <Route
           path="/dashboard"
