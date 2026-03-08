@@ -73,6 +73,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [totalCCSpent, setTotalCCSpent] = useState(0);
   const [hasTxnToday, setHasTxnToday] = useState(true); // assume true to avoid flash
   const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
+  const [transactionCount, setTransactionCount] = useState(0);
 
   // Derive from HouseholdProvider context
   const household = hhData ? { id: hhData.id, name: hhData.name } : null;
@@ -105,6 +106,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       uncategorizedCountThisMonth: number;
       totalCCSpent: number;
       hasTxnToday: boolean;
+      transactionCount: number;
       allSubCategories: typeof allSubCategories;
     };
   } | null>(null);
@@ -187,6 +189,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         setUncategorizedCountThisMonth(d.uncategorizedCountThisMonth);
         setTotalCCSpent(d.totalCCSpent);
         setHasTxnToday(d.hasTxnToday);
+        setTransactionCount(d.transactionCount);
         setAllSubCategories(d.allSubCategories);
         if (selectedMonth !== currentM) setSelectedMonth(currentM);
       } else {
@@ -306,6 +309,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         .filter(t => t.transaction_type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       setTotalSpent(spent);
+
+      // Transaction count (exclude internal transfers)
+      const txnCount = transactions.filter((t: { transaction_type: string }) => t.transaction_type !== 'transfer').length;
+      setTransactionCount(txnCount);
 
       // Calculate total actual income (AI)
       const actualIncome = transactions
@@ -439,6 +446,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           uncategorizedCountThisMonth: uncategorizedTxns.length,
           totalCCSpent: ccSpent,
           hasTxnToday: transactions.some(t => t.transaction_date === todayStr),
+          transactionCount: txnCount,
           allSubCategories: subCatList,
         },
       };
@@ -488,45 +496,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
     );
   }
 
-  // If no frozen budget has ever existed, show first-time setup prompt
-  if (!hasFrozenAnyBudget) {
-    return (
-      <div className="min-h-screen bg-[var(--color-page-bg)]">
-        <header className="glass-header px-4 py-3 md:hidden">
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Home</h1>
-        </header>
-        <main className="p-4 flex items-center justify-center min-h-[calc(100vh-200px)]">
-          <div className="max-w-md mx-auto text-center space-y-6">
-            {/* Info Banner */}
-            <div className="glass-card p-4 mb-6" style={{ borderColor: 'rgba(59,130,246,0.2)' }}>
-              <p className="text-sm text-blue-800 flex items-start gap-2">
-                <span className="text-base">ℹ️</span>
-                <span>
-                  <strong>Set up your budget to unlock the app and start tracking!</strong>
-                </span>
-              </p>
-            </div>
-
-            {/* Main illustration */}
-            <div className="mb-4">
-              <div className="w-24 h-24 mx-auto bg-[var(--color-primary-bg)] rounded-full flex items-center justify-center mb-4">
-                <span className="text-5xl">🔒</span>
-              </div>
-              <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">Home Locked</h2>
-              <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
-                Create your first budget in the <strong>Budget tab</strong> to unlock the Dashboard and start recording transactions.
-              </p>
-            </div>
-
-            {/* CTA */}
-            <p className="text-xs text-[var(--color-text-tertiary)] mt-8">
-              💡 Once you freeze your budget, you'll be able to track spending, record transactions, and see your financial progress.
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // Tracking mode: sort categories by actual spending (highest first)
+  const trackingCategorySpending = [...categorySpending].sort((a, b) => b.actual - a.actual);
 
   return (
     <div className="min-h-screen bg-[var(--color-page-bg)]">
@@ -568,43 +539,144 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             )}
           </div>
 
-          {/* If budget not frozen for this month, show prompt instead of metrics */}
+          {/* If budget not frozen for this month, show Tracking Mode dashboard */}
           {planStatus !== 'frozen' ? (
-            <div className="glass-card glass-card-elevated p-8 text-center">
-              {/* Themed illustration */}
-              <div className="relative w-20 h-20 mx-auto mb-5">
-                <div className="absolute inset-0 bg-primary-gradient rounded-2xl rotate-6 opacity-20" />
-                <div className="relative w-20 h-20 bg-primary-gradient rounded-2xl flex items-center justify-center shadow-[0_4px_16px_rgba(124,58,237,0.25)]">
-                  <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                  </svg>
-                </div>
-                {/* Decorative sparkle */}
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(251,191,36,0.4)]">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
-                  </svg>
-                </div>
+          <>
+            {/* Monthly Summary Card */}
+            <div className="glass-card glass-card-elevated p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">This Month</h3>
+                {transactionCount > 0 && (
+                  <span className="text-[11px] text-[var(--color-text-tertiary)]">{transactionCount} transaction{transactionCount !== 1 ? 's' : ''}</span>
+                )}
               </div>
 
-              <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1.5">
-                No budget yet
-              </h3>
-              <p className="text-sm text-[var(--color-text-secondary)] mb-5 leading-relaxed">
-                Plan your budget to start tracking spending this month.
-              </p>
-              {onNavigateToBudget && (
-                <button
-                  onClick={() => onNavigateToBudget(selectedMonth)}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 bg-primary-gradient text-white text-sm font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 active:scale-[0.98] transition-all whitespace-nowrap"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14M5 12h14"/>
-                  </svg>
-                  Plan Now
-                </button>
+              {transactionCount === 0 ? (
+                /* Empty state — no transactions yet */
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto mb-3 bg-[var(--color-primary-bg)] rounded-2xl flex items-center justify-center">
+                    <svg className="w-8 h-8 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">No transactions yet</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Tap + to record your first expense</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-0.5">Total Spent</p>
+                      <p className={`font-bold text-[var(--color-danger)] ${totalSpent >= 100000 ? 'text-lg' : 'text-xl'}`}>
+                        ₹{formatNumber(totalSpent)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-0.5">Total Income</p>
+                      <p className={`font-bold text-[var(--color-success)] ${totalActualIncome >= 100000 ? 'text-lg' : 'text-xl'}`}>
+                        ₹{formatNumber(totalActualIncome)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Net indicator */}
+                  <div className="mt-3 pt-3 border-t border-black/[0.06]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[var(--color-text-secondary)]">Net</span>
+                      <span className={`text-sm font-semibold ${totalActualIncome - totalSpent >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                        {totalActualIncome - totalSpent >= 0 ? '+' : '-'}₹{formatNumber(Math.abs(totalActualIncome - totalSpent))}
+                      </span>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
+
+            {/* Spending by Category */}
+            {trackingCategorySpending.length > 0 && (
+              <div className="glass-card p-4">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Spending by Category</h3>
+                <div className="space-y-3">
+                  {trackingCategorySpending.map(cat => {
+                    const pct = totalSpent > 0 ? (cat.actual / totalSpent) * 100 : 0;
+                    return (
+                      <div
+                        key={cat.id}
+                        className={`${onCategoryDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors rounded-lg -mx-1 px-1' : ''}`}
+                        onClick={() => onCategoryDrillDown?.(cat.id)}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{cat.icon}</span>
+                            <span className="text-sm font-medium text-[var(--color-text-primary)]">{cat.name}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--color-text-primary)]">₹{formatNumber(cat.actual)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-black/[0.04] rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{
+                                width: `${Math.min(pct, 100)}%`,
+                                background: 'linear-gradient(90deg, var(--color-primary), var(--color-primary-light))'
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-[var(--color-text-tertiary)] w-8 text-right">{Math.round(pct)}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Uncategorized spending */}
+            {uncategorizedTotal > 0 && (
+              <div
+                className={`glass-card p-4 ${onUncategorizedDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors' : ''}`}
+                onClick={() => onUncategorizedDrillDown?.()}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">❓</span>
+                    <div>
+                      <span className="text-sm font-medium text-amber-700">Uncategorised</span>
+                      <span className="block text-[10px] text-amber-600/70">
+                        {uncategorizedCountThisMonth} this month{uncategorizedCountAll > uncategorizedCountThisMonth ? ` · ${uncategorizedCountAll} total` : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-amber-600">₹{formatNumber(uncategorizedTotal)}</span>
+                    {onUncategorizedDrillDown && (
+                      <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Gentle nudge to create budget */}
+            {onNavigateToBudget && transactionCount > 0 && (
+              <div className="glass-card p-4" style={{ borderLeft: '3px solid var(--color-primary)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-[var(--color-text-primary)] mb-0.5">Ready to set spending limits?</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">Create a budget to track against your goals.</p>
+                  </div>
+                  <button
+                    onClick={() => onNavigateToBudget(selectedMonth)}
+                    className="ml-3 px-4 py-2 bg-primary-gradient text-white text-xs font-semibold rounded-xl shadow-[0_2px_8px_rgba(124,58,237,0.25)] active:scale-[0.98] transition-all whitespace-nowrap"
+                  >
+                    Plan Now
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
           ) : (
           <>
           {/* Row 1: Income Summary — Total Income with budgeted/unbudgeted bar */}

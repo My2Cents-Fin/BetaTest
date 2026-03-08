@@ -20,23 +20,16 @@ interface BottomNavProps {
   onAddTransaction?: () => void;
   onFundTransfer?: () => void;
   onOpenSettings?: () => void;
-  hasFrozenBudget?: boolean;
   hasOtherMembers?: boolean;
   className?: string;
 }
 
-export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTransfer, onOpenSettings, hasFrozenBudget = false, hasOtherMembers = false, className = '' }: BottomNavProps) {
-  const isDashboardLocked = !hasFrozenBudget;
-  const isTransactionsLocked = !hasFrozenBudget;
-  const isFabDisabled = !hasFrozenBudget;
-
+export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTransfer, onOpenSettings, hasOtherMembers = false, className = '' }: BottomNavProps) {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
   const isTouchEvent = useRef(false);
 
   const handleTouchStart = () => {
-    if (isFabDisabled) return;
-
     isTouchEvent.current = true;
     isLongPress.current = false;
 
@@ -61,7 +54,7 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
       longPressTimer.current = null;
     }
 
-    if (!isLongPress.current && !isFabDisabled && onAddTransaction) {
+    if (!isLongPress.current && onAddTransaction) {
       // Prevent the onClick from also firing
       e.preventDefault();
       // Short press - regular transaction
@@ -84,7 +77,7 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
 
   const handleClick = () => {
     // Only handle click if it wasn't a touch event
-    if (!isTouchEvent.current && !isFabDisabled && onAddTransaction) {
+    if (!isTouchEvent.current && onAddTransaction) {
       onAddTransaction();
     }
   };
@@ -98,13 +91,7 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchCancel}
           onClick={handleClick}
-          disabled={isFabDisabled}
-          className={`
-            w-14 h-14 rounded-2xl shadow-[0_4px_16px_rgba(124,58,237,0.35)] flex items-center justify-center text-white transition-all border-4 border-white/80
-            ${isFabDisabled
-              ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-primary-gradient active:scale-95'}
-          `}
+          className="w-14 h-14 rounded-2xl shadow-[0_4px_16px_rgba(124,58,237,0.35)] flex items-center justify-center text-white transition-all border-4 border-white/80 bg-primary-gradient active:scale-95"
           aria-label={hasOtherMembers ? "Add transaction (long press for fund transfer)" : "Add transaction"}
         >
           <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -116,24 +103,18 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
       <div className="flex h-full max-w-md mx-auto items-center px-4">
         {/* Home */}
         <button
-          onClick={isDashboardLocked ? undefined : () => onTabChange('dashboard')}
-          disabled={isDashboardLocked}
+          onClick={() => onTabChange('dashboard')}
           className={`
             flex-1 flex flex-col items-center justify-center gap-1 transition-all h-full relative rounded-xl
-            ${isDashboardLocked
-              ? 'text-gray-300 cursor-not-allowed'
-              : activeTab === 'dashboard'
-                ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
-                : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
+            ${activeTab === 'dashboard'
+              ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
+              : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
           `}
         >
           <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9,22 9,12 15,12 15,22"/>
           </svg>
-          {isDashboardLocked && (
-            <span className="absolute top-1.5 right-3 text-[10px]">🔒</span>
-          )}
           <span className="text-[10px] font-medium">{tabs[0].label}</span>
         </button>
 
@@ -160,15 +141,12 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
 
         {/* Transactions */}
         <button
-          onClick={isTransactionsLocked ? undefined : () => onTabChange('transactions')}
-          disabled={isTransactionsLocked}
+          onClick={() => onTabChange('transactions')}
           className={`
             flex-1 flex flex-col items-center justify-center gap-1 transition-all h-full relative rounded-xl
-            ${isTransactionsLocked
-              ? 'text-gray-300 cursor-not-allowed'
-              : activeTab === 'transactions'
-                ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
-                : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
+            ${activeTab === 'transactions'
+              ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
+              : 'text-[var(--color-text-tertiary)] active:text-[var(--color-text-secondary)]'}
           `}
         >
           <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -179,9 +157,6 @@ export function BottomNav({ activeTab, onTabChange, onAddTransaction, onFundTran
             <circle cx="4" cy="12" r="1" fill="currentColor"/>
             <circle cx="4" cy="18" r="1" fill="currentColor"/>
           </svg>
-          {isTransactionsLocked && (
-            <span className="absolute top-1.5 right-3 text-[10px]">🔒</span>
-          )}
           <span className="text-[10px] font-medium">{tabs[2].label}</span>
         </button>
 

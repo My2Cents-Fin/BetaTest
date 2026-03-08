@@ -5,12 +5,10 @@ import { DashboardTab } from '../modules/dashboard/components/DashboardTab';
 import { BudgetTab } from '../modules/budget/components/BudgetTab';
 import { TransactionsTab } from '../modules/transactions/components/TransactionsTab';
 import { ProfilePanel } from '../shared/components/ProfilePanel';
-import { useBudget } from './providers/BudgetProvider';
 
 const COLLAPSED_KEY = 'my2cents_sidebar_collapsed';
 
 export function AppLayout() {
-  const { hasFrozenBudget } = useBudget();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Check for tab query parameter on mount
@@ -95,7 +93,6 @@ export function AppLayout() {
         onTabChange={setActiveTab}
         onOpenMenu={() => setIsMenuOpen(true)}
         onCollapsedChange={setSidebarCollapsed}
-        hasFrozenBudget={hasFrozenBudget}
         className="hidden md:flex"
       />
 
@@ -158,7 +155,6 @@ export function AppLayout() {
         onAddTransaction={handleAddTransaction}
         onFundTransfer={handleFundTransfer}
         onOpenSettings={() => setIsMenuOpen(true)}
-        hasFrozenBudget={hasFrozenBudget}
         hasOtherMembers={hasOtherMembers}
         className="md:hidden"
       />

@@ -20,21 +20,17 @@ interface SideNavProps {
   onTabChange: (tab: TabId) => void;
   onOpenMenu: () => void;
   onCollapsedChange?: (collapsed: boolean) => void;
-  hasFrozenBudget?: boolean;
   className?: string;
 }
 
 const COLLAPSED_KEY = 'my2cents_sidebar_collapsed';
 
-export function SideNav({ activeTab, onTabChange, onOpenMenu, onCollapsedChange, hasFrozenBudget = false, className = '' }: SideNavProps) {
+export function SideNav({ activeTab, onTabChange, onOpenMenu, onCollapsedChange, className = '' }: SideNavProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const stored = localStorage.getItem(COLLAPSED_KEY);
     // Default to collapsed (true) if no preference is stored
     return stored !== null ? stored === 'true' : true;
   });
-
-  const isDashboardLocked = !hasFrozenBudget;
-  const isTransactionsLocked = !hasFrozenBudget;
 
   useEffect(() => {
     localStorage.setItem(COLLAPSED_KEY, String(isCollapsed));
@@ -85,20 +81,16 @@ export function SideNav({ activeTab, onTabChange, onOpenMenu, onCollapsedChange,
 
       {/* Nav Items */}
       <nav className={`flex-1 space-y-1 ${isCollapsed ? 'p-2' : 'p-4'}`}>
-        {tabs.map(tab => {
-          const isLocked = (tab.id === 'dashboard' && isDashboardLocked) || (tab.id === 'transactions' && isTransactionsLocked);
-          return (
-            <NavItem
-              key={tab.id}
-              icon={tab.icon}
-              label={tab.label}
-              active={activeTab === tab.id}
-              onClick={isLocked ? undefined : () => onTabChange(tab.id)}
-              collapsed={isCollapsed}
-              locked={isLocked}
-            />
-          );
-        })}
+        {tabs.map(tab => (
+          <NavItem
+            key={tab.id}
+            icon={tab.icon}
+            label={tab.label}
+            active={activeTab === tab.id}
+            onClick={() => onTabChange(tab.id)}
+            collapsed={isCollapsed}
+          />
+        ))}
       </nav>
 
       {/* Profile at bottom */}
