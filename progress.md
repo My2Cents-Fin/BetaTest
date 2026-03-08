@@ -3,61 +3,155 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-03-01
+2026-03-08
 
 ## Last Session Summary
-**Session 42: Notification Engine — Phase 1 Foundation (Implementation)**
+**Session 47: Track-to-Plan Phase 1 — Implementation**
 
 ### What Was Done
-Built the complete push notification pipeline from scratch — plumbing only, no business logic yet.
 
-#### New Files Created
-1. **Service Worker** — `app/public/sw.js`
-   - Handles `push` events → shows notification with title, body, icon, tag
-   - Handles `notificationclick` → focuses existing tab or opens new window at correct URL
+#### Track-to-Plan Phase 1: Full Implementation (5 tasks, all deployed to preview)
 
-2. **3 Supabase Migrations:**
-   - `014_push_subscriptions.sql` — Device/browser subscriptions (endpoint, keys, failure tracking). RLS: users manage own.
-   - `015_notification_log.sql` — Delivery log for dedup + audit. Unique index on `(user_id, notification_type, schedule_slot)`. RLS: users read own.
-   - `016_notification_preferences.sql` — Per-user toggle for push, budget reminders, expense reminders, release updates, quiet hours (default 10pm-8am).
+All work on `claude/main-usJxC` branch. TypeScript + Vite build pass clean after each task. Each commit is a working, deployable unit.
 
-3. **Client-Side Notification Module** — `app/src/modules/notifications/`
-   - `services/pushSubscription.ts` — SW registration, VAPID key conversion, subscribe/unsubscribe with Supabase persistence. Fires welcome notification on first subscribe.
-   - `hooks/useNotifications.ts` — React hook exposing `isSupported`, `permissionState`, `subscribe`, `unsubscribe`.
-   - `components/PushPermissionPrompt.tsx` — In-app banner ("Stay on top of your budget") with enable/dismiss. Shown on dashboard until acted on. Uses `bg-primary-gradient` pattern.
+**Task 1: Remove Navigation Gates** (commit `27a1cb7`)
+- Removed `hasFrozenBudget` prop from BottomNav and SideNav
+- Removed `locked` prop from NavItem entirely (disabled state, lock icon overlay, gray cursor)
+- Removed `isDashboardLocked`, `isTransactionsLocked`, `isFabDisabled` derived variables
+- FAB always active with gradient style, all tabs always clickable
+- Removed `useBudget` import from AppLayout
 
-4. **Vercel API Routes** — `app/api/`
-   - `lib/supabaseAdmin.ts` — Server-side Supabase client with `service_role` key (bypasses RLS).
-   - `lib/delivery.ts` — `sendPushToUser()` using `web-push` library. Auto-cleans expired subscriptions (404/410). Removes after 3 consecutive failures.
-   - `lib/messages/types.ts` — Shared types for notification messages.
-   - `cron/send-notifications.ts` — Cron handler. Verifies `CRON_SECRET`, determines schedule slot (morning/evening IST), queries eligible users. **Phase 1: logs "no evaluators" — ready for Phase 2 budget evaluators.**
-   - `send-welcome.ts` — POST endpoint. Sends one-time welcome notification on first subscribe. Deduped via `notification_log`.
+**Task 2: Enable Transaction Recording Without Frozen Budget**
+- Already a no-op — QuickAdd, desktop FAB, and quickAddTrigger handler were never gated by planStatus. Task 1's FAB fix was the only gate.
+
+**Task 3: Tracking Mode Dashboard** (commit `27a1cb7`)
+- Removed "Home Locked" full-screen block (`!hasFrozenAnyBudget` early return)
+- Replaced "No budget yet / Plan Now" empty state with spending summary view:
+  - Monthly summary card: total spent, total income, net, transaction count
+  - Spending by Category: sorted by amount (not budget %), proportional progress bars, tappable for drill-down
+  - Uncategorised spending card with drill-down
+  - Gentle "Plan Now" nudge card (non-blocking, shown when transactions exist)
+  - Empty state for zero transactions ("Tap + to record your first expense")
+- Added `transactionCount` state with full tab-level cache support
+- Added `trackingCategorySpending` derived sort (by actual amount descending)
+- Budget-mode users (frozen plan) see zero changes
+
+**Task 4: Bank Import CTA** (commit `dd6a520`)
+- Prominent "Import Bank Statement" card shown when < 5 transactions in tracking mode
+- Opens StatementImportModal directly from dashboard (no navigation needed)
+- Added `rawSubCategories`, `categoryMap` state (reuses already-fetched data, zero extra queries)
+- Both added to tab-level cache for instant restore
+
+**Task 5: Explainer Screen + Skip Flow** (commit `7508e23`)
+- New `ExplainerScreen.tsx`: split-screen layout matching onboarding design
+  - 3-step guide (Plan budget → Record expenses → Stay on track)
+  - Primary CTA: "Let's Plan My Budget" → `/dashboard?tab=budget`
+  - Secondary CTA: "Skip, I'll start by tracking" → auto-loads defaults → `/dashboard`
+- Route `/onboarding/explainer` added with `RequireOnboarded` guard
+- HouseholdScreen redirect changed from `/dashboard?tab=budget` to `/onboarding/explainer`
+- DEFAULT_TEMPLATE updated: replaced Electricity with General Savings (savings-first philosophy)
+- 8 default subcategories: Salary, General Savings, Rent, Internet, Phone Bill, Groceries, Food Ordering, Miscellaneous
+
+### Files Changed
+- **New:** `app/src/modules/onboarding/components/ExplainerScreen.tsx`
+- **Modified:** `app/src/app/AppLayout.tsx`, `app/src/app/Router.tsx`
+- **Modified:** `app/src/modules/navigation/components/BottomNav.tsx`, `SideNav.tsx`, `NavItem.tsx`
+- **Modified:** `app/src/modules/dashboard/components/DashboardTab.tsx` (bulk of changes)
+- **Modified:** `app/src/modules/onboarding/components/HouseholdScreen.tsx`
+- **Modified:** `app/src/modules/budget/services/budget.ts` (DEFAULT_TEMPLATE update)
+
+### NFR Compliance
+- Zero additional Supabase queries — all new dashboard data reuses existing `loadDashboardData` results
+- Tab-level cache updated with all new state variables (transactionCount, rawSubCategories, categoryMap)
+- Glass design system used throughout (glass-card, glass-card-elevated, CSS custom properties)
+- Responsive design: all new components work on mobile + desktop
+
+### Remaining Work
+- **Track to Plan Phase 1:** Merge `claude/main-usJxC` → `main` for production deploy (awaiting user testing)
+- **Track to Plan Phase 2:** Nudge-to-plan (conditional card, 2-of-4 triggers), budget pre-fill from transaction data
+- **Track to Plan Phase 3:** Inline subcategory creation in QuickAdd, smart suggestions, analytics
+- **Notification Engine (paused):**
+  - Phase 3: Expense Logging Reminders — evaluator + messages
+  - Phase 4: Release Updates + Preferences UI in ProfilePanel
+  - Phase 5: Scale + Polish (4 cron slots, analytics, sub cleanup)
+
+---
+
+### Previous Session Summary
+**Session 45: Income Edit Permission Fix + "Track to Plan" Product Pivot Discussion**
+
+### What Was Done
+- **Bug fix:** Income edit/delete permission error — added ownership checks in `InlineIncomeSection.tsx` with error banner. Commit `7ca6d62`, deployed to production.
+- **Product discussion:** Decided to remove budget-as-gate requirement. Two modes: Tracking (default) and Planning (opt-in). Budget becomes optional.
+
+---
+
+### Previous Session Summary
+**Session 44: Budget Creation Reminders — Phase 2 Deploy to Production**
+
+### What Was Done
+Recovered in-progress Phase 2 code from a lost session, verified it compiled and DB schema was compatible, tested on preview deployment, and deployed to production.
+
+#### Phase 2 Budget Reminders — Deployed
+- **Evaluator pipeline:** Context builder batches queries for plan status (current/prev/next month) and transaction aggregates per household
+- **Track A (no budget):** 6 escalating phases (Proactive → Grace → Nudge → Urgency → Intervention → Month-End Pivot) × morning/evening × 3 modifiers (clone, transactions, none) = 36+ message variants
+- **Track B (draft exists):** Day-specific "freeze your budget" nudges with transaction modifier
+- **Cron handler wired up:** preference checks, log-before-send dedup, push delivery
+- Tested on preview deployment — notifications delivered to both laptop (Chrome) and iPhone (PWA)
+- Merged `budget-reminders-phase2` → `main` (commit `b86d393`)
+
+### Remaining Work (Notification Engine)
+- **Phase 3:** Expense Logging Reminders — evaluator + messages
+- **Phase 4:** Release Updates + Preferences UI in ProfilePanel
+- **Phase 5:** Scale + Polish (4 cron slots, analytics, sub cleanup)
+
+---
+
+### Previous Session Summary
+**Session 43: Notification Engine — Testing, Deployment & Production Debugging**
+
+### What Was Done
+Tested the complete push notification pipeline (built in Session 42) end-to-end, fixed multiple deployment issues, deployed to production, and debugged a production env var mismatch.
+
+#### Git Branch Cleanup
+- Deleted 3 stale remote branches: `claude/main-0mTMN`, `claude/main-5FYh1`, `claude/main-x5xFR`
+- Deleted 1 stale local branch: `claude/main-0mTMN`
+- Consolidated all work into `claude/main-usJxC` (notification implementation branch)
+
+#### Vercel Preview Deployment Setup
+- Established proper dev/preview workflow: feature branches → Vercel auto-creates preview URLs with DEV Supabase; main → production with PROD Supabase
+- Set up **per-environment Vercel variables** (Production vs Preview) for all env vars:
+  - `SUPABASE_URL` / `VITE_SUPABASE_URL` — PROD vs DEV Supabase URLs
+  - `SUPABASE_SERVICE_ROLE_KEY` — PROD vs DEV service role keys
+  - `VAPID_PUBLIC_KEY` / `VITE_VAPID_PUBLIC_KEY` — same value, both environments
+  - `VAPID_PRIVATE_KEY` — same value, both environments
+  - `VAPID_SUBJECT` — `mailto:noreply@my2cents.app`
+  - `CRON_SECRET` — set for both environments
+
+#### Bugs Found & Fixed During Testing
+1. **Frontend hitting PROD instead of DEV in preview** — `VITE_SUPABASE_URL` was set to PROD for all environments. Fixed with per-environment setup.
+2. **VAPID key not baked into client build** — `VITE_VAPID_PUBLIC_KEY` wasn't in Vercel env vars at all. `isPushSupported()` returned false, hiding the notification prompt entirely. Fixed by adding the variable and redeploying without build cache.
+3. **API routes returning 405 (Method Not Allowed)** — The SPA catch-all rewrite `/(.*) → /index.html` in `vercel.json` was intercepting `/api/*` requests before they reached serverless functions. **Fixed by adding explicit `/api/(.*) → /api/$1` rewrite rule before the catch-all.**
+4. **Server-side VAPID key missing** — `VAPID_PUBLIC_KEY` (without `VITE_` prefix) wasn't in Vercel env vars for Preview. Error: `"No key set vapidDetails.publicKey"`. Fixed by adding it.
+5. **Production `SUPABASE_SERVICE_ROLE_KEY` wrong** — Was set to the DEV service role key instead of the PROD one. Caused serverless functions to silently fail all Supabase queries (auth mismatch). Symptom: welcome notification returned `sent: 0` despite 2 subscriptions existing in PROD DB. **Fixed by updating to correct PROD service role key.**
 
 #### Files Modified
-- **`app/src/main.tsx`** — Added SW registration on app startup
-- **`app/src/modules/dashboard/components/DashboardTab.tsx`** — Added `PushPermissionPrompt` component (shown above dashboard content)
-- **`app/vercel.json`** — Added 2 cron jobs: `03:30 UTC` (9am IST morning) + `14:30 UTC` (8pm IST evening)
-- **`app/public/manifest.json`** — Rebranded: "Finny" → "My2cents"
-- **`app/package.json`** — Added `web-push` (runtime) + `@vercel/node` (dev types)
+- **`app/vercel.json`** — Added API pass-through rewrite rule before SPA catch-all (critical fix for all serverless functions)
 
-#### VAPID Keys Generated
-- Public: `BNiQMpmdIdhA_We8L5_MIqy8W7HCcYNUZ0o-NLG7AogN2FAZHHS8-c6YuSS27Lieh0mLwHDk6OAHA5aFJd3VYNI`
-- Private: `IvZd53fH4ot7JVS_38S79e58INeyaprbeBipUr9SsVQ`
+#### Testing Results
+- ✅ Welcome push notification delivered on **Chrome desktop**
+- ✅ Welcome push notification delivered on **iPhone PWA** (installed via Safari Add to Home Screen)
+- ✅ `PushPermissionPrompt` banner shows correctly on dashboard
+- ✅ Subscription saved to `push_subscriptions` table
+- ✅ Dedup working via `notification_log` (second call returns `skipped: true`)
+- ✅ Service worker handles notification display and click-to-open
 
-#### Build Status
-- Vite build: passes
-- No new TypeScript errors introduced (all existing errors are pre-existing)
-
-### User Action Required Before Deploy
-1. **Run migrations** 014, 015, 016 on DEV + PROD Supabase
-2. **Set Vercel environment variables:**
-   - `VAPID_PUBLIC_KEY` (server-side)
-   - `VAPID_PRIVATE_KEY` (server-side, secret)
-   - `VAPID_SUBJECT=mailto:noreply@my2cents.app` (server-side)
-   - `VITE_VAPID_PUBLIC_KEY` (client-side, same value as VAPID_PUBLIC_KEY)
-   - `SUPABASE_SERVICE_ROLE_KEY` (server-side, secret)
-   - `SUPABASE_URL` (server-side)
-   - `CRON_SECRET` (server-side, protects cron endpoints)
+#### Production Deployment
+- Merged `claude/main-usJxC` → `main` (commit `6fb8a23`)
+- Vercel auto-deployed to `beta-test-five.vercel.app`
+- Migrations 014, 015, 016 confirmed on PROD Supabase
+- All env vars confirmed set for Production environment
+- Production sanity check passed after fixing `SUPABASE_SERVICE_ROLE_KEY`
 
 ### Architecture (Reference)
 ```
@@ -74,9 +168,19 @@ Client (sw.js) ← web-push ← Vercel Serverless (api/)
 - **Phase 4:** Release Updates + Preferences UI in ProfilePanel
 - **Phase 5:** Scale + Polish (4 cron slots, analytics, sub cleanup)
 
+### Known Issues
+- **manifest.json 401 error** — Consistently failing across all deployments. Not blocking functionality but should be investigated.
+
 ### Pending Discussion (Carried Forward)
 - **Phase 4: Tab-Level Data Caching** — deferred from Session 38
 - **First day of new month** — Land on dashboard even without budget (show CTA), vs auto-redirect to budget tab
+
+---
+
+### Previous Session 42: Notification Engine — Phase 1 Foundation (Implementation)
+
+### What Was Done (Session 42)
+Built the complete push notification pipeline from scratch — plumbing only, no business logic yet. Created service worker, 3 Supabase migrations (push_subscriptions, notification_log, notification_preferences), client-side notification module (pushSubscription service, useNotifications hook, PushPermissionPrompt component), and Vercel API routes (supabaseAdmin, delivery, cron handler, send-welcome endpoint). Added web-push dependency. VAPID keys generated.
 
 ---
 
