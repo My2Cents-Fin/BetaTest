@@ -76,6 +76,16 @@ export function InlineIncomeSection({
   const touchStartX = useRef(0);
   const SWIPE_THRESHOLD = 80;
 
+  // Permission error (e.g. trying to edit/delete another member's income)
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+
+  // Auto-dismiss permission error after 3 seconds
+  useEffect(() => {
+    if (!permissionError) return;
+    const timer = setTimeout(() => setPermissionError(null), 3000);
+    return () => clearTimeout(timer);
+  }, [permissionError]);
+
   const hasMultipleMembers = householdUsers.length > 1;
 
   // Get suggestions from INCOME_CATEGORY templates, excluding existing items
@@ -120,6 +130,10 @@ export function InlineIncomeSection({
 
   // --- Inline editing handlers (existing items) ---
   const handleStartEdit = (item: ActualIncomeItem) => {
+    if (item.loggedBy !== currentUserId) {
+      setPermissionError(`Only ${item.loggedByName} can edit this income`);
+      return;
+    }
     setEditingId(item.id);
     setEditAmount(item.amount);
     setEditDisplayValue(item.amount > 0 ? item.amount.toString() : '');
@@ -138,8 +152,12 @@ export function InlineIncomeSection({
     if (!item) return;
 
     if (editAmount !== item.amount && editAmount > 0) {
-      await updateTransaction(editingId, { amount: editAmount });
-      onIncomeChanged();
+      const result = await updateTransaction(editingId, { amount: editAmount });
+      if (result.success) {
+        onIncomeChanged();
+      } else {
+        setPermissionError(`Only ${item.loggedByName} can edit this income`);
+      }
     }
     setEditingId(null);
     setEditDisplayValue('');
@@ -165,11 +183,18 @@ export function InlineIncomeSection({
 
   // --- Delete handler ---
   const handleDelete = async (id: string) => {
+    const item = incomeItems.find(i => i.id === id);
+    if (item && item.loggedBy !== currentUserId) {
+      setPermissionError(`Only ${item.loggedByName} can delete this income`);
+      return;
+    }
     setDeletingId(id);
     try {
       const result = await deleteTransaction(id);
       if (result.success) {
         onIncomeChanged();
+      } else {
+        setPermissionError(`Only ${item?.loggedByName || 'the person who logged it'} can delete this income`);
       }
     } catch (e) {
       console.error('Failed to delete income:', e);
@@ -407,6 +432,16 @@ export function InlineIncomeSection({
       </button>
 
       {!isCollapsed && <div className="h-px bg-[rgba(124,58,237,0.06)]" />}
+
+      {/* Permission error banner */}
+      {permissionError && (
+        <div className="px-4 py-2.5 bg-red-50 border-l-4 border-red-400 flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+          <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <p className="text-sm text-red-700">{permissionError}</p>
+        </div>
+      )}
 
       {!isCollapsed && (
         <div>
