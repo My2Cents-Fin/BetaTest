@@ -6,6 +6,7 @@ import { MonthSelector, getCurrentMonth } from '../../budget/components/MonthSel
 import { QuickAddTransaction } from './QuickAddTransaction';
 import { FundTransferModal } from './FundTransferModal';
 import { supabase } from '../../../lib/supabase';
+import { StatementImportModal } from '../../transactions/components/StatementImportModal';
 import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
 import { useHousehold } from '../../../app/providers/HouseholdProvider';
 import { PushPermissionPrompt } from '../../notifications/components/PushPermissionPrompt';
@@ -74,6 +75,9 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [hasTxnToday, setHasTxnToday] = useState(true); // assume true to avoid flash
   const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
   const [transactionCount, setTransactionCount] = useState(0);
+  const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
+  const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
+  const [showStatementImport, setShowStatementImport] = useState(false);
 
   // Derive from HouseholdProvider context
   const household = hhData ? { id: hhData.id, name: hhData.name } : null;
@@ -107,6 +111,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       totalCCSpent: number;
       hasTxnToday: boolean;
       transactionCount: number;
+      rawSubCategories: HouseholdSubCategory[];
+      categoryMap: Map<string, { name: string; type: string }>;
       allSubCategories: typeof allSubCategories;
     };
   } | null>(null);
@@ -190,6 +196,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         setTotalCCSpent(d.totalCCSpent);
         setHasTxnToday(d.hasTxnToday);
         setTransactionCount(d.transactionCount);
+        setRawSubCategories(d.rawSubCategories);
+        setCategoryMap(d.categoryMap);
         setAllSubCategories(d.allSubCategories);
         if (selectedMonth !== currentM) setSelectedMonth(currentM);
       } else {
@@ -297,6 +305,16 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
       }));
       setAllSubCategories(subCatList);
+
+      // Store raw sub-categories + category map for import modal (no extra query)
+      setRawSubCategories(subCategories);
+      const catMap = new Map<string, { name: string; type: string }>();
+      subCategories.forEach((sc: HouseholdSubCategory & { categories?: { type: string; name: string } }) => {
+        if (sc.category_id && sc.categories) {
+          catMap.set(sc.category_id, { name: sc.categories.name, type: sc.categories.type });
+        }
+      });
+      setCategoryMap(catMap);
 
       // Process allocations
       const allocations = allocationsResult.allocations || [];
@@ -447,6 +465,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           totalCCSpent: ccSpent,
           hasTxnToday: transactions.some(t => t.transaction_date === todayStr),
           transactionCount: txnCount,
+          rawSubCategories: subCategories,
+          categoryMap: catMap,
           allSubCategories: subCatList,
         },
       };
@@ -591,6 +611,27 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                 </>
               )}
             </div>
+
+            {/* Bank Import CTA — prominent when < 5 transactions */}
+            {transactionCount < 5 && (
+              <button
+                onClick={() => setShowStatementImport(true)}
+                className="glass-card glass-card-elevated p-4 w-full text-left flex items-center gap-3 active:scale-[0.99] transition-all"
+              >
+                <div className="w-10 h-10 bg-[var(--color-primary-bg)] rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">Import Bank Statement</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Upload PDF or CSV to auto-import transactions</p>
+                </div>
+                <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
 
             {/* Spending by Category */}
             {trackingCategorySpending.length > 0 && (
@@ -1063,6 +1104,22 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           currentUserId={currentUserId || ''}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={handleTransactionAdded}
+        />
+      )}
+
+      {/* Statement Import Modal */}
+      {showStatementImport && household && (
+        <StatementImportModal
+          householdId={household.id}
+          subCategories={allSubCategories}
+          householdSubCategories={rawSubCategories}
+          categoryMap={categoryMap}
+          currentUserId={currentUserId || ''}
+          onClose={() => setShowStatementImport(false)}
+          onSuccess={() => {
+            setShowStatementImport(false);
+            handleTransactionAdded();
+          }}
         />
       )}
 
