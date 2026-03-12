@@ -6,41 +6,83 @@
 2026-03-13
 
 ## Last Session Summary
-**Session 53–54: Budget Interstitial Build + Freeze Validation UX**
+**Session 55-56: Prod Deploy + Smart Pre-fill + Interstitial Redesign**
 
 ### What Was Done
 
-#### Built: Budget Interstitial (Dashboard → Budget flow) ✅
-- **BudgetInterstitial.tsx** — New component with two variants:
-  - **Variant A (income exists):** Shows "You earned ₹X this month" confirmation → Start planning
-  - **Variant B (no income):** Amount input + subcategory tag picker (Salary/Business/Freelance/Other) → Next
-- **Dashboard "Plan Now" → skip BudgetEmptyState** — goes straight to interstitial
-- Props wired through AppLayout (`fromDashboard`, `initialMonth`, `onInitialMonthConsumed`)
-- Fixed repeat navigation bug: `showInterstitialRef` (ref mirrors state) prevents stale closure in `loadForMonth`
-- Fixed same-month navigation: direct `setBudgetStep('interstitial')` in `initialMonth` effect
+#### Deployed Sessions 47-54 to Production ✅
+- Committed all Track-to-Plan Phase 2 work (17 files, +1392/-303 lines)
+- Merged `claude/main-usJxC` → `main`, pushed to origin → Vercel auto-deploy
+- Commit: `44e8be7` — "Track-to-Plan Phase 2: Budget interstitial, expense pre-fill, relaxed freeze"
+- No DB migrations needed, no impact on existing users
 
-#### Built: Expense Pre-fill from Transaction History ✅
-- On "Start planning" from interstitial, fetches actual expenses by subcategory
-- Rounds up to next ₹1,000 and populates budget editor
-- Triggered via `handleInterstitialStartPlanning`
+#### Built: Smart Pre-fill (3-Tier Lookback) ✅
+- Replaced single-month pre-fill with intelligent 6-month lookback
+- **Tier 1 (Budget history):** Avg of planned amounts from frozen months → rounded up to ₹1,000
+- **Tier 2 (Transaction history):** Avg of monthly expense totals (no prior budgets) → rounded up to ₹1,000
+- **Tier 3 (Current month only):** Current month actuals → rounded up to ₹1,000
+- New `getSmartPreFillAmounts()` in `budget.ts` — 4 parallel Supabase queries
+- Applied to ALL "start fresh" paths (not just interstitial)
 
-#### Built: Relaxed Freeze Validation ✅
-- **Over-allocation:** Hard block → soft warning modal ("Your budget exceeds income by ₹X" + [Adjust budget] / [Freeze anyway])
-- **Incomplete items:** Inline banner → modal on freeze click ("X items need amounts" + [Got it])
-- **Validation order:** Incomplete items checked first, then over-allocation
-- **No inline warnings** during editing — all validation shows only on "Freeze Plan" click
-- Extracted shared `executeFreezeplan()` function to deduplicate freeze logic
+#### Redesigned: Budget Interstitial (Option B — Radio Choice Screen) ✅
+- **Two-phase flow:** Phase 1 = income entry (if needed) → Phase 2 = choice screen
+- **Choice screen with radio selection:**
+  - Suggestions from history (smart pre-fill) — default when history exists
+  - Clone from [month dropdown] — only shows when frozen plans exist
+  - Start blank — always available
+- Single "Let's go" CTA after selecting choice
+- Income shown as pill/badge ("💰 ₹1,20,000 earned")
+- Heading changed to "Plan [Month] budget" (action-oriented)
+- Variant B transitions to same choice screen after recording income
+
+#### Fixed: Gap 1 — BudgetEmptyState "Start planning" now uses smart pre-fill ✅
+- `handleFreshBudget` upgraded from zeroes → smart pre-fill with fallback to zeroes
+- Both entry points (Dashboard "Plan Now" and Budget Tab direct) now offer smart pre-fill
+
+#### Fixed: Gap 2 — Clone option available from interstitial ✅
+- Interstitial loads frozen months via `getPlannedMonths()`
+- Clone radio option with month dropdown (single month = no dropdown)
 
 ### Files Changed
-- `BudgetTab.tsx` — Interstitial wiring, freeze validation modals, showInterstitialRef, executeFreezeplan
-- `BudgetInterstitial.tsx` — New file, Variant A + B interstitial component
-- `AppLayout.tsx` — `budgetFromDashboard` state, `fromDashboard` prop to BudgetTab
-- `budget.ts` — clone income merge-not-replace fix (from Session 50-51)
-- `DashboardTab.tsx` — insights row UI, income deletion fix (from Session 50-51)
+- `BudgetInterstitial.tsx` — Full rewrite: 2-phase flow, radio choice UI, clone integration
+- `BudgetTab.tsx` — New handlers (`handleInterstitialSuggestions`, `handleInterstitialClone`, `handleInterstitialBlank`), `handleFreshBudget` upgraded to smart pre-fill
+- `budget.ts` — New `getSmartPreFillAmounts()` function (~120 lines)
 
 ### Status
-- On `claude/main-usJxC` branch. All work uncommitted. **User-tested and confirmed working.**
-- Ready to commit + merge to `main`.
+- Sessions 47-54 deployed to prod ✅
+- Smart pre-fill + interstitial redesign on `claude/main-usJxC` branch, **uncommitted, needs rigorous testing**
+
+### ⚠️ Testing Required — Smart Pre-fill + Interstitial Redesign
+This feature touches multiple entry points and user scenarios. Must test ALL combinations before deploying:
+
+**Interstitial (Dashboard → Plan Now):**
+- [ ] Variant A (income exists) → choice screen shows income pill + radio options
+- [ ] Variant B (no income) → income entry → choice screen
+- [ ] "Suggestions from history" → verify amounts pre-filled from historical data
+- [ ] "Clone from [month]" → verify exact copy of selected month's allocations
+- [ ] "Clone from [month]" → test month dropdown with multiple frozen months
+- [ ] "Start blank" → verify all amounts are zero
+- [ ] "Let's go" CTA triggers the selected choice correctly
+- [ ] "← Back to dashboard" works
+
+**BudgetEmptyState (Budget Tab → direct navigation):**
+- [ ] "Clone [month]" → exact copy, same as before
+- [ ] "or start fresh" → verify smart pre-fill (not zeroes) when history exists
+- [ ] "Start planning" (no clone sources) → smart pre-fill with fallback to zeroes
+
+**Smart Pre-fill edge cases:**
+- [ ] User with frozen budgets → Tier 1 (avg of planned amounts)
+- [ ] User with only transactions, never planned → Tier 2 (avg of monthly tx totals)
+- [ ] Fresh user, current month actuals only → Tier 3 (round up to ₹1,000)
+- [ ] Brand new user, no data at all → falls back to zeroes gracefully
+- [ ] User who skipped months (e.g., planned Feb, skipped Mar, now Apr)
+- [ ] Amounts are rounded up to nearest ₹1,000
+
+**Regression tests:**
+- [ ] "Plan first" user: frozen plan → view mode still works
+- [ ] Month navigation between frozen/unfrozen months
+- [ ] Clone + freeze + unfreeze cycle
+- [ ] Income recording from interstitial Variant B
 
 ### Open Items (Discussion Needed)
 1. **Custom income categories** — Inline creation only works for expense subcats, not income
@@ -49,7 +91,7 @@
 4. **Regression testing** — Full test of "plan first" mode to ensure nothing broke
 
 ### Remaining Work
-- Commit + merge current work to `main`
+- User-test interstitial redesign + smart pre-fill, then commit + merge to `main`
 - Address discussion items 1-4 above
 - **Notification Engine (paused):**
   - Phase 3: Expense Logging Reminders
@@ -59,6 +101,8 @@
 ---
 
 ### Previous Session Summary
+**Session 53-54:** Budget Interstitial build (Variant A/B), Expense Pre-fill from transaction history, Relaxed Freeze Validation (soft modals instead of inline warnings), shared executeFreezeplan(). All user-tested and confirmed working.
+
 **Session 52:** Interstitial design finalized (all 7 decisions confirmed). Income deletion bug fix (fresh + clone flows).
 
 **Session 50–51:** Tracking Dashboard Polish (ExplainerScreen redesign, empty state "+", inline subcategory creation, top 5 limit, CC bifurcation, insights row), critical income deletion bug fix (fresh + clone budget flows), uncategorized month bug fix.

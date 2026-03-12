@@ -956,6 +956,136 @@ export async function getActualsBySubCategory(
 }
 
 /**
+ * Smart pre-fill: Get suggested budget amounts for each sub-category
+ * using a 3-tier lookback strategy (up to 6 months):
+ *
+ * Tier 1: Budget history — avg of planned amounts from frozen months
+ * Tier 2: Transaction history — avg of actual spend (no prior budgets)
+ * Tier 3: Current month actuals — round up to nearest ₹1,000
+ *
+ * Returns a Map of sub_category_id → suggested amount (already rounded up to ₹1,000)
+ */
+export async function getSmartPreFillAmounts(
+  householdId: string,
+  targetMonth: string // Format: YYYY-MM (the month being planned)
+): Promise<{ success: boolean; error?: string; suggestions?: Map<string, number> }> {
+  try {
+    // Build list of previous months to look back (up to 6, excluding target)
+    const lookbackMonths: string[] = [];
+    const [year, month] = targetMonth.split('-').map(Number);
+    for (let i = 1; i <= 6; i++) {
+      const d = new Date(year, month - 1 - i, 1);
+      const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      lookbackMonths.push(m);
+    }
+
+    // Fetch frozen plan months, historical allocations, historical transactions,
+    // and current month actuals — all in parallel
+    const lookbackPlanMonths = lookbackMonths.map(m => `${m}-01`);
+
+    const [frozenPlansResult, historicalAllocResult, historicalTxResult, currentActualsResult] = await Promise.all([
+      // Which of the lookback months have frozen plans?
+      supabase
+        .from('monthly_plans')
+        .select('plan_month')
+        .eq('household_id', householdId)
+        .eq('status', 'frozen')
+        .in('plan_month', lookbackPlanMonths),
+
+      // All budget allocations from lookback months
+      supabase
+        .from('budget_allocations')
+        .select('sub_category_id, monthly_amount, plan_month')
+        .eq('household_id', householdId)
+        .in('plan_month', lookbackPlanMonths),
+
+      // All expense transactions from lookback months
+      supabase
+        .from('transactions')
+        .select('sub_category_id, amount, transaction_date')
+        .eq('household_id', householdId)
+        .eq('transaction_type', 'expense')
+        .gte('transaction_date', `${lookbackMonths[lookbackMonths.length - 1]}-01`)
+        .lte('transaction_date', getLastDayOfMonth(lookbackMonths[0])),
+
+      // Current month actuals (for Tier 3)
+      getActualsBySubCategory(householdId, targetMonth),
+    ]);
+
+    // Build set of frozen months (YYYY-MM format)
+    const frozenMonths = new Set<string>();
+    (frozenPlansResult.data || []).forEach(p => {
+      frozenMonths.add(p.plan_month.substring(0, 7));
+    });
+
+    // --- Tier 1: Average of planned amounts from frozen months ---
+    // Group allocations by sub_category_id, only from frozen months
+    const budgetHistory = new Map<string, number[]>(); // sub_cat_id → [monthly_amounts]
+    (historicalAllocResult.data || []).forEach(a => {
+      const allocMonth = a.plan_month.substring(0, 7);
+      if (frozenMonths.has(allocMonth)) {
+        const arr = budgetHistory.get(a.sub_category_id) || [];
+        arr.push(a.monthly_amount);
+        budgetHistory.set(a.sub_category_id, arr);
+      }
+    });
+
+    // --- Tier 2: Average of transaction actuals per month ---
+    // Group transactions by sub_category_id and month, then average across months
+    const txBySubCatMonth = new Map<string, Map<string, number>>(); // sub_cat_id → { month → total }
+    (historicalTxResult.data || []).forEach(t => {
+      const txMonth = t.transaction_date.substring(0, 7);
+      if (!txBySubCatMonth.has(t.sub_category_id)) {
+        txBySubCatMonth.set(t.sub_category_id, new Map());
+      }
+      const monthMap = txBySubCatMonth.get(t.sub_category_id)!;
+      monthMap.set(txMonth, (monthMap.get(txMonth) || 0) + t.amount);
+    });
+
+    // --- Build suggestions ---
+    const suggestions = new Map<string, number>();
+    const currentActuals = currentActualsResult.actuals || new Map<string, number>();
+
+    // Collect all sub-category IDs we've seen across all sources
+    const allSubCatIds = new Set<string>();
+    budgetHistory.forEach((_, id) => allSubCatIds.add(id));
+    txBySubCatMonth.forEach((_, id) => allSubCatIds.add(id));
+    currentActuals.forEach((_, id) => allSubCatIds.add(id));
+
+    for (const subCatId of allSubCatIds) {
+      const budgetAmounts = budgetHistory.get(subCatId);
+      const txMonths = txBySubCatMonth.get(subCatId);
+      const currentActual = currentActuals.get(subCatId) || 0;
+
+      let suggested = 0;
+
+      if (budgetAmounts && budgetAmounts.length > 0) {
+        // Tier 1: Average of frozen budget planned amounts
+        const avg = budgetAmounts.reduce((sum, a) => sum + a, 0) / budgetAmounts.length;
+        suggested = Math.ceil(avg / 1000) * 1000;
+      } else if (txMonths && txMonths.size > 0) {
+        // Tier 2: Average of monthly transaction totals
+        const monthlyTotals = Array.from(txMonths.values());
+        const avg = monthlyTotals.reduce((sum, a) => sum + a, 0) / monthlyTotals.length;
+        suggested = Math.ceil(avg / 1000) * 1000;
+      } else if (currentActual > 0) {
+        // Tier 3: Current month actuals, round up
+        suggested = Math.ceil(currentActual / 1000) * 1000;
+      }
+
+      if (suggested > 0) {
+        suggestions.set(subCatId, suggested);
+      }
+    }
+
+    return { success: true, suggestions };
+  } catch (e) {
+    console.error('getSmartPreFillAmounts error:', e);
+    return { success: false, error: 'Failed to compute pre-fill amounts' };
+  }
+}
+
+/**
  * Get budget data for view mode (allocations + actuals)
  * Income comes from actual transactions, expenses from allocations
  */

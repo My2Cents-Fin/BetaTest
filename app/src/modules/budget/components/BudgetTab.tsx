@@ -18,6 +18,7 @@ import {
   getBudgetViewData,
   cloneBudgetAllocations,
   getActualsBySubCategory,
+  getSmartPreFillAmounts,
 } from '../services/budget';
 import { getActualIncomeForMonth } from '../services/transactions';
 import type { ActualIncomeItem } from '../services/transactions';
@@ -638,8 +639,24 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     onDataMutated?.(); // Invalidate other tabs' caches
     setBudgetStep('edit');
     await loadEditData();
-    // Zero out all planned amounts — user fills in everything from scratch
-    // Income transactions are preserved — they are real financial records, not budget metadata
+
+    // Smart pre-fill: use historical data instead of blank zeroes
+    if (household) {
+      const prefillResult = await getSmartPreFillAmounts(household.id, selectedMonth);
+      if (prefillResult.success && prefillResult.suggestions && prefillResult.suggestions.size > 0) {
+        const suggestions = prefillResult.suggestions;
+        setExpenseItems(prev => prev.map(item => {
+          const suggested = suggestions.get(item.id) || 0;
+          if (suggested > 0) {
+            const monthlyAmount = calculateMonthlyAmount(suggested, item.period);
+            return { ...item, amount: suggested, monthlyAmount };
+          }
+          return item;
+        }));
+        return;
+      }
+    }
+    // Fallback: no history → zero out
     setExpenseItems(prev => prev.map(item => ({
       ...item,
       amount: 0,
@@ -647,31 +664,50 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     })));
   };
 
-  // Interstitial → edit mode with expense pre-fill from transaction history
-  const handleInterstitialStartPlanning = async () => {
+  // Interstitial → edit mode with smart pre-fill from historical data
+  const handleInterstitialSuggestions = async () => {
     onDataMutated?.();
     setShowInterstitial(false);
     showInterstitialRef.current = false;
     setBudgetStep('edit');
     await loadEditData();
 
-    // Pre-fill: fetch expense actuals for this month, round up to nearest ₹1,000
+    // Smart pre-fill: 3-tier lookback (up to 6 months)
     if (household) {
-      const actualsResult = await getActualsBySubCategory(household.id, selectedMonth);
-      if (actualsResult.success && actualsResult.actuals) {
-        const actuals = actualsResult.actuals;
+      const prefillResult = await getSmartPreFillAmounts(household.id, selectedMonth);
+      if (prefillResult.success && prefillResult.suggestions) {
+        const suggestions = prefillResult.suggestions;
         setExpenseItems(prev => prev.map(item => {
-          const actual = actuals.get(item.id) || 0;
-          if (actual > 0) {
-            // Round up to nearest ₹1,000
-            const rounded = Math.ceil(actual / 1000) * 1000;
-            const monthlyAmount = calculateMonthlyAmount(rounded, item.period);
-            return { ...item, amount: rounded, monthlyAmount };
+          const suggested = suggestions.get(item.id) || 0;
+          if (suggested > 0) {
+            const monthlyAmount = calculateMonthlyAmount(suggested, item.period);
+            return { ...item, amount: suggested, monthlyAmount };
           }
           return item;
         }));
       }
     }
+  };
+
+  // Interstitial → clone from a past frozen budget
+  const handleInterstitialClone = async (sourceMonth: string) => {
+    setShowInterstitial(false);
+    showInterstitialRef.current = false;
+    await handleCloneBudget(sourceMonth);
+  };
+
+  // Interstitial → start with all zeroes
+  const handleInterstitialBlank = async () => {
+    onDataMutated?.();
+    setShowInterstitial(false);
+    showInterstitialRef.current = false;
+    setBudgetStep('edit');
+    await loadEditData();
+    setExpenseItems(prev => prev.map(item => ({
+      ...item,
+      amount: 0,
+      monthlyAmount: 0,
+    })));
   };
 
   const handleInterstitialBack = () => {
@@ -1236,7 +1272,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             />
           )}
 
-          {/* INTERSTITIAL — from Dashboard "Plan Now" (Variant A: income exists, Variant B: enter income) */}
+          {/* INTERSTITIAL — from Dashboard "Plan Now" (choice screen: suggestions / clone / blank) */}
           {budgetStep === 'interstitial' && household && (
             <BudgetInterstitial
               month={selectedMonth}
@@ -1244,7 +1280,10 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
               currentUserId={currentUserId}
               totalIncome={actualIncome.totalIncome}
               incomeSubCategories={incomeSubCategories}
-              onStartPlanning={handleInterstitialStartPlanning}
+              hasHistory={true}
+              onStartWithSuggestions={handleInterstitialSuggestions}
+              onClone={handleInterstitialClone}
+              onStartBlank={handleInterstitialBlank}
               onBack={handleInterstitialBack}
               onIncomeRecorded={handleInterstitialIncomeRecorded}
             />
