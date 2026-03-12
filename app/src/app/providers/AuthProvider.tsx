@@ -10,6 +10,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isOnboarded: boolean;
   signOut: () => Promise<void>;
+  markAsOnboarded: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -96,6 +97,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await supabase.auth.signOut();
   };
 
+  const markAsOnboarded = () => {
+    setIsOnboarded(true);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -105,6 +110,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthenticated,
         isOnboarded,
         signOut,
+        markAsOnboarded,
       }}
     >
       {children}

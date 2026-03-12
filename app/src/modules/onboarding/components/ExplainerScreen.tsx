@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../app/providers/AuthProvider';
 import { getUserHousehold } from '../services/onboarding';
 import { createDefaultExpenseTemplate } from '../../budget/services/budget';
 
 export function ExplainerScreen() {
   const navigate = useNavigate();
+  const { markAsOnboarded } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Mark as onboarded immediately so dashboard guard works when user clicks a CTA
+  useEffect(() => {
+    markAsOnboarded();
+  }, [markAsOnboarded]);
 
   const handlePlanBudget = () => {
     navigate('/dashboard?tab=budget', { replace: true });
@@ -30,91 +37,85 @@ export function ExplainerScreen() {
 
   const steps = [
     {
-      num: '1',
-      title: 'Plan your monthly budget',
-      desc: "Set spending limits for each category \u2014 we'll track how you're doing against them.",
+      emoji: '📋',
+      title: 'Plan',
+      desc: 'Set monthly spending limits',
     },
     {
-      num: '2',
-      title: 'Record daily expenses',
-      desc: 'Add transactions as you spend. Takes 10 seconds each.',
+      emoji: '💸',
+      title: 'Track',
+      desc: 'Log expenses in 10 seconds',
     },
     {
-      num: '3',
-      title: 'Stay on track together',
-      desc: 'Both you and your partner see the same picture. No surprises.',
+      emoji: '👫',
+      title: 'Together',
+      desc: 'One household, no surprises',
     },
   ];
 
   return (
-    <div className="min-h-[100dvh] flex flex-col lg:flex-row">
-      {/* Left Panel - Branding */}
-      <div className="bg-primary-gradient relative overflow-hidden lg:w-1/2 xl:w-[55%] flex flex-col px-8 py-10 lg:px-12 lg:py-12 xl:px-16">
-        <h1 className="text-2xl text-white font-semibold">
-          My<span className="font-bold">2Cents</span>
-        </h1>
-
-        <div className="flex-1 flex flex-col justify-center py-8 lg:py-0">
-          <div className="text-6xl mb-6 hidden lg:block">🎉</div>
-          <h2 className="text-3xl lg:text-4xl xl:text-5xl text-white leading-tight mb-4">
-            <span className="lg:hidden">🎉 </span>
-            <span className="font-bold">Welcome to My2Cents!</span>
-          </h2>
-          <p className="text-base text-white/60 max-w-lg">
-            Your household is ready. Here's how the app works.
-          </p>
+    <div className="min-h-[100dvh] flex flex-col bg-[var(--color-page-bg)]">
+      {/* Purple hero — tall, contains success + heading + subtitle */}
+      <div className="bg-primary-gradient px-6 pt-10 pb-10 rounded-b-[2rem] text-center">
+        <div className="flex items-center justify-center gap-2 mb-5">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-base">
+            ✓
+          </div>
+          <span className="text-white/80 text-sm font-medium">You're all set!</span>
         </div>
+        <h1 className="text-white font-bold text-2xl leading-snug mb-2">
+          Three steps. That's it.
+        </h1>
+        <p className="text-white/70 text-sm leading-relaxed">
+          Plan once, track daily.
+          <br />
+          Never wonder where the money went.
+        </p>
       </div>
 
-      {/* Right Panel - Steps & CTAs */}
-      <div className="flex-1 bg-[var(--color-page-bg)] flex flex-col">
-        <div className="flex-1 flex items-center justify-center px-8 lg:px-12 pb-8">
-          <div className="w-full max-w-md">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Here's how it works
-            </h2>
-            <p className="text-gray-500 mb-8">Three simple steps to manage your money together</p>
-
-            {/* Steps */}
-            <div className="space-y-5 mb-10">
-              {steps.map(step => (
-                <div key={step.num} className="flex gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-primary-gradient flex items-center justify-center flex-shrink-0 shadow-[0_2px_8px_rgba(124,58,237,0.25)]">
-                    <span className="text-white text-sm font-bold">{step.num}</span>
-                  </div>
-                  <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-0.5">{step.title}</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
-                  </div>
+      {/* Main content — tight gap, CTAs toward thumb zone */}
+      <div className="flex-1 flex flex-col justify-end px-6 pb-10 pt-4 lg:justify-center lg:py-12">
+        <div className="w-full max-w-sm mx-auto">
+          {/* Step cards */}
+          <div className="space-y-3 mb-8">
+            {steps.map((step, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-white/70 backdrop-blur-sm border border-[rgba(124,58,237,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              >
+                <div className="text-4xl flex-shrink-0">{step.emoji}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-gray-900">{step.title}</h3>
+                  <p className="text-sm text-gray-500">{step.desc}</p>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
 
-            {/* CTAs */}
-            <div className="space-y-3">
-              <button
-                onClick={handlePlanBudget}
-                disabled={isLoading}
-                className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Let's Plan My Budget
-              </button>
+          {/* CTAs */}
+          <div className="space-y-3">
+            <button
+              onClick={handlePlanBudget}
+              disabled={isLoading}
+              className="w-full py-3.5 px-6 bg-primary-gradient text-white font-semibold rounded-xl shadow-[0_4px_16px_rgba(124,58,237,0.3)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              Plan My Budget
+            </button>
 
-              <button
-                onClick={handleSkipToTrack}
-                disabled={isLoading}
-                className="w-full py-3 px-6 text-[var(--color-primary)] text-sm font-medium hover:bg-[var(--color-primary-bg)] rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
-                    Setting up...
-                  </span>
-                ) : (
-                  <>Skip, I'll start by tracking →</>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleSkipToTrack}
+              disabled={isLoading}
+              className="w-full py-3 px-6 text-[var(--color-primary)] text-sm font-medium hover:bg-[var(--color-primary-bg)] rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
+                  Setting up...
+                </span>
+              ) : (
+                <>Skip, I'll just track expenses →</>
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -20,7 +20,7 @@ interface DashboardTabProps {
   onFundTransferConsumed?: () => void;
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
   onCategoryDrillDown?: (subCategoryId: string) => void;
-  onUncategorizedDrillDown?: () => void;
+  onUncategorizedDrillDown?: (month: string) => void;
   onNavigateToBudget?: (month?: string) => void;
   /** When true, this tab is the currently visible tab (triggers data refresh) */
   isActive?: boolean;
@@ -62,12 +62,13 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
-  const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
+  const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense'; categoryId: string }[]>([]);
   const [planStatus, setPlanStatus] = useState<'draft' | 'frozen'>('draft');
   const [hasFrozenAnyBudget, setHasFrozenAnyBudget] = useState(true); // assume true to avoid flash
   const [earliestMonth, setEarliestMonth] = useState<string | null>(null);
   const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
   const [showOtherMembers, setShowOtherMembers] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [uncategorizedTotal, setUncategorizedTotal] = useState(0);
   const [uncategorizedCountAll, setUncategorizedCountAll] = useState(0);
   const [uncategorizedCountThisMonth, setUncategorizedCountThisMonth] = useState(0);
@@ -78,6 +79,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
   const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
   const [showStatementImport, setShowStatementImport] = useState(false);
+  const [lastMonthSpent, setLastMonthSpent] = useState<number | null>(null);
 
   // Derive from HouseholdProvider context
   const household = hhData ? { id: hhData.id, name: hhData.name } : null;
@@ -227,6 +229,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           icon: sc.icon || '📦',
           categoryName: sc.categories?.name || 'Other',
           categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+          categoryId: sc.category_id,
         }));
         setAllSubCategories(subCatList);
       })();
@@ -303,6 +306,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         icon: sc.icon || '📦',
         categoryName: sc.categories?.name || 'Other',
         categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+        categoryId: sc.category_id,
       }));
       setAllSubCategories(subCatList);
 
@@ -343,6 +347,18 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         .filter(t => t.transaction_type === 'expense' && t.payment_method === 'card')
         .reduce((sum, t) => sum + t.amount, 0);
       setTotalCCSpent(ccSpent);
+
+      // Fetch last month's expenses for MoM trend (non-blocking)
+      const prevMonth = mo === 1 ? 12 : mo - 1;
+      const prevYear = mo === 1 ? yr - 1 : yr;
+      const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+      const prevEnd = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
+      getTransactions(householdId, prevStart, prevEnd, userMap).then(prevResult => {
+        const prevSpent = (prevResult.transactions || [])
+          .filter(t => t.transaction_type === 'expense')
+          .reduce((sum, t) => sum + t.amount, 0);
+        setLastMonthSpent(prevSpent);
+      }).catch(() => setLastMonthSpent(null));
 
       // Calculate spending by sub-category
       const spendingBySubCat = new Map<string, number>();
@@ -498,6 +514,13 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const variableRemaining = variablePlanned - variableSpent;
   const projectedOverspend = Math.ceil(projectedSpend - variablePlanned);
 
+  // Tracking mode metrics (based on totalSpent, not just variable)
+  const trackingDailyAvg = daysElapsed > 0 ? Math.ceil(totalSpent / daysElapsed) : 0;
+  const trackingProjected = isCurrentMonth ? Math.ceil(trackingDailyAvg * totalDaysInMonth) : totalSpent;
+  const momChange = lastMonthSpent !== null && lastMonthSpent > 0
+    ? Math.round(((totalSpent - lastMonthSpent) / lastMonthSpent) * 100)
+    : null;
+
   // Filter Variable categories at-risk (>=75% of budget)
   const variableAtRisk = categorySpending.filter(cat =>
     cat.categoryName === 'Variable' && cat.percentUsed >= 75
@@ -573,15 +596,18 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
               {transactionCount === 0 ? (
                 /* Empty state — no transactions yet */
-                <div className="text-center py-4">
+                <button
+                  onClick={() => setShowQuickAdd(true)}
+                  className="w-full text-center py-4 rounded-xl active:scale-[0.98] transition-transform"
+                >
                   <div className="w-16 h-16 mx-auto mb-3 bg-[var(--color-primary-bg)] rounded-2xl flex items-center justify-center">
                     <svg className="w-8 h-8 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                   </div>
                   <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">No transactions yet</p>
-                  <p className="text-xs text-[var(--color-text-tertiary)]">Tap + to record your first expense</p>
-                </div>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Tap to record your first expense</p>
+                </button>
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -590,6 +616,19 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                       <p className={`font-bold text-[var(--color-danger)] ${totalSpent >= 100000 ? 'text-lg' : 'text-xl'}`}>
                         ₹{formatNumber(totalSpent)}
                       </p>
+                      {/* CC vs Bank breakdown — stacked for long numbers */}
+                      {totalCCSpent > 0 && (
+                        <div className="mt-1.5 space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px]">💵</span>
+                            <span className="text-[10px] text-[var(--color-text-tertiary)]">₹{formatNumber(totalSpent - totalCCSpent)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px]">💳</span>
+                            <span className="text-[10px] text-[var(--color-warning)]">₹{formatNumber(totalCCSpent)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-0.5">Total Income</p>
@@ -612,6 +651,53 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               )}
             </div>
 
+            {/* Insights row — tracking mode pulse metrics */}
+            {transactionCount > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {/* Daily Avg */}
+                <div className="glass-card p-3 text-center">
+                  <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Daily Avg</p>
+                  <p className="text-base font-bold text-[var(--color-text-primary)]">
+                    ₹{formatNumber(trackingDailyAvg)}
+                  </p>
+                  <p className="text-[10px] text-[var(--color-text-tertiary)]">/day</p>
+                </div>
+
+                {/* Projected */}
+                <div className="glass-card p-3 text-center">
+                  <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">
+                    {isCurrentMonth ? 'Projected' : 'Total'}
+                  </p>
+                  <p className="text-base font-bold text-[var(--color-text-primary)]">
+                    ₹{formatNumber(trackingProjected)}
+                  </p>
+                  <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                    {isCurrentMonth ? 'by month end' : 'that month'}
+                  </p>
+                </div>
+
+                {/* Month-on-Month */}
+                <div className="glass-card p-3 text-center">
+                  <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">vs Last Month</p>
+                  {momChange !== null ? (
+                    <>
+                      <p className={`text-base font-bold ${momChange <= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                        {momChange <= 0 ? '↓' : '↑'}{Math.abs(momChange)}%
+                      </p>
+                      <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                        {momChange <= 0 ? 'less spent' : 'more spent'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-[var(--color-text-tertiary)]">—</p>
+                      <p className="text-[10px] text-[var(--color-text-tertiary)]">no prior data</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bank Import CTA — prominent when < 5 transactions */}
             {transactionCount < 5 && (
               <button
@@ -633,12 +719,12 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               </button>
             )}
 
-            {/* Spending by Category */}
+            {/* Spending by Category — top 5 with expand */}
             {trackingCategorySpending.length > 0 && (
               <div className="glass-card p-4">
                 <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Spending by Category</h3>
                 <div className="space-y-3">
-                  {trackingCategorySpending.map(cat => {
+                  {(showAllCategories ? trackingCategorySpending : trackingCategorySpending.slice(0, 5)).map(cat => {
                     const pct = totalSpent > 0 ? (cat.actual / totalSpent) * 100 : 0;
                     return (
                       <div
@@ -669,6 +755,14 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                     );
                   })}
                 </div>
+                {trackingCategorySpending.length > 5 && (
+                  <button
+                    onClick={() => setShowAllCategories(prev => !prev)}
+                    className="w-full mt-3 pt-2.5 border-t border-black/[0.06] text-xs font-medium text-[var(--color-primary)] hover:text-[var(--color-primary-dark)] transition-colors"
+                  >
+                    {showAllCategories ? 'Show less' : `Show all ${trackingCategorySpending.length} categories`}
+                  </button>
+                )}
               </div>
             )}
 
@@ -676,7 +770,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             {uncategorizedTotal > 0 && (
               <div
                 className={`glass-card p-4 ${onUncategorizedDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors' : ''}`}
-                onClick={() => onUncategorizedDrillDown?.()}
+                onClick={() => onUncategorizedDrillDown?.(selectedMonth)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -967,7 +1061,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                 {uncategorizedTotal > 0 && (
                   <div
                     className={`flex items-center gap-3 py-2.5 ${variableAtRisk.length > 0 ? 'border-t border-black/[0.04]' : ''} ${onUncategorizedDrillDown ? 'cursor-pointer active:bg-black/[0.02] transition-colors' : ''}`}
-                    onClick={() => onUncategorizedDrillDown?.()}
+                    onClick={() => onUncategorizedDrillDown?.(selectedMonth)}
                   >
                     <div className="w-[3px] h-9 rounded-sm bg-amber-400" />
                     <div className="icon-container icon-container-md" style={{ background: 'rgba(217,119,6,0.08)' }}>

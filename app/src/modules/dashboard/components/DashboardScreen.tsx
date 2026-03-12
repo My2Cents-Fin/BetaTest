@@ -485,6 +485,7 @@ export function DashboardScreen() {
       icon: item.icon,
       categoryName: item.categoryName,
       categoryType: 'income' as const,
+      categoryId: item.categoryId,
     })),
     ...expenseItems.map(item => ({
       id: item.id,
@@ -492,6 +493,7 @@ export function DashboardScreen() {
       icon: item.icon,
       categoryName: item.categoryName,
       categoryType: 'expense' as const,
+      categoryId: item.categoryId,
     })),
   ];
 

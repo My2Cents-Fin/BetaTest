@@ -21,6 +21,8 @@ interface TransactionsTabProps {
   drillDownSubCategoryId?: string | null;
   /** Pre-apply uncategorized-only filter (drill-down from Dashboard) */
   drillDownUncategorized?: boolean;
+  /** Month context from Dashboard drill-down (YYYY-MM) — sets the date filter to that month */
+  drillDownMonth?: string | null;
   onDrillDownConsumed?: () => void;
   /** When true, this tab is the currently visible tab */
   isActive?: boolean;
@@ -47,13 +49,22 @@ function getCurrentMonthRange(): { from: string; to: string } {
   return { from, to };
 }
 
-export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, onDrillDownConsumed, isActive, dataVersion, onDataMutated }: TransactionsTabProps) {
+// Helper: convert YYYY-MM to { from, to } date range
+function getMonthRange(month: string): { from: string; to: string } {
+  const [y, m] = month.split('-').map(Number);
+  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { from, to };
+}
+
+export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, drillDownSubCategoryId, drillDownUncategorized, drillDownMonth, onDrillDownConsumed, isActive, dataVersion, onDataMutated }: TransactionsTabProps) {
   const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
-  const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
+  const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense'; categoryId: string }[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithDetails | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
@@ -167,12 +178,18 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     }
   }, [drillDownSubCategoryId]);
 
-  // Apply drill-down filter from Dashboard (uncategorized only)
+  // Apply drill-down filter from Dashboard (uncategorized only, with month context)
   useEffect(() => {
     if (drillDownUncategorized) {
       setFilterUncategorizedOnly(true);
       setFilterSubCategoryIds(new Set());
       setFilterIncludeTransfers(false);
+      // Apply month filter from Dashboard context
+      if (drillDownMonth) {
+        const { from, to } = getMonthRange(drillDownMonth);
+        setFilterDateFrom(from);
+        setFilterDateTo(to);
+      }
       onDrillDownConsumed?.();
     }
   }, [drillDownUncategorized]);
@@ -199,6 +216,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           icon: sc.icon || '📦',
           categoryName: sc.categories?.name || 'Other',
           categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+          categoryId: sc.category_id,
         }));
         setAllSubCategories(subCatList);
       })();
@@ -290,6 +308,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
         icon: sc.icon || '📦',
         categoryName: sc.categories?.name || 'Other',
         categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+        categoryId: sc.category_id,
       }));
       setAllSubCategories(subCatList);
 

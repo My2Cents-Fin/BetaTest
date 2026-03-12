@@ -92,7 +92,22 @@ export async function signUpWithPin(phone: string, pin: string): Promise<SignUpR
 
     if (error) {
       if (error.message.includes('already registered') || error.message.includes('already been registered')) {
-        return { success: false, error: 'This phone number is already registered. Please log in instead.' };
+        // Account may exist from a previous interrupted signup flow.
+        // Try signing in with the same credentials as recovery.
+        const signInResult = await signInWithPin(phone, pin);
+        if (signInResult.success) {
+          // Ensure user_pins record exists for future phone lookups
+          await supabase.from('user_pins').upsert({
+            user_id: signInResult.userId!,
+            phone_email: email,
+            pin_hash: 'managed_by_supabase_auth',
+          }, { onConflict: 'phone_email' }).then(({ error: upsertErr }) => {
+            if (upsertErr) console.error('user_pins upsert error:', upsertErr);
+          });
+          return { success: true, userId: signInResult.userId };
+        }
+        // SignIn failed — they may have used a different PIN in the previous interrupted attempt
+        return { success: false, error: 'An account with this phone already exists but the PIN doesn\'t match. Please go back and log in.' };
       }
       if (error.message.includes('rate limit')) {
         return { success: false, error: 'Too many attempts. Please try again later.' };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { OTPInput } from './OTPInput';
 import { signUpWithPin, resetPin, getOnboardingStatus } from '../services/auth';
@@ -22,6 +22,7 @@ export function SetPinScreen() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const isSubmitting = useRef(false);
 
   // Redirect if no phone in state
   useEffect(() => {
@@ -50,6 +51,9 @@ export function SetPinScreen() {
   };
 
   const handleConfirm = async (confirmValue: string) => {
+    // Guard against multiple concurrent calls (OTPInput can re-fire onComplete)
+    if (isSubmitting.current) return;
+
     if (confirmValue !== pin) {
       setError('PINs don\'t match. Please try again.');
       setConfirmPin('');
@@ -58,6 +62,7 @@ export function SetPinScreen() {
 
     setError('');
     setIsLoading(true);
+    isSubmitting.current = true;
 
     try {
       if (isReset) {
@@ -66,6 +71,7 @@ export function SetPinScreen() {
         if (!result.success) {
           setError(result.error || 'Failed to reset PIN.');
           setIsLoading(false);
+          isSubmitting.current = false;
           return;
         }
         setShowToast(true);
@@ -78,6 +84,7 @@ export function SetPinScreen() {
         if (!result.success) {
           setError(result.error || 'Sign up failed.');
           setIsLoading(false);
+          isSubmitting.current = false;
           return;
         }
 
@@ -93,6 +100,7 @@ export function SetPinScreen() {
     } catch {
       setError('Something went wrong. Please try again.');
       setIsLoading(false);
+      isSubmitting.current = false;
     }
   };
 

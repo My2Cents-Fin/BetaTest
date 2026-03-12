@@ -3,77 +3,80 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-03-08
+2026-03-13
 
 ## Last Session Summary
-**Session 47: Track-to-Plan Phase 1 — Implementation**
+**Session 53–54: Budget Interstitial Build + Freeze Validation UX**
 
 ### What Was Done
 
-#### Track-to-Plan Phase 1: Full Implementation (5 tasks, all deployed to preview)
+#### Built: Budget Interstitial (Dashboard → Budget flow) ✅
+- **BudgetInterstitial.tsx** — New component with two variants:
+  - **Variant A (income exists):** Shows "You earned ₹X this month" confirmation → Start planning
+  - **Variant B (no income):** Amount input + subcategory tag picker (Salary/Business/Freelance/Other) → Next
+- **Dashboard "Plan Now" → skip BudgetEmptyState** — goes straight to interstitial
+- Props wired through AppLayout (`fromDashboard`, `initialMonth`, `onInitialMonthConsumed`)
+- Fixed repeat navigation bug: `showInterstitialRef` (ref mirrors state) prevents stale closure in `loadForMonth`
+- Fixed same-month navigation: direct `setBudgetStep('interstitial')` in `initialMonth` effect
 
-All work on `claude/main-usJxC` branch. TypeScript + Vite build pass clean after each task. Each commit is a working, deployable unit.
+#### Built: Expense Pre-fill from Transaction History ✅
+- On "Start planning" from interstitial, fetches actual expenses by subcategory
+- Rounds up to next ₹1,000 and populates budget editor
+- Triggered via `handleInterstitialStartPlanning`
 
-**Task 1: Remove Navigation Gates** (commit `27a1cb7`)
-- Removed `hasFrozenBudget` prop from BottomNav and SideNav
-- Removed `locked` prop from NavItem entirely (disabled state, lock icon overlay, gray cursor)
-- Removed `isDashboardLocked`, `isTransactionsLocked`, `isFabDisabled` derived variables
-- FAB always active with gradient style, all tabs always clickable
-- Removed `useBudget` import from AppLayout
-
-**Task 2: Enable Transaction Recording Without Frozen Budget**
-- Already a no-op — QuickAdd, desktop FAB, and quickAddTrigger handler were never gated by planStatus. Task 1's FAB fix was the only gate.
-
-**Task 3: Tracking Mode Dashboard** (commit `27a1cb7`)
-- Removed "Home Locked" full-screen block (`!hasFrozenAnyBudget` early return)
-- Replaced "No budget yet / Plan Now" empty state with spending summary view:
-  - Monthly summary card: total spent, total income, net, transaction count
-  - Spending by Category: sorted by amount (not budget %), proportional progress bars, tappable for drill-down
-  - Uncategorised spending card with drill-down
-  - Gentle "Plan Now" nudge card (non-blocking, shown when transactions exist)
-  - Empty state for zero transactions ("Tap + to record your first expense")
-- Added `transactionCount` state with full tab-level cache support
-- Added `trackingCategorySpending` derived sort (by actual amount descending)
-- Budget-mode users (frozen plan) see zero changes
-
-**Task 4: Bank Import CTA** (commit `dd6a520`)
-- Prominent "Import Bank Statement" card shown when < 5 transactions in tracking mode
-- Opens StatementImportModal directly from dashboard (no navigation needed)
-- Added `rawSubCategories`, `categoryMap` state (reuses already-fetched data, zero extra queries)
-- Both added to tab-level cache for instant restore
-
-**Task 5: Explainer Screen + Skip Flow** (commit `7508e23`)
-- New `ExplainerScreen.tsx`: split-screen layout matching onboarding design
-  - 3-step guide (Plan budget → Record expenses → Stay on track)
-  - Primary CTA: "Let's Plan My Budget" → `/dashboard?tab=budget`
-  - Secondary CTA: "Skip, I'll start by tracking" → auto-loads defaults → `/dashboard`
-- Route `/onboarding/explainer` added with `RequireOnboarded` guard
-- HouseholdScreen redirect changed from `/dashboard?tab=budget` to `/onboarding/explainer`
-- DEFAULT_TEMPLATE updated: replaced Electricity with General Savings (savings-first philosophy)
-- 8 default subcategories: Salary, General Savings, Rent, Internet, Phone Bill, Groceries, Food Ordering, Miscellaneous
+#### Built: Relaxed Freeze Validation ✅
+- **Over-allocation:** Hard block → soft warning modal ("Your budget exceeds income by ₹X" + [Adjust budget] / [Freeze anyway])
+- **Incomplete items:** Inline banner → modal on freeze click ("X items need amounts" + [Got it])
+- **Validation order:** Incomplete items checked first, then over-allocation
+- **No inline warnings** during editing — all validation shows only on "Freeze Plan" click
+- Extracted shared `executeFreezeplan()` function to deduplicate freeze logic
 
 ### Files Changed
-- **New:** `app/src/modules/onboarding/components/ExplainerScreen.tsx`
-- **Modified:** `app/src/app/AppLayout.tsx`, `app/src/app/Router.tsx`
-- **Modified:** `app/src/modules/navigation/components/BottomNav.tsx`, `SideNav.tsx`, `NavItem.tsx`
-- **Modified:** `app/src/modules/dashboard/components/DashboardTab.tsx` (bulk of changes)
-- **Modified:** `app/src/modules/onboarding/components/HouseholdScreen.tsx`
-- **Modified:** `app/src/modules/budget/services/budget.ts` (DEFAULT_TEMPLATE update)
+- `BudgetTab.tsx` — Interstitial wiring, freeze validation modals, showInterstitialRef, executeFreezeplan
+- `BudgetInterstitial.tsx` — New file, Variant A + B interstitial component
+- `AppLayout.tsx` — `budgetFromDashboard` state, `fromDashboard` prop to BudgetTab
+- `budget.ts` — clone income merge-not-replace fix (from Session 50-51)
+- `DashboardTab.tsx` — insights row UI, income deletion fix (from Session 50-51)
 
-### NFR Compliance
-- Zero additional Supabase queries — all new dashboard data reuses existing `loadDashboardData` results
-- Tab-level cache updated with all new state variables (transactionCount, rawSubCategories, categoryMap)
-- Glass design system used throughout (glass-card, glass-card-elevated, CSS custom properties)
-- Responsive design: all new components work on mobile + desktop
+### Status
+- On `claude/main-usJxC` branch. All work uncommitted. **User-tested and confirmed working.**
+- Ready to commit + merge to `main`.
+
+### Open Items (Discussion Needed)
+1. **Custom income categories** — Inline creation only works for expense subcats, not income
+2. **Category/subcategory grouping** — Better taxonomy than 9 system categories?
+3. **Additional data points** — What other metrics add value beyond current?
+4. **Regression testing** — Full test of "plan first" mode to ensure nothing broke
 
 ### Remaining Work
-- **Track to Plan Phase 1:** Merge `claude/main-usJxC` → `main` for production deploy (awaiting user testing)
-- **Track to Plan Phase 2:** Nudge-to-plan (conditional card, 2-of-4 triggers), budget pre-fill from transaction data
-- **Track to Plan Phase 3:** Inline subcategory creation in QuickAdd, smart suggestions, analytics
+- Commit + merge current work to `main`
+- Address discussion items 1-4 above
 - **Notification Engine (paused):**
-  - Phase 3: Expense Logging Reminders — evaluator + messages
-  - Phase 4: Release Updates + Preferences UI in ProfilePanel
-  - Phase 5: Scale + Polish (4 cron slots, analytics, sub cleanup)
+  - Phase 3: Expense Logging Reminders
+  - Phase 4: Release Updates + Preferences UI
+  - Phase 5: Scale + Polish
+
+---
+
+### Previous Session Summary
+**Session 52:** Interstitial design finalized (all 7 decisions confirmed). Income deletion bug fix (fresh + clone flows).
+
+**Session 50–51:** Tracking Dashboard Polish (ExplainerScreen redesign, empty state "+", inline subcategory creation, top 5 limit, CC bifurcation, insights row), critical income deletion bug fix (fresh + clone budget flows), uncategorized month bug fix.
+
+---
+
+### Previous Session Summary
+**Session 49:** SignUp "already registered" bug fix — OTPInput double-fire from unstable onComplete ref, isSubmitting guard, signIn fallback recovery.
+
+---
+
+### Previous Session Summary
+**Session 48:** Explainer Screen redirect bug fix (navigate-first pattern, RequireAuth guard, markAsOnboarded on mount). Also switched `.env.local` to DEV Supabase for local testing.
+
+---
+
+### Previous Session Summary
+**Session 47:** Track-to-Plan Phase 1 full implementation — 5 tasks (remove nav gates, tracking mode dashboard, bank import CTA, explainer screen + skip flow). All on `claude/main-usJxC` branch.
 
 ---
 

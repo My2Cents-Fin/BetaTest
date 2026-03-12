@@ -17,6 +17,7 @@ import {
   getAvailableBudgetMonths,
   getBudgetViewData,
   cloneBudgetAllocations,
+  getActualsBySubCategory,
 } from '../services/budget';
 import { getActualIncomeForMonth } from '../services/transactions';
 import type { ActualIncomeItem } from '../services/transactions';
@@ -25,6 +26,7 @@ import { formatNumber } from './AmountInput';
 import { MonthSelector, formatMonthOption, getCurrentMonth } from './MonthSelector';
 import { BudgetViewMode } from './BudgetViewMode';
 import { BudgetEmptyState } from './BudgetEmptyState';
+import { BudgetInterstitial } from './BudgetInterstitial';
 import { InlineIncomeSection } from './InlineIncomeSection';
 import { WelcomeCard } from '../../dashboard/components/WelcomeCard';
 import { BudgetSection } from '../../dashboard/components/BudgetSection';
@@ -46,6 +48,8 @@ interface BudgetTabProps {
   onHasOtherMembersChange?: (hasOthers: boolean) => void;
   /** When navigating from Dashboard "Plan Now", this passes the month to plan */
   initialMonth?: string | null;
+  /** Whether navigation came from Dashboard "Plan Now" (triggers interstitial) */
+  fromDashboard?: boolean;
   onInitialMonthConsumed?: () => void;
   /** When true, this tab is the currently visible tab */
   isActive?: boolean;
@@ -72,14 +76,21 @@ interface Household {
   name: string;
 }
 
-type BudgetStep = 'edit' | 'view' | 'empty';
+type BudgetStep = 'edit' | 'view' | 'empty' | 'interstitial';
 
-export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, onInitialMonthConsumed, isActive, dataVersion, onDataMutated }: BudgetTabProps) {
+export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigger, fundTransferTrigger, onFundTransferConsumed, onHasOtherMembersChange, initialMonth, fromDashboard, onInitialMonthConsumed, isActive, dataVersion, onDataMutated }: BudgetTabProps) {
   const { refetch: refetchBudgetStatus } = useBudget();
   const { household: hhData, householdUsers: hhUsers, userMap, currentUserId: ctxUserId } = useHousehold();
   const [isLoading, setIsLoading] = useState(true);
   const [isFirstFreeze, setIsFirstFreeze] = useState(false);
   const [showPostFreezePrompt, setShowPostFreezePrompt] = useState(false);
+  // Track whether current flow came from Dashboard interstitial (for pre-fill)
+  // Use both state and ref — ref is always current (no stale closure issues in loadForMonth)
+  const [showInterstitial, setShowInterstitial] = useState(false);
+  const showInterstitialRef = useRef(false);
+  // Over-allocation soft warning modal
+  const [showOverAllocWarning, setShowOverAllocWarning] = useState(false);
+  const [overAllocAmount, setOverAllocAmount] = useState(0);
 
   // Derive from HouseholdProvider context
   const household: Household | null = hhData ? { id: hhData.id, name: hhData.name } : null;
@@ -131,7 +142,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Quick add transaction & fund transfer
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
-  const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[]>([]);
+  const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense'; categoryId: string }[]>([]);
 
   // Member filter (view mode only) — empty array means "All"
   const [filterMemberIds, setFilterMemberIds] = useState<string[]>([]);
@@ -203,7 +214,20 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   // Consume initialMonth from Dashboard "Plan Now" navigation
   useEffect(() => {
     if (initialMonth) {
+      const sameMonth = initialMonth === selectedMonth;
       setSelectedMonth(initialMonth);
+      if (fromDashboard) {
+        setShowInterstitial(true);
+        showInterstitialRef.current = true;
+        // Directly set interstitial step — loadForMonth won't fire if month didn't change
+        setBudgetStep('interstitial');
+        // Refresh income data so interstitial has correct Variant A/B
+        if (household) {
+          getActualIncomeForMonth(household.id, initialMonth, userMap).then(result => {
+            setActualIncome({ totalIncome: result.totalIncome, incomeItems: result.incomeItems });
+          });
+        }
+      }
       onInitialMonthConsumed?.();
     }
   }, [initialMonth]);
@@ -313,6 +337,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
       icon: sc.icon || '📦',
       categoryName: sc.categories?.name || 'Other',
       categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+      categoryId: sc.category_id,
     }));
     setAllSubCategories(subCatList);
   }
@@ -344,10 +369,13 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
 
       const plan = planResult.plan;
 
-      if (plan?.status === 'frozen') {
-        // Frozen plan → view mode
+      if (plan?.status === 'frozen' && !showInterstitialRef.current) {
+        // Frozen plan → view mode (unless coming from Dashboard "Plan Now")
         setBudgetStep('view');
         await loadViewData(hh);
+      } else if (showInterstitialRef.current) {
+        // From Dashboard "Plan Now" → show interstitial
+        setBudgetStep('interstitial');
       } else {
         // No plan or draft plan → show empty state (user chooses clone/fresh via "Plan your budget")
         setBudgetStep('empty');
@@ -405,6 +433,7 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         icon: sc.icon || '📦',
         categoryName: sc.categories?.name || 'Other',
         categoryType: (sc.categories?.type === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+        categoryId: sc.category_id,
       }));
       setAllSubCategories(subCatList);
 
@@ -606,30 +635,60 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
   };
 
   const handleFreshBudget = async () => {
-    onDataMutated?.(); // Invalidate other tabs' caches (deletes income transactions)
+    onDataMutated?.(); // Invalidate other tabs' caches
     setBudgetStep('edit');
     await loadEditData();
     // Zero out all planned amounts — user fills in everything from scratch
+    // Income transactions are preserved — they are real financial records, not budget metadata
     setExpenseItems(prev => prev.map(item => ({
       ...item,
       amount: 0,
       monthlyAmount: 0,
     })));
+  };
 
-    // Delete any existing income transactions for this month (e.g. from a previous clone)
+  // Interstitial → edit mode with expense pre-fill from transaction history
+  const handleInterstitialStartPlanning = async () => {
+    onDataMutated?.();
+    setShowInterstitial(false);
+    showInterstitialRef.current = false;
+    setBudgetStep('edit');
+    await loadEditData();
+
+    // Pre-fill: fetch expense actuals for this month, round up to nearest ₹1,000
     if (household) {
-      const [yr, mo] = selectedMonth.split('-').map(Number);
-      const nextMonthFirst = `${mo === 12 ? yr + 1 : yr}-${String(mo === 12 ? 1 : mo + 1).padStart(2, '0')}-01`;
-      await supabase
-        .from('transactions')
-        .delete()
-        .eq('household_id', household.id)
-        .eq('transaction_type', 'income')
-        .gte('transaction_date', `${selectedMonth}-01`)
-        .lt('transaction_date', nextMonthFirst);
+      const actualsResult = await getActualsBySubCategory(household.id, selectedMonth);
+      if (actualsResult.success && actualsResult.actuals) {
+        const actuals = actualsResult.actuals;
+        setExpenseItems(prev => prev.map(item => {
+          const actual = actuals.get(item.id) || 0;
+          if (actual > 0) {
+            // Round up to nearest ₹1,000
+            const rounded = Math.ceil(actual / 1000) * 1000;
+            const monthlyAmount = calculateMonthlyAmount(rounded, item.period);
+            return { ...item, amount: rounded, monthlyAmount };
+          }
+          return item;
+        }));
+      }
     }
-    // Zero out income display
-    setActualIncome({ totalIncome: 0, incomeItems: [] });
+  };
+
+  const handleInterstitialBack = () => {
+    setShowInterstitial(false);
+    showInterstitialRef.current = false;
+    setBudgetStep('empty');
+  };
+
+  // Refresh income data after recording from interstitial Variant B
+  const handleInterstitialIncomeRecorded = async () => {
+    if (!household) return;
+    const result = await getActualIncomeForMonth(household.id, selectedMonth, userMap);
+    setActualIncome({
+      totalIncome: result.totalIncome,
+      incomeItems: result.incomeItems,
+    });
+    onDataMutated?.();
   };
 
   const handleCancelDraft = () => {
@@ -818,59 +877,8 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     }
   };
 
-  const handleFreezePlan = async () => {
-    // Flush any pending saves before freezing
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-
-      // Save all expense allocations immediately
-      if (household) {
-        const planMonth = `${selectedMonth}-01`;
-        const allAllocations = expenseItems.map(item => ({
-          subCategoryId: item.id,
-          amount: item.amount,
-          period: item.period,
-        }));
-
-        await saveAllocations(household.id, planMonth, allAllocations);
-
-        const totalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-        await upsertMonthlyPlan(household.id, planMonth, actualIncome.totalIncome, totalExpenses);
-      }
-    }
-
-    // Refresh actual income before freeze validation
-    if (household) {
-      const freshIncome = await getActualIncomeForMonth(household.id, selectedMonth, userMap);
-      setActualIncome({
-        totalIncome: freshIncome.totalIncome,
-        incomeItems: freshIncome.incomeItems,
-      });
-
-      const currentTotalIncome = freshIncome.totalIncome;
-      const currentTotalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-
-      // Update the monthly plan with fresh income BEFORE freeze validation
-      const planMonth = `${selectedMonth}-01`;
-      await upsertMonthlyPlan(household.id, planMonth, currentTotalIncome, currentTotalExpenses);
-
-      // Check for over-allocation against ACTUAL income
-      if (currentTotalExpenses > currentTotalIncome) {
-        alert(`Cannot freeze plan: Your expenses (₹${formatNumber(currentTotalExpenses)}) exceed your actual income (₹${formatNumber(currentTotalIncome)}). Please reduce expenses or record more income before freezing.`);
-        return;
-      }
-    }
-
-    // Check for incomplete expense items
-    const incompleteExpenses = expenseItems.filter(item => item.amount === 0).map(item => item.id);
-
-    if (incompleteExpenses.length > 0) {
-      setIncompleteItemIds(new Set(incompleteExpenses));
-      setShowIncompleteWarning(true);
-      return;
-    }
-
+  // Shared freeze execution — called after all validations pass
+  const executeFreezeplan = async () => {
     if (!planId || !household) {
       console.error('[handleFreeze] Missing planId or household:', { planId, household });
       return;
@@ -909,31 +917,87 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
     const result = await freezePlan(planId);
 
     if (result.success) {
-      onDataMutated?.(); // Invalidate other tabs' caches
+      onDataMutated?.();
       setPlanStatus('frozen');
       setShowIncompleteWarning(false);
       setIncompleteItemIds(new Set());
       setBudgetStep('view');
       loadViewData();
-      refreshAllSubCategories(); // Ensure QuickAdd has fresh categories after freeze
+      refreshAllSubCategories();
 
-      // Update available months if needed
       if (!availableMonths.includes(selectedMonth)) {
         setAvailableMonths([selectedMonth, ...availableMonths]);
       }
 
-      // Show notification prompt after freeze
       setShowPostFreezePrompt(true);
 
-      // Show modal for first budget freeze
       if (isFirstBudget) {
         setIsFirstFreeze(true);
       } else {
-        (async () => {
-          await refetchBudgetStatus();
-        })();
+        (async () => { await refetchBudgetStatus(); })();
       }
     }
+  };
+
+  const handleFreezePlan = async () => {
+    // Flush any pending saves before freezing
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+
+      if (household) {
+        const planMonth = `${selectedMonth}-01`;
+        const allAllocations = expenseItems.map(item => ({
+          subCategoryId: item.id,
+          amount: item.amount,
+          period: item.period,
+        }));
+
+        await saveAllocations(household.id, planMonth, allAllocations);
+
+        const totalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+        await upsertMonthlyPlan(household.id, planMonth, actualIncome.totalIncome, totalExpenses);
+      }
+    }
+
+    // 1. Check for incomplete expense items FIRST
+    const incompleteExpenses = expenseItems.filter(item => item.amount === 0).map(item => item.id);
+    if (incompleteExpenses.length > 0) {
+      setIncompleteItemIds(new Set(incompleteExpenses));
+      setShowIncompleteWarning(true);
+      return;
+    }
+
+    // 2. Refresh actual income and check over-allocation
+    if (household) {
+      const freshIncome = await getActualIncomeForMonth(household.id, selectedMonth, userMap);
+      setActualIncome({
+        totalIncome: freshIncome.totalIncome,
+        incomeItems: freshIncome.incomeItems,
+      });
+
+      const currentTotalIncome = freshIncome.totalIncome;
+      const currentTotalExpenses = expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+
+      const planMonth = `${selectedMonth}-01`;
+      await upsertMonthlyPlan(household.id, planMonth, currentTotalIncome, currentTotalExpenses);
+
+      // Over-allocation — show soft warning, user can "Freeze anyway"
+      if (currentTotalExpenses > currentTotalIncome) {
+        setOverAllocAmount(currentTotalExpenses - currentTotalIncome);
+        setShowOverAllocWarning(true);
+        return;
+      }
+    }
+
+    // 3. All checks passed — freeze
+    await executeFreezeplan();
+  };
+
+  // Called when user chooses "Freeze anyway" from over-allocation warning
+  const handleForceFreeze = async () => {
+    setShowOverAllocWarning(false);
+    await executeFreezeplan();
   };
 
   const clearIncompleteHighlight = (id: string) => {
@@ -1172,6 +1236,20 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
             />
           )}
 
+          {/* INTERSTITIAL — from Dashboard "Plan Now" (Variant A: income exists, Variant B: enter income) */}
+          {budgetStep === 'interstitial' && household && (
+            <BudgetInterstitial
+              month={selectedMonth}
+              householdId={household.id}
+              currentUserId={currentUserId}
+              totalIncome={actualIncome.totalIncome}
+              incomeSubCategories={incomeSubCategories}
+              onStartPlanning={handleInterstitialStartPlanning}
+              onBack={handleInterstitialBack}
+              onIncomeRecorded={handleInterstitialIncomeRecorded}
+            />
+          )}
+
           {/* Welcome Card (only in edit mode, first time) */}
           {showWelcome && budgetStep === 'edit' && (
             <WelcomeCard
@@ -1263,43 +1341,6 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
                 isEditable={true}
               />
 
-              {/* Over-allocation warning */}
-              {remaining < 0 && (
-                <div className="glass-card border-l-4 border-l-[var(--color-danger)] bg-red-50/50">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-[var(--color-danger)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-red-800">Expenses exceed income</p>
-                      <p className="text-sm text-red-600 mt-1">
-                        You've allocated ₹{formatNumber(Math.abs(remaining))} more than your actual income. Reduce expenses or record more income to freeze this plan.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Incomplete items warning */}
-              {showIncompleteWarning && (
-                <div className="glass-card border-l-4 border-l-[var(--color-warning)] bg-orange-50/50">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-orange-800">Add amounts to all items</p>
-                      <p className="text-sm text-orange-600 mt-1">
-                        {incompleteItemIds.size} item{incompleteItemIds.size > 1 ? 's' : ''} need amounts before you can freeze the plan.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -1412,7 +1453,60 @@ export function BudgetTab({ onOpenMenu, sidebarCollapsed = false, quickAddTrigge
         </div>
       )}
 
-      {/* Success Message for First Freeze */}
+      {/* Incomplete items modal — shown on freeze click */}
+      {showIncompleteWarning && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card glass-card-elevated p-6 max-w-sm text-center space-y-4 animate-scale-in">
+            <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Incomplete items</h3>
+            <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
+              <span className="font-semibold text-orange-600">{incompleteItemIds.size} item{incompleteItemIds.size > 1 ? 's' : ''}</span> need amounts before you can freeze the plan.
+            </p>
+            <button
+              onClick={() => setShowIncompleteWarning(false)}
+              className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-primary-gradient rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.25)] active:scale-[0.98] transition-all"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Over-allocation soft warning modal */}
+      {showOverAllocWarning && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card glass-card-elevated p-6 max-w-sm text-center space-y-4 animate-scale-in">
+            <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Budget exceeds income</h3>
+            <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
+              Your expenses are <span className="font-semibold text-orange-600">₹{formatNumber(overAllocAmount)}</span> more than your income. Freeze anyway?
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setShowOverAllocWarning(false)}
+                className="flex-1 py-2.5 px-4 text-sm font-medium text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-xl hover:bg-gray-50 transition-all"
+              >
+                Adjust budget
+              </button>
+              <button
+                onClick={handleForceFreeze}
+                className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-primary-gradient rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.25)] active:scale-[0.98] transition-all"
+              >
+                Freeze anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isFirstFreeze && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="glass-card glass-card-elevated p-8 max-w-md text-center space-y-4 animate-scale-in">

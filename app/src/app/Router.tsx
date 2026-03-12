@@ -91,6 +91,21 @@ function RequireOnboarding({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Auth-only guard - requires auth, no onboarding check (for transitional screens)
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 // Full access guard - requires auth and completed onboarding
 function RequireOnboarded({ children }: { children: ReactNode }) {
   const { isAuthenticated, isOnboarded, isLoading } = useAuth();
@@ -182,9 +197,9 @@ export function AppRouter() {
         <Route
           path="/onboarding/explainer"
           element={
-            <RequireOnboarded>
+            <RequireAuth>
               <ExplainerScreen />
-            </RequireOnboarded>
+            </RequireAuth>
           }
         />
 

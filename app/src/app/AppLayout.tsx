@@ -41,10 +41,14 @@ export function AppLayout() {
 
   // Budget tab: initial month when navigating from Dashboard → Budget
   const [budgetInitialMonth, setBudgetInitialMonth] = useState<string | null>(null);
+  // Whether navigation to Budget came from Dashboard "Plan Now" (triggers interstitial)
+  const [budgetFromDashboard, setBudgetFromDashboard] = useState(false);
   // Drill-down: initial sub-category filter when navigating from Dashboard → Transactions
   const [drillDownSubCategoryId, setDrillDownSubCategoryId] = useState<string | null>(null);
   // Drill-down: show only uncategorized transactions
   const [drillDownUncategorized, setDrillDownUncategorized] = useState(false);
+  // Drill-down: month context from Dashboard (YYYY-MM)
+  const [drillDownMonth, setDrillDownMonth] = useState<string | null>(null);
 
   // Dashboard drill-down: navigate to Transactions tab with a pre-applied sub-category filter
   const handleCategoryDrillDown = useCallback((subCategoryId: string) => {
@@ -53,8 +57,9 @@ export function AppLayout() {
   }, []);
 
   // Dashboard drill-down: navigate to Transactions tab filtered to uncategorized only
-  const handleUncategorizedDrillDown = useCallback(() => {
+  const handleUncategorizedDrillDown = useCallback((month: string) => {
     setDrillDownUncategorized(true);
+    setDrillDownMonth(month);
     setActiveTab('transactions');
   }, []);
 
@@ -62,6 +67,7 @@ export function AppLayout() {
   const handleDrillDownConsumed = useCallback(() => {
     setDrillDownSubCategoryId(null);
     setDrillDownUncategorized(false);
+    setDrillDownMonth(null);
   }, []);
 
   const handleAddTransaction = useCallback(() => {
@@ -110,6 +116,7 @@ export function AppLayout() {
             onUncategorizedDrillDown={handleUncategorizedDrillDown}
             onNavigateToBudget={(month) => {
               if (month) setBudgetInitialMonth(month);
+              setBudgetFromDashboard(true);
               setActiveTab('budget');
             }}
             isActive={activeTab === 'dashboard'}
@@ -126,7 +133,8 @@ export function AppLayout() {
             onFundTransferConsumed={handleFundTransferConsumed}
             onHasOtherMembersChange={setHasOtherMembers}
             initialMonth={budgetInitialMonth}
-            onInitialMonthConsumed={() => setBudgetInitialMonth(null)}
+            fromDashboard={budgetFromDashboard}
+            onInitialMonthConsumed={() => { setBudgetInitialMonth(null); setBudgetFromDashboard(false); }}
             isActive={activeTab === 'budget'}
             dataVersion={dataVersion}
             onDataMutated={incrementDataVersion}
@@ -140,6 +148,7 @@ export function AppLayout() {
             onHasOtherMembersChange={setHasOtherMembers}
             drillDownSubCategoryId={drillDownSubCategoryId}
             drillDownUncategorized={drillDownUncategorized}
+            drillDownMonth={drillDownMonth}
             onDrillDownConsumed={handleDrillDownConsumed}
             isActive={activeTab === 'transactions'}
             dataVersion={dataVersion}

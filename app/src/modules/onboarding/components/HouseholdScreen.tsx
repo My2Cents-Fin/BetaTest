@@ -65,11 +65,12 @@ export function HouseholdScreen() {
         return;
       }
 
-      // Mark onboarding complete
-      await markOnboardingComplete();
-
-      // Show explainer screen with plan/skip options
+      // Navigate FIRST — before markOnboardingComplete triggers onAuthStateChange
+      // which would cause RequireOnboarding guard to redirect to /dashboard
       navigate('/onboarding/explainer', { replace: true });
+
+      // Mark onboarding complete in background (fires auth state change)
+      markOnboardingComplete().catch(console.error);
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -97,11 +98,11 @@ export function HouseholdScreen() {
         return;
       }
 
-      // Mark onboarding complete
-      await markOnboardingComplete();
-
-      // Show explainer screen with plan/skip options
+      // Navigate FIRST — before markOnboardingComplete triggers onAuthStateChange
       navigate('/onboarding/explainer', { replace: true });
+
+      // Mark onboarding complete in background
+      markOnboardingComplete().catch(console.error);
     } catch {
       setError('Something went wrong. Please try again.');
       setIsLoading(false);

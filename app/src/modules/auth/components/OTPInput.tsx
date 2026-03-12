@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import type { KeyboardEvent, ClipboardEvent, ChangeEvent } from 'react';
 
 interface OTPInputProps {
@@ -35,16 +35,20 @@ export function OTPInput({
     inputRefs.current[indexToFocus]?.focus();
   }, []);
 
-  // Check for completion
+  // Stable ref for onComplete to avoid re-triggering the effect on every render
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  // Check for completion — only re-run when value or length changes, NOT when callback ref changes
   useEffect(() => {
-    if (value.length === length && /^\d+$/.test(value) && onComplete) {
+    if (value.length === length && /^\d+$/.test(value) && onCompleteRef.current) {
       // Brief delay for UX
       const timer = setTimeout(() => {
-        onComplete(value);
+        onCompleteRef.current?.(value);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [value, length, onComplete]);
+  }, [value, length]);
 
   const handleChange = (index: number, e: ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value.replace(/\D/g, '');

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { createTransaction, updateTransaction, getTodayDate } from '../../budget/services/transactions';
+import { createSubCategory } from '../../budget/services/budget';
 import type { TransactionType, TransactionWithDetails } from '../../budget/types';
 
 interface SubCategoryOption {
@@ -9,6 +10,7 @@ interface SubCategoryOption {
   icon: string | null;
   categoryName: string;
   categoryType: 'income' | 'expense';
+  categoryId: string;
 }
 
 interface QuickAddTransactionProps {
@@ -66,6 +68,8 @@ export function QuickAddTransaction({
   const [isCreditCard, setIsCreditCard] = useState<boolean>(() =>
     isEditMode ? transaction.payment_method === 'card' : false
   );
+  const [isCreating, setIsCreating] = useState(false);
+  const [localSubCategories, setLocalSubCategories] = useState<SubCategoryOption[]>([]);
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const categoryInputRef = useRef<HTMLInputElement>(null);
@@ -86,8 +90,14 @@ export function QuickAddTransaction({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const expenseCategories = subCategories.filter(c => c.categoryType === 'expense');
-  const incomeCategories = subCategories.filter(c => c.categoryType === 'income');
+  // Merge props + locally created subcategories
+  const mergedSubCategories = useMemo(
+    () => [...subCategories, ...localSubCategories],
+    [subCategories, localSubCategories]
+  );
+
+  const expenseCategories = mergedSubCategories.filter(c => c.categoryType === 'expense');
+  const incomeCategories = mergedSubCategories.filter(c => c.categoryType === 'income');
 
   // Extract search text (remove emoji if present at start)
   const getSearchText = (text: string) => {
@@ -117,6 +127,23 @@ export function QuickAddTransaction({
     return [...filteredExpenseCategories, ...filteredIncomeCategories];
   }, [filteredExpenseCategories, filteredIncomeCategories]);
 
+  // Determine if the "+ Create" option should show
+  const createDisplayName = useMemo(() => {
+    return getSearchText(categorySearch).trim();
+  }, [categorySearch]);
+
+  const showCreateOption = useMemo(() => {
+    if (!createDisplayName) return false;
+    // Don't show if there's an exact match (case-insensitive)
+    const exactMatch = mergedSubCategories.some(
+      c => c.name.toLowerCase() === createDisplayName.toLowerCase()
+    );
+    if (exactMatch) return false;
+    // Need at least one Variable subcategory to derive the category UUID
+    const variableCat = mergedSubCategories.find(c => c.categoryName === 'Variable');
+    return !!variableCat;
+  }, [createDisplayName, mergedSubCategories]);
+
   const handleCategorySelect = (cat: SubCategoryOption) => {
     setSelectedSubCategoryId(cat.id);
     setCategorySearch(`${cat.icon || (cat.categoryType === 'income' ? '💰' : '📦')} ${cat.name}`);
@@ -124,6 +151,42 @@ export function QuickAddTransaction({
     setHighlightedIndex(-1);
     // Reset CC toggle when selecting income category
     if (cat.categoryType === 'income') setIsCreditCard(false);
+  };
+
+  const handleCreateSubCategory = async () => {
+    const name = getSearchText(categorySearch).trim();
+    if (!name || isCreating) return;
+
+    // Find the Variable category UUID from existing subcategories
+    const variableCat = mergedSubCategories.find(c => c.categoryName === 'Variable');
+    if (!variableCat) return;
+
+    setIsCreating(true);
+    setError(null);
+
+    const result = await createSubCategory(
+      householdId,
+      variableCat.categoryId,
+      name,
+      '📦'
+    );
+
+    setIsCreating(false);
+
+    if (result.success && result.subCategory) {
+      const newOption: SubCategoryOption = {
+        id: result.subCategory.id,
+        name: result.subCategory.name,
+        icon: result.subCategory.icon || '📦',
+        categoryName: 'Variable',
+        categoryType: 'expense',
+        categoryId: variableCat.categoryId,
+      };
+      setLocalSubCategories(prev => [...prev, newOption]);
+      handleCategorySelect(newOption);
+    } else {
+      setError(result.error || 'Failed to create category');
+    }
   };
 
   const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -139,9 +202,10 @@ export function QuickAddTransaction({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev < allFilteredCategories.length - 1 ? prev + 1 : prev
-        );
+        {
+          const maxIndex = allFilteredCategories.length + (showCreateOption ? 0 : -1);
+          setHighlightedIndex(prev => prev < maxIndex ? prev + 1 : prev);
+        }
         break;
       case 'ArrowUp':
         e.preventDefault();
@@ -151,6 +215,8 @@ export function QuickAddTransaction({
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < allFilteredCategories.length) {
           handleCategorySelect(allFilteredCategories[highlightedIndex]);
+        } else if (showCreateOption && highlightedIndex === allFilteredCategories.length) {
+          handleCreateSubCategory();
         }
         break;
       case 'Escape':
@@ -201,7 +267,7 @@ export function QuickAddTransaction({
       return;
     }
 
-    const selectedCategory = selectedSubCategoryId ? subCategories.find(c => c.id === selectedSubCategoryId) : null;
+    const selectedCategory = selectedSubCategoryId ? mergedSubCategories.find(c => c.id === selectedSubCategoryId) : null;
     const transactionType: TransactionType = selectedCategory?.categoryType === 'income' ? 'income' : 'expense';
 
     setIsSubmitting(true);
@@ -243,7 +309,7 @@ export function QuickAddTransaction({
     }
   };
 
-  const selectedCategory = subCategories.find(c => c.id === selectedSubCategoryId);
+  const selectedCategory = mergedSubCategories.find(c => c.id === selectedSubCategoryId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
@@ -346,7 +412,7 @@ export function QuickAddTransaction({
               }`}
             />
             {/* Dropdown */}
-            {showCategoryDropdown && (filteredExpenseCategories.length > 0 || filteredIncomeCategories.length > 0) && (
+            {showCategoryDropdown && (filteredExpenseCategories.length > 0 || filteredIncomeCategories.length > 0 || showCreateOption) && (
               <div className="absolute z-10 w-full mt-1 bg-white/90 backdrop-blur-xl border border-[rgba(124,58,237,0.1)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] max-h-40 overflow-y-auto">
                 {filteredExpenseCategories.length > 0 && (
                   <>
@@ -387,6 +453,26 @@ export function QuickAddTransaction({
                         </button>
                       );
                     })}
+                  </>
+                )}
+                {showCreateOption && (
+                  <>
+                    <div className="border-t border-[rgba(124,58,237,0.08)]" />
+                    <button
+                      onClick={handleCreateSubCategory}
+                      disabled={isCreating}
+                      className={`w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 ${
+                        highlightedIndex === allFilteredCategories.length
+                          ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
+                          : 'text-[var(--color-primary)] hover:bg-[var(--color-primary-bg)]/50'
+                      }`}
+                    >
+                      <span className="text-base">+</span>
+                      <span className="font-medium">
+                        {isCreating ? 'Creating...' : `Create "${createDisplayName}"`}
+                      </span>
+                      <span className="text-xs text-gray-400 ml-auto">in Variable</span>
+                    </button>
                   </>
                 )}
               </div>

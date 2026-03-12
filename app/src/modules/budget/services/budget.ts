@@ -1152,21 +1152,17 @@ export async function cloneBudgetAllocations(
       return { success: false, error: 'Failed to clone allocations' };
     }
 
-    // Clone income transactions into target month
-    // First delete any existing income transactions for this target month to prevent duplicates
+    // Clone income into target month only if target has no existing income transactions
+    // Real income transactions (manually added in tracking mode) take priority over cloned ones
     let totalIncome = 0;
-    if (incomeResult.success && incomeResult.incomeItems.length > 0) {
-      // Calculate first day of NEXT month as upper bound (avoids invalid dates like Apr-31)
-      const [yr, mo] = targetMonth.split('-').map(Number);
-      const nextMonthFirst = `${mo === 12 ? yr + 1 : yr}-${String(mo === 12 ? 1 : mo + 1).padStart(2, '0')}-01`;
-      await supabase
-        .from('transactions')
-        .delete()
-        .eq('household_id', householdId)
-        .eq('transaction_type', 'income')
-        .gte('transaction_date', targetPlanMonth)
-        .lt('transaction_date', nextMonthFirst);
+    const targetIncomeResult = await getActualIncomeForMonth(householdId, targetMonth);
+    const targetHasIncome = targetIncomeResult.success && targetIncomeResult.totalIncome > 0;
 
+    if (targetHasIncome) {
+      // Target month already has real income — keep it
+      totalIncome = targetIncomeResult.totalIncome;
+    } else if (incomeResult.success && incomeResult.incomeItems.length > 0) {
+      // No income in target month — clone from source
       const incomeInserts = incomeResult.incomeItems.map(item => ({
         household_id: householdId,
         sub_category_id: item.subCategoryId,
