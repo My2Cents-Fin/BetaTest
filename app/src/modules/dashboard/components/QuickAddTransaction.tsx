@@ -302,6 +302,21 @@ export function QuickAddTransaction({
     setIsSubmitting(false);
 
     if (result.success) {
+      // Fire cross-transaction alert for new transactions (not edits)
+      if (!isEditMode && currentUserId) {
+        fetch('/api/notifications/cross-txn-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: paidBy || currentUserId,
+            householdId,
+            amount: numAmount,
+            subCategoryName: selectedCategory?.name || null,
+            categoryName: selectedCategory?.categoryName || null,
+            transactionType,
+          }),
+        }).catch(() => {}); // Fire-and-forget — don't block UX
+      }
       onSuccess();
       onClose();
     } else {

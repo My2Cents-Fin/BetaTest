@@ -5,5 +5,5 @@ export interface NotificationMessage {
   url?: string;
 }
 
-export type NotificationType = 'budget_reminder' | 'expense_reminder' | 'release_update' | 'welcome';
+export type NotificationType = 'budget_reminder' | 'expense_reminder' | 'cross_txn_alert' | 'release_update' | 'welcome';
 export type ScheduleSlot = 'morning' | 'afternoon' | 'night';
