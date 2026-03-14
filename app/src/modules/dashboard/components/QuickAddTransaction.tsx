@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, updateTransaction, getTodayDate } from '../../budget/services/transactions';
+import { createTransaction, updateTransaction, getTodayDate, fireCrossTxnAlert } from '../../budget/services/transactions';
 import { createSubCategory } from '../../budget/services/budget';
 import type { TransactionType, TransactionWithDetails } from '../../budget/types';
 
@@ -302,20 +302,18 @@ export function QuickAddTransaction({
     setIsSubmitting(false);
 
     if (result.success) {
-      // Fire cross-transaction alert for new transactions (not edits)
-      if (!isEditMode && currentUserId) {
-        fetch('/api/notifications/cross-txn-alert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: paidBy || currentUserId,
-            householdId,
-            amount: numAmount,
-            subCategoryName: selectedCategory?.name || null,
-            categoryName: selectedCategory?.categoryName || null,
-            transactionType,
-          }),
-        }).catch(() => {}); // Fire-and-forget — don't block UX
+      // Fire cross-transaction alert to other household members
+      if (currentUserId) {
+        fireCrossTxnAlert({
+          action: isEditMode ? 'update' : 'create',
+          userId: paidBy || currentUserId,
+          householdId,
+          amount: numAmount,
+          oldAmount: isEditMode && transaction ? transaction.amount : undefined,
+          subCategoryName: selectedCategory?.name || null,
+          categoryName: selectedCategory?.categoryName || null,
+          transactionType,
+        });
       }
       onSuccess();
       onClose();

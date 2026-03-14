@@ -3,21 +3,39 @@ import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { sendPushToUser } from '../lib/delivery.js';
 
 /**
- * Cross-transaction alert: when a household member logs a transaction,
- * notify all other household members with push subscriptions.
+ * Cross-transaction alert: when a household member creates, edits, or deletes
+ * a transaction, notify all other household members with push subscriptions.
  *
  * POST /api/notifications/cross-txn-alert
- * Body: { userId, householdId, amount, subCategoryName, categoryName, transactionType }
+ * Body: {
+ *   action: 'create' | 'update' | 'delete',
+ *   userId,
+ *   householdId,
+ *   amount,
+ *   subCategoryName?,
+ *   categoryName?,
+ *   transactionType?,   // 'expense' | 'income' | 'transfer'
+ *   oldAmount?,         // for updates — show what changed
+ * }
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, householdId, amount, subCategoryName, categoryName, transactionType } = req.body || {};
+  const {
+    action = 'create',
+    userId,
+    householdId,
+    amount,
+    subCategoryName,
+    categoryName,
+    transactionType,
+    oldAmount,
+  } = req.body || {};
 
-  if (!userId || !householdId || !amount) {
-    return res.status(400).json({ error: 'userId, householdId, and amount are required' });
+  if (!userId || !householdId) {
+    return res.status(400).json({ error: 'userId and householdId are required' });
   }
 
   try {
@@ -43,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const otherUserIds = members.map((m) => m.user_id);
 
-    // 3. Check which of those members have push subscriptions
+    // 3. Check which members have push subscriptions
     const { data: subscriptions } = await supabaseAdmin
       .from('push_subscriptions')
       .select('user_id')
@@ -71,13 +89,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: 'No eligible members', sent: 0 });
     }
 
-    // 5. Build notification content
-    const formattedAmount = `₹${Number(amount).toLocaleString('en-IN')}`;
-    const category = subCategoryName || categoryName || 'uncategorized';
-    const typeLabel = transactionType === 'income' ? 'income' : 'expense';
+    // 5. Build notification content based on action
+    const formattedAmount = amount ? `₹${Number(amount).toLocaleString('en-IN')}` : '';
+    const category = subCategoryName || categoryName || '';
+    const typeLabel = transactionType === 'income' ? 'income' : transactionType === 'transfer' ? 'transfer' : 'expense';
 
-    const title = `${loggerName} logged an ${typeLabel}`;
-    const body = `${loggerName} logged ${formattedAmount} under ${category}`;
+    let title: string;
+    let body: string;
+
+    switch (action) {
+      case 'update': {
+        title = `${loggerName} updated a transaction`;
+        const oldFormatted = oldAmount ? `₹${Number(oldAmount).toLocaleString('en-IN')}` : '';
+        if (oldFormatted && formattedAmount && oldAmount !== amount) {
+          body = category
+            ? `${loggerName} updated ${oldFormatted} → ${formattedAmount} under ${category}`
+            : `${loggerName} updated ${oldFormatted} → ${formattedAmount}`;
+        } else {
+          body = category
+            ? `${loggerName} updated a transaction under ${category}`
+            : `${loggerName} updated a transaction of ${formattedAmount}`;
+        }
+        break;
+      }
+      case 'delete': {
+        title = `${loggerName} deleted a transaction`;
+        body = category
+          ? `${loggerName} deleted ${formattedAmount} under ${category}`
+          : `${loggerName} deleted a transaction of ${formattedAmount}`;
+        break;
+      }
+      default: {
+        // create
+        if (transactionType === 'transfer') {
+          title = `${loggerName} logged a fund transfer`;
+          body = `${loggerName} transferred ${formattedAmount}`;
+        } else {
+          title = `${loggerName} logged an ${typeLabel}`;
+          body = category
+            ? `${loggerName} logged ${formattedAmount} under ${category}`
+            : `${loggerName} logged ${formattedAmount}`;
+        }
+        break;
+      }
+    }
 
     const payload = {
       title,
@@ -100,14 +155,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user_id: targetUserId,
         household_id: householdId,
         notification_type: 'cross_txn_alert',
-        notification_subtype: `${transactionType}:${category}`,
+        notification_subtype: `${action}:${typeLabel}`,
         title,
         body,
         status: result.sent > 0 ? 'sent' : 'failed',
         message_data: {
+          action,
           loggedBy: userId,
           loggerName,
-          amount: Number(amount),
+          amount: amount ? Number(amount) : null,
+          oldAmount: oldAmount ? Number(oldAmount) : null,
           subCategoryName,
           categoryName,
           transactionType,

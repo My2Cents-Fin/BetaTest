@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, getTodayDate } from '../../budget/services/transactions';
+import { createTransaction, getTodayDate, fireCrossTxnAlert } from '../../budget/services/transactions';
 
 interface HouseholdMember {
   id: string;
@@ -113,6 +113,14 @@ export function FundTransferModal({ householdId, householdUsers, currentUserId, 
     setIsSubmitting(false);
 
     if (result.success) {
+      // Alert other household members about the fund transfer
+      fireCrossTxnAlert({
+        action: 'create',
+        userId: paidBy || currentUserId,
+        householdId,
+        amount: numAmount,
+        transactionType: 'transfer',
+      });
       onSuccess();
       onClose();
     } else {

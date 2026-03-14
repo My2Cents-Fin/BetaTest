@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { getHouseholdSubCategories } from '../../budget/services/budget';
-import { getTransactions, deleteTransaction } from '../../budget/services/transactions';
+import { getTransactions, deleteTransaction, fireCrossTxnAlert } from '../../budget/services/transactions';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
@@ -530,6 +530,18 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
 
     const result = await deleteTransaction(txn.id);
     if (result.success) {
+      // Alert other household members about the deletion
+      if (household && currentUserId) {
+        fireCrossTxnAlert({
+          action: 'delete',
+          userId: currentUserId,
+          householdId: household.id,
+          amount: txn.amount,
+          subCategoryName: txn.sub_category_name,
+          categoryName: txn.category_name,
+          transactionType: txn.transaction_type,
+        });
+      }
       onDataMutated?.(); // Invalidate other tabs' caches
       hasLoadedRef.current = false;
       loadTransactions();

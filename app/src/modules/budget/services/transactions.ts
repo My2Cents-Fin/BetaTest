@@ -615,3 +615,28 @@ export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
   netbanking: '🏦',
   other: '📝',
 };
+
+// ============================================
+// Cross-Transaction Alerts
+// ============================================
+
+/**
+ * Fire-and-forget alert to other household members when a transaction is
+ * created, updated, or deleted. Runs async — never blocks the UI.
+ */
+export function fireCrossTxnAlert(params: {
+  action: 'create' | 'update' | 'delete';
+  userId: string;
+  householdId: string;
+  amount?: number;
+  oldAmount?: number;
+  subCategoryName?: string | null;
+  categoryName?: string | null;
+  transactionType?: string;
+}) {
+  fetch('/api/notifications/cross-txn-alert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  }).catch(() => {}); // Fire-and-forget
+}
