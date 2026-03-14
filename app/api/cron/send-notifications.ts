@@ -15,10 +15,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Determine schedule slot based on current IST time
-  // Cron runs at: 10am (morning), 2pm (afternoon), 7pm (evening), 9pm (night) IST
+  // Cron runs at: 10am (morning), 3:30pm (afternoon), 10pm (night) IST
   const now = new Date();
   const istHour = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getHours();
-  const slot: ScheduleSlot = istHour < 12 ? 'morning' : istHour < 16 ? 'afternoon' : istHour < 20 ? 'evening' : 'night';
+  const slot: ScheduleSlot = istHour < 13 ? 'morning' : istHour < 19 ? 'afternoon' : 'night';
   const today = now.toISOString().split('T')[0];
   const scheduleSlot = `${today}:${slot}`;
 

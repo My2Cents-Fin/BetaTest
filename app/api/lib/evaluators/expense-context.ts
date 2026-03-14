@@ -21,17 +21,19 @@ export interface UserExpenseContext {
   consecutiveDaysWithoutTxn: number; // 0 = has txns today, 1 = none today, 2 = none today+yesterday, etc.
   subCategoryActivities: SubCategoryActivity[];
   dayOfMonth: number;
+  dayOfWeek: number; // 0=Sun, 1=Mon, ..., 6=Sat
 }
 
-function getISTToday(): { date: string; dayOfMonth: number; monthStart: string } {
+function getISTToday(): { date: string; dayOfMonth: number; dayOfWeek: number; monthStart: string } {
   const now = new Date();
   const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
   const year = ist.getFullYear();
   const month = ist.getMonth(); // 0-indexed
   const day = ist.getDate();
+  const dow = ist.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  return { date: dateStr, dayOfMonth: day, monthStart };
+  return { date: dateStr, dayOfMonth: day, dayOfWeek: dow, monthStart };
 }
 
 export async function buildExpenseContexts(
@@ -154,6 +156,7 @@ export async function buildExpenseContexts(
       consecutiveDaysWithoutTxn: consecutiveDays,
       subCategoryActivities: activities,
       dayOfMonth: today.dayOfMonth,
+      dayOfWeek: today.dayOfWeek,
     };
   });
 }
