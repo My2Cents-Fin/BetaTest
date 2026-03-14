@@ -6,4 +6,4 @@ export interface NotificationMessage {
 }
 
 export type NotificationType = 'budget_reminder' | 'expense_reminder' | 'release_update' | 'welcome';
-export type ScheduleSlot = 'morning' | 'evening';
+export type ScheduleSlot = 'morning' | 'afternoon' | 'evening' | 'night';

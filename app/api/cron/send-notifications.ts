@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { sendPushToUser } from '../lib/delivery.js';
 import { buildBudgetContexts } from '../lib/evaluators/context.js';
 import { evaluateBudgetReminder } from '../lib/evaluators/budget-reminder.js';
+import { buildExpenseContexts } from '../lib/evaluators/expense-context.js';
+import { evaluateExpenseReminder } from '../lib/evaluators/expense-reminder.js';
 import type { ScheduleSlot } from '../lib/messages/types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -13,9 +15,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Determine schedule slot based on current IST time
+  // Cron runs at: 10am (morning), 2pm (afternoon), 7pm (evening), 9pm (night) IST
   const now = new Date();
   const istHour = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getHours();
-  const slot: ScheduleSlot = istHour < 12 ? 'morning' : 'evening';
+  const slot: ScheduleSlot = istHour < 12 ? 'morning' : istHour < 16 ? 'afternoon' : istHour < 20 ? 'evening' : 'night';
   const today = now.toISOString().split('T')[0];
   const scheduleSlot = `${today}:${slot}`;
 
@@ -45,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check notification preferences
     const { data: preferences } = await supabaseAdmin
       .from('notification_preferences')
-      .select('user_id, push_enabled, budget_reminders_enabled')
+      .select('user_id, push_enabled, budget_reminders_enabled, expense_reminders_enabled')
       .in('user_id', userIds);
 
     const prefsMap = new Map(preferences?.map((p) => [p.user_id, p]) || []);
@@ -130,6 +133,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ─── Expense Logging Reminder Evaluator ─────────────────────
+    const expenseEligible = eligibleUsers.filter((uid) => {
+      const pref = prefsMap.get(uid);
+      return !pref || pref.expense_reminders_enabled !== false;
+    });
+
+    const expenseUsers = expenseEligible
+      .filter((uid) => userMap.has(uid))
+      .map((uid) => ({ userId: uid, householdId: userMap.get(uid)! }));
+
+    const expenseContexts = await buildExpenseContexts(expenseUsers, slot, scheduleSlot);
+
+    let expenseSent = 0;
+    let expenseSkipped = 0;
+    let expenseFailed = 0;
+
+    for (const ctx of expenseContexts) {
+      try {
+        const result = evaluateExpenseReminder(ctx);
+        if (!result) {
+          expenseSkipped++;
+          continue;
+        }
+
+        // Log-before-send dedup
+        const { error: logError } = await supabaseAdmin.from('notification_log').insert({
+          user_id: ctx.userId,
+          household_id: ctx.householdId,
+          notification_type: result.notificationType,
+          notification_subtype: result.subtype,
+          title: result.message.title,
+          body: result.message.body,
+          status: 'sent',
+          schedule_slot: ctx.scheduleSlot,
+          message_data: result.messageData || null,
+        });
+
+        if (logError?.code === '23505') {
+          expenseSkipped++;
+          continue;
+        }
+        if (logError) {
+          console.error(`Expense log insert error for ${ctx.userId}:`, logError.message);
+          expenseFailed++;
+          continue;
+        }
+
+        const pushResult = await sendPushToUser(ctx.userId, {
+          title: result.message.title,
+          body: result.message.body,
+          tag: result.message.tag,
+          data: { url: result.message.url || '/dashboard' },
+        });
+
+        if (pushResult.sent > 0) {
+          expenseSent++;
+        } else {
+          await supabaseAdmin
+            .from('notification_log')
+            .update({ status: 'failed' })
+            .eq('user_id', ctx.userId)
+            .eq('notification_type', result.notificationType)
+            .eq('schedule_slot', ctx.scheduleSlot);
+          expenseFailed++;
+        }
+      } catch (userErr) {
+        console.error(`Expense evaluator error for ${ctx.userId}:`, userErr);
+        expenseFailed++;
+      }
+    }
+
     const results = {
       slot: scheduleSlot,
       subscribedUsers: userIds.length,
@@ -139,6 +213,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sent: budgetSent,
         skipped: budgetSkipped,
         failed: budgetFailed,
+      },
+      expenseReminders: {
+        evaluated: expenseContexts.length,
+        sent: expenseSent,
+        skipped: expenseSkipped,
+        failed: expenseFailed,
       },
     };
 

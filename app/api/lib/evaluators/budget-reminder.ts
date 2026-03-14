@@ -9,6 +9,9 @@ import {
 export function evaluateBudgetReminder(ctx: UserBudgetContext): EvaluatorResult | null {
   const { currentMonthPlan, prevMonthPlan, nextMonthPlan, currentMonthTransactions, today, slot } = ctx;
 
+  // Budget reminders only fire on morning + evening (2x/day max per design doc)
+  if (slot !== 'morning' && slot !== 'evening') return null;
+
   // ─── Branch A: Current month IS frozen ───────────────────────────
   if (currentMonthPlan.status === 'frozen') {
     // Check proactive window: last 5 days of month, next month not yet frozen
