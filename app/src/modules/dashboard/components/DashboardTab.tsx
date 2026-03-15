@@ -10,8 +10,10 @@ import { StatementImportModal } from '../../transactions/components/StatementImp
 import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
 import { useHousehold } from '../../../app/providers/HouseholdProvider';
 import { PushPermissionPrompt } from '../../notifications/components/PushPermissionPrompt';
+import { CCDuesSection } from './CCDuesSection';
+import { getHouseholdCards } from '../../budget/services/cards';
 import type { NotificationTrigger } from '../../notifications/components/PushPermissionPrompt';
-import type { BudgetAllocation, HouseholdSubCategory } from '../../budget/types';
+import type { BudgetAllocation, HouseholdSubCategory, HouseholdCard } from '../../budget/types';
 
 interface DashboardTabProps {
   onOpenMenu: () => void;
@@ -80,6 +82,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
   const [showStatementImport, setShowStatementImport] = useState(false);
   const [lastMonthSpent, setLastMonthSpent] = useState<number | null>(null);
+  const [householdCards, setHouseholdCards] = useState<HouseholdCard[]>([]);
+  const [currentTransactions, setCurrentTransactions] = useState<import('../../budget/types').TransactionWithDetails[]>([]);
 
   // Derive from HouseholdProvider context
   const household = hhData ? { id: hhData.id, name: hhData.name } : null;
@@ -116,6 +120,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       rawSubCategories: HouseholdSubCategory[];
       categoryMap: Map<string, { name: string; type: string }>;
       allSubCategories: typeof allSubCategories;
+      householdCards: HouseholdCard[];
+      currentTransactions: import('../../budget/types').TransactionWithDetails[];
     };
   } | null>(null);
 
@@ -201,6 +207,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         setRawSubCategories(d.rawSubCategories);
         setCategoryMap(d.categoryMap);
         setAllSubCategories(d.allSubCategories);
+        setHouseholdCards(d.householdCards);
+        setCurrentTransactions(d.currentTransactions);
         if (selectedMonth !== currentM) setSelectedMonth(currentM);
       } else {
         // Cache miss — full reload
@@ -263,8 +271,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
       const [yr, mo] = selectedMonth.split('-').map(Number);
       const endOfMonth = new Date(yr, mo, 0).toISOString().split('T')[0];
 
-      // All independent queries — run in parallel (includes frozen check + earliest month)
-      const [{ data: anyFrozen }, { data: earliestPlan }, planResult, subCategoriesResult, allocationsResult, transactionsResult, uncatCountResult] = await Promise.all([
+      // All independent queries — run in parallel (includes frozen check + earliest month + cards)
+      const [{ data: anyFrozen }, { data: earliestPlan }, planResult, subCategoriesResult, allocationsResult, transactionsResult, uncatCountResult, cardsResult] = await Promise.all([
         supabase
           .from('monthly_plans')
           .select('id')
@@ -282,8 +290,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
         getAllocations(householdId, startOfMonth),
         getTransactions(householdId, startOfMonth, endOfMonth, userMap),
         getUncategorizedCount(householdId),
+        getHouseholdCards(householdId),
       ]);
       setHasFrozenAnyBudget(!!(anyFrozen && anyFrozen.length > 0));
+      setHouseholdCards(cardsResult.cards || []);
       if (earliestPlan && earliestPlan.length > 0) {
         setEarliestMonth(earliestPlan[0].plan_month.substring(0, 7));
       }
@@ -325,6 +335,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
 
       // Process transactions
       const transactions = transactionsResult.transactions || [];
+      setCurrentTransactions(transactions);
 
       // Calculate total spent
       const spent = transactions
@@ -484,6 +495,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           rawSubCategories: subCategories,
           categoryMap: catMap,
           allSubCategories: subCatList,
+          householdCards: cardsResult.cards || [],
+          currentTransactions: transactions,
         },
       };
 
@@ -792,6 +805,18 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* CC Dues Section — tracking mode */}
+            {householdCards.length > 0 && (
+              <CCDuesSection
+                transactions={currentTransactions}
+                cards={householdCards}
+                onPayBill={hasOtherMembers ? (cardId, cardName, amount) => {
+                  // Open fund transfer pre-filled — for now just open the modal
+                  setShowFundTransfer(true);
+                } : undefined}
+              />
             )}
 
             {/* Gentle nudge to create budget */}
@@ -1137,6 +1162,17 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                 ))}
               </div>
             </>
+          )}
+
+          {/* CC Dues Section — frozen mode */}
+          {householdCards.length > 0 && (
+            <CCDuesSection
+              transactions={currentTransactions}
+              cards={householdCards}
+              onPayBill={hasOtherMembers ? (cardId, cardName, amount) => {
+                setShowFundTransfer(true);
+              } : undefined}
+            />
           )}
 
           {/* No issues */}

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
 import { createTransaction, updateTransaction, getTodayDate, fireCrossTxnAlert } from '../../budget/services/transactions';
 import { createSubCategory } from '../../budget/services/budget';
-import type { TransactionType, TransactionWithDetails } from '../../budget/types';
+import { getActiveHouseholdCards } from '../../budget/services/cards';
+import type { TransactionType, TransactionWithDetails, HouseholdCard } from '../../budget/types';
 
 interface SubCategoryOption {
   id: string;
@@ -68,6 +69,10 @@ export function QuickAddTransaction({
   const [isCreditCard, setIsCreditCard] = useState<boolean>(() =>
     isEditMode ? transaction.payment_method === 'card' : false
   );
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(() =>
+    isEditMode ? (transaction.card_id || null) : null
+  );
+  const [householdCards, setHouseholdCards] = useState<HouseholdCard[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [localSubCategories, setLocalSubCategories] = useState<SubCategoryOption[]>([]);
 
@@ -78,6 +83,17 @@ export function QuickAddTransaction({
   useEffect(() => {
     setTimeout(() => amountInputRef.current?.focus(), 100);
   }, []);
+
+  // Fetch active cards when CC toggle is on (or on mount in edit mode)
+  useEffect(() => {
+    if (isCreditCard && householdCards.length === 0) {
+      getActiveHouseholdCards(householdId).then(result => {
+        if (result.success && result.cards) {
+          setHouseholdCards(result.cards);
+        }
+      });
+    }
+  }, [isCreditCard, householdId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -149,8 +165,11 @@ export function QuickAddTransaction({
     setCategorySearch(`${cat.icon || (cat.categoryType === 'income' ? '💰' : '📦')} ${cat.name}`);
     setShowCategoryDropdown(false);
     setHighlightedIndex(-1);
-    // Reset CC toggle when selecting income category
-    if (cat.categoryType === 'income') setIsCreditCard(false);
+    // Reset CC toggle + card when selecting income category
+    if (cat.categoryType === 'income') {
+      setIsCreditCard(false);
+      setSelectedCardId(null);
+    }
   };
 
   const handleCreateSubCategory = async () => {
@@ -284,6 +303,7 @@ export function QuickAddTransaction({
         transactionDate,
         remarks: remarks.trim() || '',
         paymentMethod: transactionType === 'income' ? 'upi' : (isCreditCard ? 'card' : 'upi'),
+        cardId: isCreditCard ? (selectedCardId || null) : null,
       });
     } else {
       // Create new transaction
@@ -296,6 +316,7 @@ export function QuickAddTransaction({
         paymentMethod: transactionType === 'income' ? 'upi' : (isCreditCard ? 'card' : 'upi'),
         remarks: remarks.trim() || undefined,
         loggedBy: paidBy || undefined, // Include paidBy
+        cardId: isCreditCard ? (selectedCardId || undefined) : undefined,
       });
     }
 
@@ -494,23 +515,54 @@ export function QuickAddTransaction({
 
           {/* Credit Card Toggle — only for expense transactions */}
           {selectedCategory?.categoryType !== 'income' && (
-            <div className="mb-4 flex items-center justify-between px-1">
-              <label className="text-xs text-gray-500 flex items-center gap-1.5">
-                <span>💳</span> Paid with Credit Card?
-              </label>
-              <button
-                type="button"
-                onClick={() => setIsCreditCard(!isCreditCard)}
-                className={`relative w-10 h-[22px] rounded-full transition-colors ${
-                  isCreditCard
-                    ? 'bg-[var(--color-primary)]'
-                    : 'bg-gray-200'
-                }`}
-              >
-                <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
-                  isCreditCard ? 'translate-x-[18px]' : 'translate-x-0'
-                }`} />
-              </button>
+            <div className="mb-4">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-xs text-gray-500 flex items-center gap-1.5">
+                  <span>💳</span> Paid with Credit Card?
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isCreditCard;
+                    setIsCreditCard(next);
+                    if (!next) setSelectedCardId(null);
+                  }}
+                  className={`relative w-10 h-[22px] rounded-full transition-colors ${
+                    isCreditCard
+                      ? 'bg-[var(--color-primary)]'
+                      : 'bg-gray-200'
+                  }`}
+                >
+                  <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                    isCreditCard ? 'translate-x-[18px]' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Card Picker — shown when CC toggle is on */}
+              {isCreditCard && (
+                <div className="mt-2 px-1">
+                  {householdCards.length > 0 ? (
+                    <>
+                      <select
+                        value={selectedCardId || ''}
+                        onChange={(e) => setSelectedCardId(e.target.value || null)}
+                        className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
+                      >
+                        <option value="">Select a card (optional)</option>
+                        {householdCards.map(card => (
+                          <option key={card.id} value={card.id}>
+                            {card.card_name} •••• {card.last_four_digits}{card.card_owner ? ` (${card.card_owner})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-gray-400 mt-1 ml-1">Only active cards are shown</p>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-gray-400 ml-1">No cards added yet. Add cards from Profile &rarr; Settings &rarr; Credit Cards.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

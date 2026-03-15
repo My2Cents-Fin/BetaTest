@@ -184,6 +184,44 @@ export type PaymentMethod = 'cash' | 'upi' | 'card' | 'netbanking' | 'other';
 
 export type TransactionSource = 'manual' | 'csv_import';
 
+// ============================================
+// Credit Card Types
+// ============================================
+
+/**
+ * A household credit card (never deleted, only deactivated)
+ */
+export interface HouseholdCard {
+  id: string;
+  household_id: string;
+  card_name: string;
+  last_four_digits: string;
+  card_owner: string | null;
+  issuer: string | null;
+  is_active: boolean;
+  created_by: string;
+  created_at?: string;
+}
+
+/**
+ * Input for creating a new household card
+ */
+export interface CreateCardInput {
+  householdId: string;
+  cardName: string;
+  lastFourDigits: string;
+  cardOwner?: string;
+  issuer?: string;
+}
+
+/**
+ * Display format for a card: "{card_name} •••• {last_four}"
+ */
+export function formatCardDisplay(card: HouseholdCard): string {
+  const base = `${card.card_name} •••• ${card.last_four_digits}`;
+  return card.card_owner ? `${base} (${card.card_owner})` : base;
+}
+
 /**
  * A recorded transaction (expense, income, or transfer)
  */
@@ -200,6 +238,7 @@ export interface Transaction {
   transfer_to: string | null; // user_id of recipient (only for fund transfers)
   source: TransactionSource;
   original_narration: string | null;
+  card_id: string | null; // FK to household_cards — nullable
   created_at?: string;
   updated_at?: string;
   // Joined relations
@@ -221,6 +260,7 @@ export interface CreateTransactionInput {
   loggedBy?: string; // user_id of who paid (defaults to current user if not provided)
   source?: TransactionSource;
   originalNarration?: string;
+  cardId?: string; // FK to household_cards — for CC-tagged transactions
 }
 
 /**
@@ -233,6 +273,8 @@ export interface TransactionWithDetails extends Transaction {
   category_icon: string | null;
   logged_by_name?: string;
   transfer_to_name?: string; // recipient name (only for fund transfers)
+  card_name?: string; // display name if card_id is set
+  card_last_four?: string; // last 4 digits if card_id is set
 }
 
 // ============================================

@@ -829,7 +829,9 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                       {/* Amount */}
                       <div className="text-right flex items-center gap-1">
                         {txn.payment_method === 'card' && (
-                          <span className="text-[9px] font-medium text-amber-600 bg-amber-50 px-1 py-0.5 rounded flex-shrink-0">CC</span>
+                          <span className="text-[9px] font-medium text-amber-600 bg-amber-50 px-1 py-0.5 rounded flex-shrink-0" title={txn.card_name ? `${txn.card_name} •••• ${txn.card_last_four}` : 'Credit Card'}>
+                            {txn.card_name ? `💳 ${txn.card_name} •••• ${txn.card_last_four}` : 'CC'}
+                          </span>
                         )}
                         <p className={`text-sm font-semibold ${
                           txn.transaction_type === 'transfer' ? 'text-blue-600' :

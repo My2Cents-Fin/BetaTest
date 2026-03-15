@@ -64,6 +64,11 @@ export async function createTransaction(
       insertData.transfer_to = input.transferTo;
     }
 
+    // Add card_id for CC-tagged transactions
+    if (input.cardId) {
+      insertData.card_id = input.cardId;
+    }
+
     console.log('[createTransaction] Inserting data:', insertData);
 
     const { data, error } = await supabase
@@ -120,6 +125,11 @@ export async function getTransactions(
             name,
             icon
           )
+        ),
+        household_cards (
+          id,
+          card_name,
+          last_four_digits
         )
       `)
       .eq('household_id', householdId)
@@ -191,8 +201,11 @@ export async function getTransactions(
          t.sub_category_id === null ? '❓' : '📁'),
       source: t.source || 'manual',
       original_narration: t.original_narration || null,
+      card_id: t.card_id || null,
       logged_by_name: userMap.get(t.logged_by) || 'Unknown',
       transfer_to_name: t.transfer_to ? userMap.get(t.transfer_to) : undefined,
+      card_name: t.household_cards?.card_name || undefined,
+      card_last_four: t.household_cards?.last_four_digits || undefined,
     }));
 
     return { success: true, transactions };
@@ -267,6 +280,7 @@ export async function updateTransaction(
     paymentMethod: PaymentMethod;
     remarks: string;
     transactionType: TransactionType;
+    cardId: string | null;
   }>
 ): Promise<TransactionResult> {
   try {
@@ -277,6 +291,7 @@ export async function updateTransaction(
     if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
     if (updates.remarks !== undefined) updateData.remarks = updates.remarks;
     if (updates.transactionType) updateData.transaction_type = updates.transactionType;
+    if (updates.cardId !== undefined) updateData.card_id = updates.cardId;
 
     const { data, error } = await supabase
       .from('transactions')
