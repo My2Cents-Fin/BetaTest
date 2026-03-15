@@ -5,7 +5,9 @@ import { getTransactions, deleteTransaction, fireCrossTxnAlert } from '../../bud
 import { formatNumber } from '../../budget/components/AmountInput';
 import { QuickAddTransaction } from '../../dashboard/components/QuickAddTransaction';
 import { FundTransferModal } from '../../dashboard/components/FundTransferModal';
-import type { TransactionWithDetails, HouseholdSubCategory } from '../../budget/types';
+import { CCPaymentModal } from '../../dashboard/components/CCPaymentModal';
+import { getActiveHouseholdCards } from '../../budget/services/cards';
+import type { TransactionWithDetails, HouseholdSubCategory, HouseholdCard } from '../../budget/types';
 import { supabase } from '../../../lib/supabase';
 import { MemberMultiSelect } from '../../../shared/components/MemberMultiSelect';
 import { CategoryMultiSelect } from '../../../shared/components/CategoryMultiSelect';
@@ -67,6 +69,8 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense'; categoryId: string }[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithDetails | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [editCCPayment, setEditCCPayment] = useState<TransactionWithDetails | null>(null);
+  const [householdCards, setHouseholdCards] = useState<HouseholdCard[]>([]);
   const [rawSubCategories, setRawSubCategories] = useState<HouseholdSubCategory[]>([]);
   const [categoryMap, setCategoryMap] = useState<Map<string, { name: string; type: string }>>(new Map());
 
@@ -295,11 +299,13 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       // If no date range specified, fetch all transactions
 
       // All independent — run in parallel (no getUserHousehold or getHouseholdUsers needed)
-      const [subCategoriesResult, transactionsResult, countResult] = await Promise.all([
+      const [subCategoriesResult, transactionsResult, countResult, cardsResult] = await Promise.all([
         getHouseholdSubCategories(householdId),
         getTransactions(householdId, startDate, endDate, userMap),
         supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('household_id', householdId),
+        getActiveHouseholdCards(householdId),
       ]);
+      setHouseholdCards(cardsResult.cards || []);
 
       // Process sub-categories
       const subCategories = subCategoriesResult.subCategories || [];
@@ -527,6 +533,12 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   };
 
   const handleTransactionClick = (txn: TransactionWithDetails) => {
+    if (txn.transaction_type === 'cc_payment') {
+      setEditCCPayment(txn);
+      return;
+    }
+    // Fund transfers are not editable via QuickAdd
+    if (txn.transaction_type === 'transfer') return;
     setSelectedTransaction(txn);
   };
 
@@ -918,6 +930,19 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
           onSuccess={handleTransactionAdded}
           transaction={selectedTransaction}
           mode="edit"
+        />
+      )}
+
+      {/* Edit CC Payment Modal */}
+      {editCCPayment && household && (
+        <CCPaymentModal
+          householdId={household.id}
+          currentUserId={currentUserId}
+          householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+          cards={householdCards}
+          transaction={editCCPayment}
+          onClose={() => setEditCCPayment(null)}
+          onSuccess={handleTransactionAdded}
         />
       )}
 

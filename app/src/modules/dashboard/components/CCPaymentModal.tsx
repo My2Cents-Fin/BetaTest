@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatNumber } from '../../budget/components/AmountInput';
-import { createTransaction, getTodayDate, fireCrossTxnAlert } from '../../budget/services/transactions';
-import type { HouseholdCard } from '../../budget/types';
+import { createTransaction, updateTransaction, getTodayDate, fireCrossTxnAlert } from '../../budget/services/transactions';
+import type { HouseholdCard, TransactionWithDetails } from '../../budget/types';
 
 interface HouseholdMember {
   id: string;
@@ -17,6 +17,8 @@ interface CCPaymentModalProps {
   preSelectedCardId?: string;
   /** Pre-filled amount (outstanding balance) */
   preFilledAmount?: number;
+  /** Existing transaction for edit mode */
+  transaction?: TransactionWithDetails;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -28,16 +30,22 @@ export function CCPaymentModal({
   cards,
   preSelectedCardId,
   preFilledAmount,
+  transaction,
   onClose,
   onSuccess,
 }: CCPaymentModalProps) {
-  const [amount, setAmount] = useState(() =>
-    preFilledAmount && preFilledAmount > 0 ? String(Math.round(preFilledAmount)) : ''
+  const isEdit = !!transaction;
+
+  const [amount, setAmount] = useState(() => {
+    if (transaction) return String(transaction.amount);
+    return preFilledAmount && preFilledAmount > 0 ? String(Math.round(preFilledAmount)) : '';
+  });
+  const [selectedCardId, setSelectedCardId] = useState<string>(
+    transaction?.card_id || preSelectedCardId || (cards.length === 1 ? cards[0].id : '')
   );
-  const [selectedCardId, setSelectedCardId] = useState<string>(preSelectedCardId || (cards.length === 1 ? cards[0].id : ''));
-  const [paidBy, setPaidBy] = useState<string>(currentUserId);
-  const [transactionDate, setTransactionDate] = useState(getTodayDate());
-  const [remarks, setRemarks] = useState('');
+  const [paidBy, setPaidBy] = useState<string>(transaction?.logged_by || currentUserId);
+  const [transactionDate, setTransactionDate] = useState(transaction?.transaction_date || getTodayDate());
+  const [remarks, setRemarks] = useState(transaction?.remarks || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +55,7 @@ export function CCPaymentModal({
     setTimeout(() => amountInputRef.current?.focus(), 100);
   }, []);
 
-  const activeCards = cards.filter(c => c.is_active);
+  const selectableCards = isEdit ? cards : cards.filter(c => c.is_active);
   const selectedCard = cards.find(c => c.id === selectedCardId);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,23 +88,35 @@ export function CCPaymentModal({
     setIsSubmitting(true);
     setError(null);
 
-    const result = await createTransaction({
-      householdId,
-      subCategoryId: null,
-      amount: numAmount,
-      transactionType: 'cc_payment',
-      transactionDate,
-      paymentMethod: 'netbanking', // Bank → CC company
-      remarks: remarks.trim() || `CC bill payment${selectedCard ? ` - ${selectedCard.card_name}` : ''}`,
-      cardId: selectedCardId,
-      loggedBy: paidBy || undefined,
-    });
+    let result: { success: boolean; error?: string };
+
+    if (isEdit && transaction) {
+      result = await updateTransaction(transaction.id, {
+        amount: numAmount,
+        transactionDate,
+        remarks: remarks.trim() || `CC bill payment${selectedCard ? ` - ${selectedCard.card_name}` : ''}`,
+        cardId: selectedCardId,
+        loggedBy: paidBy || undefined,
+      });
+    } else {
+      result = await createTransaction({
+        householdId,
+        subCategoryId: null,
+        amount: numAmount,
+        transactionType: 'cc_payment',
+        transactionDate,
+        paymentMethod: 'netbanking', // Bank → CC company
+        remarks: remarks.trim() || `CC bill payment${selectedCard ? ` - ${selectedCard.card_name}` : ''}`,
+        cardId: selectedCardId,
+        loggedBy: paidBy || undefined,
+      });
+    }
 
     setIsSubmitting(false);
 
     if (result.success) {
       fireCrossTxnAlert({
-        action: 'create',
+        action: isEdit ? 'edit' : 'create',
         userId: paidBy || currentUserId,
         householdId,
         amount: numAmount,
@@ -123,7 +143,7 @@ export function CCPaymentModal({
               <span className="text-sm">💳</span>
             </div>
             <h2 className="text-base font-semibold text-gray-900">
-              Pay CC Bill
+              {isEdit ? 'Edit CC Payment' : 'Pay CC Bill'}
             </h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-xl hover:bg-white/60">
@@ -140,9 +160,9 @@ export function CCPaymentModal({
             <label className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
               <span>💳</span> Card
             </label>
-            {activeCards.length === 1 ? (
+            {selectableCards.length === 1 ? (
               <div className="px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75">
-                {activeCards[0].card_name} •••• {activeCards[0].last_four_digits}
+                {selectableCards[0].card_name} •••• {selectableCards[0].last_four_digits}
               </div>
             ) : (
               <select
@@ -152,7 +172,7 @@ export function CCPaymentModal({
                 className="w-full px-3 pr-8 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
               >
                 <option value="">Select card</option>
-                {activeCards.map(card => (
+                {selectableCards.map(card => (
                   <option key={card.id} value={card.id}>
                     {card.card_name} •••• {card.last_four_digits}
                   </option>
@@ -244,7 +264,7 @@ export function CCPaymentModal({
                 : 'bg-primary-gradient text-white shadow-[0_4px_16px_rgba(124,58,237,0.3)] active:scale-[0.98]'
             }`}
           >
-            {isSubmitting ? 'Recording...' : 'Record Payment'}
+            {isSubmitting ? (isEdit ? 'Saving...' : 'Recording...') : (isEdit ? 'Save Changes' : 'Record Payment')}
           </button>
         </div>
       </div>

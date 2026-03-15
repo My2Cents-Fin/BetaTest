@@ -285,6 +285,7 @@ export async function updateTransaction(
     remarks: string;
     transactionType: TransactionType;
     cardId: string | null;
+    loggedBy: string;
   }>
 ): Promise<TransactionResult> {
   try {
@@ -296,6 +297,7 @@ export async function updateTransaction(
     if (updates.remarks !== undefined) updateData.remarks = updates.remarks;
     if (updates.transactionType) updateData.transaction_type = updates.transactionType;
     if (updates.cardId !== undefined) updateData.card_id = updates.cardId;
+    if (updates.loggedBy) updateData.logged_by = updates.loggedBy;
 
     const { data, error } = await supabase
       .from('transactions')
