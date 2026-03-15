@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../lib/supabaseAdmin.js';
-import { sendPushToUser } from '../lib/delivery.js';
+import { supabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { sendPushToUser } from '../_lib/delivery.js';
 
 /**
  * Cross-transaction alert: when a household member creates, edits, or deletes

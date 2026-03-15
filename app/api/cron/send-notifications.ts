@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../lib/supabaseAdmin.js';
-import { sendPushToUser } from '../lib/delivery.js';
-import { buildBudgetContexts } from '../lib/evaluators/context.js';
-import { evaluateBudgetReminder } from '../lib/evaluators/budget-reminder.js';
-import { buildExpenseContexts } from '../lib/evaluators/expense-context.js';
-import { evaluateExpenseReminder } from '../lib/evaluators/expense-reminder.js';
-import type { ScheduleSlot } from '../lib/messages/types.js';
+import { supabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { sendPushToUser } from '../_lib/delivery.js';
+import { buildBudgetContexts } from '../_lib/evaluators/context.js';
+import { evaluateBudgetReminder } from '../_lib/evaluators/budget-reminder.js';
+import { buildExpenseContexts } from '../_lib/evaluators/expense-context.js';
+import { evaluateExpenseReminder } from '../_lib/evaluators/expense-reminder.js';
+import type { ScheduleSlot } from '../_lib/messages/types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret to prevent unauthorized calls
