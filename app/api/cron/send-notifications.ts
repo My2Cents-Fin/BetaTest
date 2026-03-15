@@ -15,10 +15,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Determine schedule slot based on current IST time
-  // Cron runs at: 10am (morning), 3:30pm (afternoon), 10pm (night) IST
+  // Single hourly cron — only fire at notification windows: 10am, 3:30pm, 10pm IST
   const now = new Date();
-  const istHour = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getHours();
-  const slot: ScheduleSlot = istHour < 13 ? 'morning' : istHour < 19 ? 'afternoon' : 'night';
+  const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const istHour = istDate.getHours();
+  const istMinute = istDate.getMinutes();
+
+  // Define notification windows (IST hour + acceptable minute range)
+  // Cron fires at :00 UTC each hour. IST = UTC+5:30, so:
+  //   10:00 IST = 04:30 UTC → cron at 04:00 UTC fires at 09:30 IST, 05:00 UTC fires at 10:30 IST
+  //   15:30 IST = 10:00 UTC → cron at 10:00 UTC fires at 15:30 IST ✓
+  //   22:00 IST = 16:30 UTC → cron at 16:00 UTC fires at 21:30 IST, 17:00 UTC fires at 22:30 IST
+  // We accept: hour 9-10 (morning), hour 15-16 (afternoon), hour 21-22 (night)
+  const isNotificationWindow =
+    (istHour === 9 || istHour === 10) ||   // morning: ~10am IST
+    (istHour === 15 || istHour === 16) ||   // afternoon: ~3:30pm IST
+    (istHour === 21 || istHour === 22);     // night: ~10pm IST
+
+  if (!isNotificationWindow) {
+    return res.status(200).json({
+      message: 'Not a notification window',
+      istTime: `${istHour}:${String(istMinute).padStart(2, '0')}`,
+      nextWindows: '10am, 3:30pm, 10pm IST',
+    });
+  }
+
+  const slot: ScheduleSlot = istHour <= 10 ? 'morning' : istHour <= 16 ? 'afternoon' : 'night';
   const today = now.toISOString().split('T')[0];
   const scheduleSlot = `${today}:${slot}`;
 
