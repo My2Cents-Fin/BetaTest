@@ -589,7 +589,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   return (
     <div className="min-h-screen bg-[var(--color-page-bg)]">
       {/* Header - Mobile */}
-      <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden sticky top-0 z-20">
+      <header className="glass-header px-4 py-3 flex items-center justify-between md:hidden sticky top-0 z-20 bg-[var(--color-page-bg)] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
           {dateFilterLabel && <p className="text-xs text-[var(--color-text-secondary)]">{dateFilterLabel}</p>}
@@ -625,7 +625,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       </header>
 
       {/* Header - Desktop */}
-      <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header sticky top-0 z-20">
+      <header className="hidden md:flex items-center justify-between px-6 py-4 glass-header sticky top-0 z-20 bg-[var(--color-page-bg)] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         <h1 className="text-lg font-semibold text-gray-900">Transactions{dateFilterLabel ? ` • ${dateFilterLabel}` : ''}</h1>
         <div className="flex items-center gap-2">
           {/* Import Statement Button */}
