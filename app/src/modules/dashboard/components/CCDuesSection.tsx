@@ -40,9 +40,9 @@ export function CCDuesSection({ transactions, cards, onPayBill }: CCDuesSectionP
         .filter(t => t.transaction_type === 'expense' && t.card_id === card.id)
         .reduce((sum, t) => sum + t.amount, 0);
 
-      // CC payments (fund transfers tagged to this card)
+      // CC payments (cc_payment transactions tagged to this card)
       const payments = transactions
-        .filter(t => t.transaction_type === 'transfer' && t.card_id === card.id)
+        .filter(t => t.transaction_type === 'cc_payment' && t.card_id === card.id)
         .reduce((sum, t) => sum + t.amount, 0);
 
       const outstanding = expenses - payments;

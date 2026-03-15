@@ -178,7 +178,7 @@ export interface CreateMonthlyPlanRequest {
 // Transaction Types
 // ============================================
 
-export type TransactionType = 'expense' | 'income' | 'transfer';
+export type TransactionType = 'expense' | 'income' | 'transfer' | 'cc_payment';
 
 export type PaymentMethod = 'cash' | 'upi' | 'card' | 'netbanking' | 'other';
 

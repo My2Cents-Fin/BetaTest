@@ -189,15 +189,19 @@ export async function getTransactions(
       updated_at: t.updated_at,
       sub_category_name: t.household_sub_categories?.name ||
         (t.transaction_type === 'transfer' ? 'Fund Transfer' :
+         t.transaction_type === 'cc_payment' ? 'CC Bill Payment' :
          t.sub_category_id === null ? 'Uncategorised' : 'Unknown'),
       sub_category_icon: t.household_sub_categories?.icon ||
         (t.transaction_type === 'transfer' ? '💸' :
+         t.transaction_type === 'cc_payment' ? '💳' :
          t.sub_category_id === null ? '❓' : '📦'),
       category_name: t.household_sub_categories?.categories?.name ||
         (t.transaction_type === 'transfer' ? 'Transfer' :
+         t.transaction_type === 'cc_payment' ? 'CC Payment' :
          t.sub_category_id === null ? 'Uncategorised' : 'Unknown'),
       category_icon: t.household_sub_categories?.categories?.icon ||
         (t.transaction_type === 'transfer' ? '💸' :
+         t.transaction_type === 'cc_payment' ? '💳' :
          t.sub_category_id === null ? '❓' : '📁'),
       source: t.source || 'manual',
       original_narration: t.original_narration || null,

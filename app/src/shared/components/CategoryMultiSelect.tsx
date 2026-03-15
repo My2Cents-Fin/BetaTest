@@ -11,12 +11,15 @@ interface CategoryMultiSelectProps {
   subCategories: { id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[];
   selectedIds: Set<string>;
   includeTransfers: boolean;
+  includeCCPayments?: boolean;
   hasTransfers: boolean;
+  hasCCPayments?: boolean;
   uncategorizedOnly?: boolean;
   hasUncategorized?: boolean;
   ccFilterActive?: boolean;
   onToggleSubCategory: (id: string) => void;
   onToggleTransfers: () => void;
+  onToggleCCPayments?: () => void;
   onToggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
   onToggleUncategorized?: () => void;
 }
@@ -26,12 +29,15 @@ export function CategoryMultiSelect({
   subCategories,
   selectedIds,
   includeTransfers,
+  includeCCPayments,
   hasTransfers,
+  hasCCPayments,
   uncategorizedOnly,
   hasUncategorized,
   ccFilterActive,
   onToggleSubCategory,
   onToggleTransfers,
+  onToggleCCPayments,
   onToggleAllOfType,
   onToggleUncategorized,
 }: CategoryMultiSelectProps) {
@@ -118,6 +124,12 @@ export function CategoryMultiSelect({
     return hasTransfers && ('transfer'.includes(q) || 'all transfers'.includes(q) || 'transfers'.includes(q));
   }, [search, hasTransfers]);
 
+  const showCCPaymentShortcut = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return !!hasCCPayments;
+    return !!hasCCPayments && ('cc payment'.includes(q) || 'cc bill'.includes(q) || 'credit card'.includes(q) || 'cc payments'.includes(q));
+  }, [search, hasCCPayments]);
+
   const showUncategorizedShortcut = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return !!hasUncategorized;
@@ -131,7 +143,13 @@ export function CategoryMultiSelect({
     return hasTransfers && ('transfer'.includes(q) || 'fund transfer'.includes(q) || 'transfers'.includes(q));
   }, [search, hasTransfers]);
 
-  const hasAnyShortcut = showIncomeShortcut || showExpenseShortcut || showTransferShortcut || showUncategorizedShortcut;
+  const showCCPaymentEntry = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return !!hasCCPayments;
+    return !!hasCCPayments && ('cc payment'.includes(q) || 'cc bill'.includes(q) || 'credit card'.includes(q) || 'bill payment'.includes(q));
+  }, [search, hasCCPayments]);
+
+  const hasAnyShortcut = showIncomeShortcut || showExpenseShortcut || showTransferShortcut || showCCPaymentShortcut || showUncategorizedShortcut;
 
   // Set indeterminate state on shortcut checkboxes
   useEffect(() => {
@@ -147,11 +165,11 @@ export function CategoryMultiSelect({
   }, [someExpenseSelected]);
 
   // Display text
-  const totalSelected = selectedIds.size + (includeTransfers ? 1 : 0) + (uncategorizedOnly ? 1 : 0);
+  const totalSelected = selectedIds.size + (includeTransfers ? 1 : 0) + (includeCCPayments ? 1 : 0) + (uncategorizedOnly ? 1 : 0);
   const displayText = uncategorizedOnly ? 'Uncategorised only' : totalSelected === 0 ? 'All categories' : `${totalSelected} selected`;
 
   // No results check
-  const hasNoResults = filteredGrouped.size === 0 && !showTransferEntry && !hasAnyShortcut;
+  const hasNoResults = filteredGrouped.size === 0 && !showTransferEntry && !showCCPaymentEntry && !hasAnyShortcut;
 
   return (
     <div>
@@ -234,6 +252,18 @@ export function CategoryMultiSelect({
                     </label>
                   )}
 
+                  {showCCPaymentShortcut && onToggleCCPayments && (
+                    <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer rounded-lg">
+                      <input
+                        type="checkbox"
+                        checked={!!includeCCPayments}
+                        onChange={() => onToggleCCPayments()}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">All CC Payments</span>
+                    </label>
+                  )}
+
                   {showUncategorizedShortcut && onToggleUncategorized && (
                     <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer rounded-lg">
                       <input
@@ -294,6 +324,25 @@ export function CategoryMultiSelect({
                     />
                     <span className="text-sm">💸</span>
                     <span className="text-xs text-gray-700">Fund Transfer</span>
+                  </label>
+                </div>
+              )}
+
+              {/* CC Bill Payment entry */}
+              {showCCPaymentEntry && onToggleCCPayments && (
+                <div>
+                  <div className="sticky top-0 bg-white px-3 pt-2.5 pb-1">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">CC Payments</p>
+                  </div>
+                  <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!includeCCPayments}
+                      onChange={() => onToggleCCPayments()}
+                      className="w-3.5 h-3.5 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                    />
+                    <span className="text-sm">💳</span>
+                    <span className="text-xs text-gray-700">CC Bill Payment</span>
                   </label>
                 </div>
               )}

@@ -83,6 +83,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   // Category filter (replaces previous filterTypes toggle buttons — see commit 71d3c01 for revert)
   const [filterSubCategoryIds, setFilterSubCategoryIds] = useState<Set<string>>(new Set());
   const [filterIncludeTransfers, setFilterIncludeTransfers] = useState(false);
+  const [filterIncludeCCPayments, setFilterIncludeCCPayments] = useState(false);
   const [filterUncategorizedOnly, setFilterUncategorizedOnly] = useState(false);
   const [filterPaidVia, setFilterPaidVia] = useState<'cc' | 'non_cc' | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -403,23 +404,26 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       }
       // Filter by paid via
       if (filterPaidVia === 'cc') {
-        // CC: only card expenses — no transfers, no income
+        // CC: only card expenses and cc_payments — no transfers, no income
         if (t.transaction_type === 'transfer') return false;
         if (t.transaction_type === 'income') return false;
-        if (t.payment_method !== 'card') return false;
+        if (t.transaction_type === 'cc_payment') { /* pass through — CC related */ }
+        else if (t.payment_method !== 'card') return false;
       } else if (filterPaidVia === 'non_cc') {
-        // Others: non-card payment methods (transfers pass through)
-        if (t.transaction_type !== 'transfer' && t.payment_method === 'card') return false;
+        // Others: non-card payment methods (transfers and cc_payments pass through)
+        if (t.transaction_type !== 'transfer' && t.transaction_type !== 'cc_payment' && t.payment_method === 'card') return false;
       }
       // Uncategorized-only filter (from dashboard drill-down)
       if (filterUncategorizedOnly) {
-        return t.sub_category_id === null && t.transaction_type !== 'transfer';
+        return t.sub_category_id === null && t.transaction_type !== 'transfer' && t.transaction_type !== 'cc_payment';
       }
-      // Filter by sub-category / transfer (replaces old type filter)
-      const hasSubCatFilter = filterSubCategoryIds.size > 0 || filterIncludeTransfers;
+      // Filter by sub-category / transfer / cc_payment (replaces old type filter)
+      const hasSubCatFilter = filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterIncludeCCPayments;
       if (hasSubCatFilter) {
         if (t.transaction_type === 'transfer') {
           if (!filterIncludeTransfers) return false;
+        } else if (t.transaction_type === 'cc_payment') {
+          if (!filterIncludeCCPayments) return false;
         } else {
           // null sub_category_id = uncategorized — show when no specific filter is applied
           if (t.sub_category_id === null) {
@@ -432,7 +436,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
       }
       return true;
     });
-  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterPaidVia, filterSubCategoryIds, filterIncludeTransfers, filterUncategorizedOnly]);
+  }, [transactions, filterDateFrom, filterDateTo, filterRecordedBy, filterPaidVia, filterSubCategoryIds, filterIncludeTransfers, filterIncludeCCPayments, filterUncategorizedOnly]);
 
   // Group filtered transactions by date
   const filteredGroupedTransactions = useMemo(() => {
@@ -453,14 +457,14 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   }, [filteredGroupedTransactions]);
 
   // Check if any filter is active
-  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterPaidVia || filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly);
+  const hasActiveFilters = Boolean(filterDateFrom || filterDateTo || filterRecordedBy.length > 0 || filterPaidVia || filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterIncludeCCPayments || filterUncategorizedOnly);
 
   // Count active filters
   const activeFilterCount = [
     filterDateFrom || filterDateTo ? 1 : 0,
     filterRecordedBy.length > 0 ? 1 : 0,
     filterPaidVia ? 1 : 0,
-    filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterUncategorizedOnly ? 1 : 0,
+    filterSubCategoryIds.size > 0 || filterIncludeTransfers || filterIncludeCCPayments || filterUncategorizedOnly ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
@@ -469,6 +473,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
     setFilterPaidVia(null);
     setFilterSubCategoryIds(new Set());
     setFilterIncludeTransfers(false);
+    setFilterIncludeCCPayments(false);
     setFilterUncategorizedOnly(false);
     setFilterDateFrom('');
     setFilterDateTo('');
@@ -494,6 +499,11 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
   const toggleTransfers = () => {
     setFilterUncategorizedOnly(false);
     setFilterIncludeTransfers(prev => !prev);
+  };
+
+  const toggleCCPayments = () => {
+    setFilterUncategorizedOnly(false);
+    setFilterIncludeCCPayments(prev => !prev);
   };
 
   const toggleAllOfType = (type: 'income' | 'expense' | 'transfer') => {
@@ -651,9 +661,11 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               allSubCategories={allSubCategories}
               filterSubCategoryIds={filterSubCategoryIds}
               filterIncludeTransfers={filterIncludeTransfers}
+              filterIncludeCCPayments={filterIncludeCCPayments}
               filterUncategorizedOnly={filterUncategorizedOnly}
               hasTransfers={transactions.some(t => t.transaction_type === 'transfer')}
-              hasUncategorized={transactions.some(t => t.sub_category_id === null && t.transaction_type !== 'transfer')}
+              hasCCPayments={transactions.some(t => t.transaction_type === 'cc_payment')}
+              hasUncategorized={transactions.some(t => t.sub_category_id === null && t.transaction_type !== 'transfer' && t.transaction_type !== 'cc_payment')}
               uniqueRecorders={uniqueRecorders}
               hasActiveFilters={hasActiveFilters}
               setFilterDateFrom={setFilterDateFrom}
@@ -668,6 +680,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
               }}
               toggleSubCategory={toggleSubCategory}
               toggleTransfers={toggleTransfers}
+              toggleCCPayments={toggleCCPayments}
               toggleAllOfType={toggleAllOfType}
               toggleUncategorized={() => {
                 const newVal = !filterUncategorizedOnly;
@@ -800,6 +813,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                       {/* Icon */}
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                         txn.transaction_type === 'transfer' ? 'bg-blue-50' :
+                        txn.transaction_type === 'cc_payment' ? 'bg-amber-50' :
                         txn.transaction_type === 'income' ? 'bg-[var(--color-success-bg)]' : 'bg-red-50'
                       }`}>
                         <span className="text-base">{txn.sub_category_icon}</span>
@@ -815,7 +829,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                             )}
                           </p>
                           {/* Uncategorised badge for imported transactions without a category */}
-                          {txn.sub_category_id === null && txn.transaction_type !== 'transfer' && (
+                          {txn.sub_category_id === null && txn.transaction_type !== 'transfer' && txn.transaction_type !== 'cc_payment' && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-amber-100 text-amber-700 whitespace-nowrap flex-shrink-0">
                               Uncategorised
                             </span>
@@ -830,14 +844,15 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                       <div className="text-right flex items-center gap-1">
                         {txn.payment_method === 'card' && (
                           <span className="text-[9px] font-medium text-amber-600 bg-amber-50 px-1 py-0.5 rounded flex-shrink-0" title={txn.card_name ? `${txn.card_name} •••• ${txn.card_last_four}` : 'Credit Card'}>
-                            {txn.card_name ? `💳 ${txn.card_name} •••• ${txn.card_last_four}` : 'CC'}
+                            💳 CC
                           </span>
                         )}
                         <p className={`text-sm font-semibold ${
                           txn.transaction_type === 'transfer' ? 'text-blue-600' :
+                          txn.transaction_type === 'cc_payment' ? 'text-amber-600' :
                           txn.transaction_type === 'income' ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          {txn.transaction_type === 'income' ? '+' : txn.transaction_type === 'transfer' ? '→ ' : '-'}₹{formatNumber(txn.amount)}
+                          {txn.transaction_type === 'income' ? '+' : txn.transaction_type === 'transfer' ? '→ ' : txn.transaction_type === 'cc_payment' ? '💳 ' : '-'}₹{formatNumber(txn.amount)}
                         </p>
                       </div>
 
@@ -974,8 +989,10 @@ interface FilterContentProps {
   allSubCategories: { id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense' }[];
   filterSubCategoryIds: Set<string>;
   filterIncludeTransfers: boolean;
+  filterIncludeCCPayments: boolean;
   filterUncategorizedOnly: boolean;
   hasTransfers: boolean;
+  hasCCPayments: boolean;
   hasUncategorized: boolean;
   uniqueRecorders: { id: string; name: string }[];
   hasActiveFilters: boolean;
@@ -985,6 +1002,7 @@ interface FilterContentProps {
   togglePaidVia: (value: 'cc' | 'non_cc' | null) => void;
   toggleSubCategory: (id: string) => void;
   toggleTransfers: () => void;
+  toggleCCPayments: () => void;
   toggleAllOfType: (type: 'income' | 'expense' | 'transfer') => void;
   toggleUncategorized: () => void;
   clearFilters: () => void;
@@ -999,8 +1017,10 @@ function FilterContent({
   allSubCategories,
   filterSubCategoryIds,
   filterIncludeTransfers,
+  filterIncludeCCPayments,
   filterUncategorizedOnly,
   hasTransfers,
+  hasCCPayments,
   hasUncategorized,
   uniqueRecorders,
   hasActiveFilters,
@@ -1010,6 +1030,7 @@ function FilterContent({
   togglePaidVia,
   toggleSubCategory,
   toggleTransfers,
+  toggleCCPayments,
   toggleAllOfType,
   toggleUncategorized,
   clearFilters,
@@ -1105,12 +1126,15 @@ function FilterContent({
         subCategories={allSubCategories}
         selectedIds={filterSubCategoryIds}
         includeTransfers={filterIncludeTransfers}
+        includeCCPayments={filterIncludeCCPayments}
         hasTransfers={hasTransfers}
+        hasCCPayments={hasCCPayments}
         uncategorizedOnly={filterUncategorizedOnly}
         hasUncategorized={hasUncategorized}
         ccFilterActive={filterPaidVia === 'cc'}
         onToggleSubCategory={toggleSubCategory}
         onToggleTransfers={toggleTransfers}
+        onToggleCCPayments={toggleCCPayments}
         onToggleAllOfType={toggleAllOfType}
         onToggleUncategorized={toggleUncategorized}
       />

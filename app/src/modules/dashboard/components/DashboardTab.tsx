@@ -11,6 +11,7 @@ import { PrivacyInfoModal } from '../../../shared/components/PrivacyInfoModal';
 import { useHousehold } from '../../../app/providers/HouseholdProvider';
 import { PushPermissionPrompt } from '../../notifications/components/PushPermissionPrompt';
 import { CCDuesSection } from './CCDuesSection';
+import { CCPaymentModal } from './CCPaymentModal';
 import { getHouseholdCards } from '../../budget/services/cards';
 import type { NotificationTrigger } from '../../notifications/components/PushPermissionPrompt';
 import type { BudgetAllocation, HouseholdSubCategory, HouseholdCard } from '../../budget/types';
@@ -64,6 +65,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFundTransfer, setShowFundTransfer] = useState(false);
+  const [showCCPayment, setShowCCPayment] = useState(false);
+  const [ccPaymentPreSelect, setCCPaymentPreSelect] = useState<{ cardId: string; amount: number } | null>(null);
   const [allSubCategories, setAllSubCategories] = useState<{ id: string; name: string; icon: string; categoryName: string; categoryType: 'income' | 'expense'; categoryId: string }[]>([]);
   const [planStatus, setPlanStatus] = useState<'draft' | 'frozen'>('draft');
   const [hasFrozenAnyBudget, setHasFrozenAnyBudget] = useState(true); // assume true to avoid flash
@@ -447,6 +450,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           .filter(t => t.payment_method === 'card')
           .reduce((sum, t) => sum + t.amount, 0);
 
+        const userCCPayments = transactions
+          .filter(t => t.transaction_type === 'cc_payment' && t.logged_by === userId)
+          .reduce((sum, t) => sum + t.amount, 0);
+
         const transfersReceived = transactions
           .filter(t => t.transaction_type === 'transfer' && t.transfer_to === userId)
           .reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -465,7 +472,7 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
           ccSpent: userCCSpent,
           totalSpent: userCashSpent + userCCSpent,
           netTransfer,
-          expectedCashBalance: userIncome - userCashSpent + netTransfer,
+          expectedCashBalance: userIncome - userCashSpent - userCCPayments + netTransfer,
         };
       }).sort((a, b) => a.userName.localeCompare(b.userName));
 
@@ -517,7 +524,10 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
   const percentUsed = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
   const unallocated = totalActualIncome - totalPlanned; // AI - PE
   const cashInHand = userBalances.reduce((sum, u) => sum + u.expectedCashBalance, 0);
-  const netPosition = cashInHand - totalCCSpent;
+  const totalCCPayments = currentTransactions
+    .filter(t => t.transaction_type === 'cc_payment')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const netPosition = cashInHand - (totalCCSpent - totalCCPayments);
 
   // Calculate spending velocity metrics based on VARIABLE expenses only (day-to-day spending)
   const totalDaysInMonth = lastDayOfMonth.getDate();
@@ -732,6 +742,18 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               </button>
             )}
 
+            {/* CC Dues Section — tracking mode */}
+            {householdCards.length > 0 && (
+              <CCDuesSection
+                transactions={currentTransactions}
+                cards={householdCards}
+                onPayBill={(cardId, cardName, amount) => {
+                  setCCPaymentPreSelect({ cardId, amount });
+                  setShowCCPayment(true);
+                }}
+              />
+            )}
+
             {/* Spending by Category — top 5 with expand */}
             {trackingCategorySpending.length > 0 && (
               <div className="glass-card p-4">
@@ -805,18 +827,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* CC Dues Section — tracking mode */}
-            {householdCards.length > 0 && (
-              <CCDuesSection
-                transactions={currentTransactions}
-                cards={householdCards}
-                onPayBill={hasOtherMembers ? (cardId, cardName, amount) => {
-                  // Open fund transfer pre-filled — for now just open the modal
-                  setShowFundTransfer(true);
-                } : undefined}
-              />
             )}
 
             {/* Gentle nudge to create budget */}
@@ -1035,6 +1045,17 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             )}
           </div>
 
+          {/* CC Dues Section — frozen mode */}
+          {householdCards.length > 0 && (
+            <CCDuesSection
+              transactions={currentTransactions}
+              cards={householdCards}
+              onPayBill={(cardId, cardName, amount) => {
+                setShowFundTransfer(true);
+              }}
+            />
+          )}
+
           {/* 3a. Variable Categories At-Risk (>=75%) + Uncategorised */}
           {(variableAtRisk.length > 0 || uncategorizedTotal > 0) && (
             <>
@@ -1164,17 +1185,6 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             </>
           )}
 
-          {/* CC Dues Section — frozen mode */}
-          {householdCards.length > 0 && (
-            <CCDuesSection
-              transactions={currentTransactions}
-              cards={householdCards}
-              onPayBill={hasOtherMembers ? (cardId, cardName, amount) => {
-                setShowFundTransfer(true);
-              } : undefined}
-            />
-          )}
-
           {/* No issues */}
           {variableAtRisk.length === 0 && nonVariableOverspent.length === 0 && uncategorizedTotal === 0 && (
             <div className="glass-card p-6 text-center">
@@ -1250,6 +1260,20 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             setShowStatementImport(false);
             handleTransactionAdded();
           }}
+        />
+      )}
+
+      {/* CC Payment Modal */}
+      {showCCPayment && household && (
+        <CCPaymentModal
+          householdId={household.id}
+          currentUserId={currentUserId || ''}
+          householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+          cards={householdCards}
+          preSelectedCardId={ccPaymentPreSelect?.cardId}
+          preFilledAmount={ccPaymentPreSelect?.amount}
+          onClose={() => { setShowCCPayment(false); setCCPaymentPreSelect(null); }}
+          onSuccess={handleTransactionAdded}
         />
       )}
 
