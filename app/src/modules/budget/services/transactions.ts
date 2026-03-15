@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabase';
+import { track } from '../../../lib/analytics';
 import type {
   Transaction,
   TransactionWithDetails,
@@ -83,6 +84,11 @@ export async function createTransaction(
     }
 
     console.log('[createTransaction] Transaction created successfully:', data);
+    track('txn.created', {
+      type: input.transactionType,
+      payment_method: input.paymentMethod,
+      category: input.subCategoryId ?? 'uncategorised',
+    });
     return { success: true, transaction: data as Transaction };
   } catch (e) {
     console.error('[createTransaction] Unexpected error:', e);
@@ -284,6 +290,10 @@ export async function updateTransaction(
       return { success: false, error: 'Failed to update transaction' };
     }
 
+    track('txn.edited', {
+      fields_changed: Object.keys(updates),
+    });
+
     return { success: true, transaction: data as Transaction };
   } catch (e) {
     console.error('updateTransaction error:', e);
@@ -295,7 +305,8 @@ export async function updateTransaction(
  * Delete a transaction
  */
 export async function deleteTransaction(
-  transactionId: string
+  transactionId: string,
+  transactionType?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await supabase
@@ -307,6 +318,8 @@ export async function deleteTransaction(
       console.error('deleteTransaction error:', error);
       return { success: false, error: 'Failed to delete transaction' };
     }
+
+    track('txn.deleted', { type: transactionType ?? 'unknown' });
 
     return { success: true };
   } catch (e) {

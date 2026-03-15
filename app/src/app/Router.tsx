@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import type { ReactNode } from 'react';
 import { useAuth } from './providers/AuthProvider';
 import { getUserHousehold } from '../modules/onboarding/services/onboarding';
+import { useScreenTracking } from '../hooks/useScreenTracking';
 
 // Auth screens
 import { PhoneEntryScreen } from '../modules/auth/components/PhoneEntryScreen';
@@ -145,9 +146,15 @@ function PublicRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function ScreenTracker({ children }: { children: ReactNode }) {
+  useScreenTracking();
+  return <>{children}</>;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <ScreenTracker>
       <Routes>
         {/* Public routes */}
         <Route
@@ -221,6 +228,7 @@ export function AppRouter() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </ScreenTracker>
     </BrowserRouter>
   );
 }

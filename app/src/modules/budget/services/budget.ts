@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabase';
+import { track } from '../../../lib/analytics';
 import type {
   CategoryWithTemplates,
   HouseholdSubCategory,
@@ -354,6 +355,8 @@ export async function upsertMonthlyPlan(
       return { success: false, error: 'Failed to save plan' };
     }
 
+    track('budget.plan_created', { plan_month: planMonth });
+
     return {
       success: true,
       plan: data as MonthlyPlan,
@@ -415,6 +418,8 @@ export async function freezePlan(planId: string): Promise<ServiceResult> {
       console.error('freezePlan error:', error);
       return { success: false, error: 'Failed to freeze plan' };
     }
+
+    track('budget.plan_frozen', { plan_id: planId });
 
     return { success: true };
   } catch (e) {

@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { AUTH_CONFIG } from '../../../config/app.config';
+import { track } from '../../../lib/analytics';
 
 // ============================================
 // Types
@@ -131,6 +132,8 @@ export async function signUpWithPin(phone: string, pin: string): Promise<SignUpR
       // Non-fatal: auth account created, user can proceed
     }
 
+    track('auth.signup', { user_id: data.user.id });
+
     return {
       success: true,
       userId: data.user.id,
@@ -167,6 +170,8 @@ export async function signInWithPin(phone: string, pin: string): Promise<SignInR
       return { success: false, error: 'Login failed. Please try again.' };
     }
 
+    track('auth.login', { user_id: data.user.id });
+
     return {
       success: true,
       userId: data.user.id,
@@ -199,6 +204,8 @@ export async function resetPin(phone: string, newPin: string): Promise<ResetPinR
     if (!result.success) {
       return { success: false, error: result.error || 'Failed to reset PIN.' };
     }
+
+    track('auth.pin_reset');
 
     return { success: true };
   } catch (e) {
@@ -260,6 +267,7 @@ export async function deleteAccount(): Promise<DeleteAccountResult> {
  * Sign out current user
  */
 export async function signOut(): Promise<void> {
+  track('auth.logout');
   await supabase.auth.signOut();
 }
 
