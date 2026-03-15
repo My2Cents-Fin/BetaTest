@@ -116,7 +116,7 @@ export function CCDuesSection({ transactions, cards, householdUsers, currentUser
         <div className="border-t border-[rgba(124,58,237,0.06)] px-4 py-3 space-y-3">
           {/* Member filter */}
           {showMemberFilter && householdUsers && (
-            <div className="flex gap-1.5 mb-1">
+            <div className="flex gap-1.5 mb-3">
               <button
                 onClick={() => setSelectedMember('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${

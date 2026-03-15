@@ -169,7 +169,7 @@ export function AppLayout() {
       />
 
       {/* Profile Panel (shared across all tabs) */}
-      <ProfilePanel isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      <ProfilePanel isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onDataMutated={incrementDataVersion} />
     </div>
   );
 }

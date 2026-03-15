@@ -1018,28 +1018,31 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             </div>
 
             {/* CC Due — only show if there are CC expenses */}
-            {totalCCSpent > 0 && (
-              <>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px]">💳</span>
-                    <span className="text-xs text-[var(--color-text-secondary)]">Credit Card Due</span>
+            {totalCCSpent > 0 && (() => {
+              const ccOutstanding = totalCCSpent - totalCCPayments;
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px]">💳</span>
+                      <span className="text-xs text-[var(--color-text-secondary)]">Credit Card Due</span>
+                    </div>
+                    <span className={`text-sm font-bold ${ccOutstanding > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'}`}>
+                      {ccOutstanding > 0 ? `₹${formatNumber(ccOutstanding)}` : 'Settled'}
+                    </span>
                   </div>
-                  <span className="text-sm font-bold text-[var(--color-warning)]">
-                    ₹{formatNumber(totalCCSpent)}
-                  </span>
-                </div>
 
-                {/* Divider + Net Position */}
-                <div className="border-t border-black/[0.06] my-2" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--color-text-primary)]">Net Position</span>
-                  <span className={`text-lg font-bold ${netPosition >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
-                    {netPosition >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(netPosition))}
-                  </span>
-                </div>
-              </>
-            )}
+                  {/* Divider + Net Position */}
+                  <div className="border-t border-black/[0.06] my-2" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-[var(--color-text-primary)]">Net Position</span>
+                    <span className={`text-lg font-bold ${netPosition >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                      {netPosition >= 0 ? '₹' : '(-) ₹'}{formatNumber(Math.abs(netPosition))}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Subtitle when no CC expenses */}
             {totalCCSpent === 0 && (

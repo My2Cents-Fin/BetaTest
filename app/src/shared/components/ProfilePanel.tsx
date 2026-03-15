@@ -11,6 +11,7 @@ import { CardManagement } from '../../modules/cards/components/CardManagement';
 interface ProfilePanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onDataMutated?: () => void;
 }
 
 // Format phone number as (+91) 8130944414
@@ -26,7 +27,7 @@ function formatPhoneDisplay(phone: string): string {
   return phone;
 }
 
-export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
+export function ProfilePanel({ isOpen, onClose, onDataMutated }: ProfilePanelProps) {
   const { user } = useAuth();
   const { household: hhData } = useHousehold();
   const [household, setHousehold] = useState<HouseholdInfo | null>(null);
@@ -560,6 +561,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
           householdId={household.id}
           isOpen={showCardManagement}
           onClose={() => setShowCardManagement(false)}
+          onCardsChanged={onDataMutated}
         />
       )}
 

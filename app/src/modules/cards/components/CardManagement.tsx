@@ -7,9 +7,10 @@ interface CardManagementProps {
   householdId: string;
   isOpen: boolean;
   onClose: () => void;
+  onCardsChanged?: () => void;
 }
 
-export function CardManagement({ householdId, isOpen, onClose }: CardManagementProps) {
+export function CardManagement({ householdId, isOpen, onClose, onCardsChanged }: CardManagementProps) {
   const [cards, setCards] = useState<HouseholdCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -97,6 +98,7 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
     if (result.success && result.card) {
       setCards(prev => prev.map(c => c.id === editingCard.id ? result.card! : c));
       resetForm();
+      onCardsChanged?.();
     } else {
       setFormError(result.error || 'Failed to update card');
     }
@@ -128,6 +130,7 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
     if (result.success && result.card) {
       setCards(prev => [...prev, result.card!]);
       resetForm();
+      onCardsChanged?.();
     } else {
       setFormError(result.error || 'Failed to add card');
     }
@@ -137,6 +140,7 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
     const result = await toggleCardActive(card.id, !card.is_active);
     if (result.success && result.card) {
       setCards(prev => prev.map(c => c.id === card.id ? result.card! : c));
+      onCardsChanged?.();
     }
   };
 
