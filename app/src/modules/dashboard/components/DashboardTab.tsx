@@ -747,6 +747,8 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
               <CCDuesSection
                 transactions={currentTransactions}
                 cards={householdCards}
+                householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+                currentUserId={currentUserId || undefined}
                 onPayBill={(cardId, cardName, amount) => {
                   setCCPaymentPreSelect({ cardId, amount });
                   setShowCCPayment(true);
@@ -1050,8 +1052,11 @@ export function DashboardTab({ onOpenMenu, quickAddTrigger, fundTransferTrigger,
             <CCDuesSection
               transactions={currentTransactions}
               cards={householdCards}
+              householdUsers={householdUsers.map(u => ({ id: u.id, displayName: u.displayName }))}
+              currentUserId={currentUserId || undefined}
               onPayBill={(cardId, cardName, amount) => {
-                setShowFundTransfer(true);
+                setCCPaymentPreSelect({ cardId, amount });
+                setShowCCPayment(true);
               }}
             />
           )}

@@ -432,7 +432,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="text-left">
                         <span className="text-sm font-semibold text-gray-900">Credit Cards</span>
                         <p className="text-[10px] text-gray-400">Manage your household's credit cards</p>
                       </div>

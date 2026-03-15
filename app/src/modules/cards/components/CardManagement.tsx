@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getHouseholdCards, createCard, toggleCardActive } from '../../budget/services/cards';
+import { getHouseholdCards, createCard, updateCard, toggleCardActive } from '../../budget/services/cards';
 import { formatCardDisplay } from '../../budget/types';
 import type { HouseholdCard } from '../../budget/types';
 
@@ -13,9 +13,10 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
   const [cards, setCards] = useState<HouseholdCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingCard, setEditingCard] = useState<HouseholdCard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Add form state
+  // Add/Edit form state
   const [cardName, setCardName] = useState('');
   const [lastFour, setLastFour] = useState('');
   const [cardOwner, setCardOwner] = useState('');
@@ -32,12 +33,12 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
     }
   }, [isOpen, householdId]);
 
-  // Focus card name input when add form opens
+  // Focus card name input when add/edit form opens
   useEffect(() => {
-    if (showAddForm) {
+    if (showAddForm || editingCard) {
       setTimeout(() => cardNameRef.current?.focus(), 100);
     }
-  }, [showAddForm]);
+  }, [showAddForm, editingCard]);
 
   async function loadCards() {
     setIsLoading(true);
@@ -57,6 +58,48 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
     setIssuer('');
     setFormError(null);
     setShowAddForm(false);
+    setEditingCard(null);
+  };
+
+  const startEdit = (card: HouseholdCard) => {
+    setShowAddForm(false);
+    setEditingCard(card);
+    setCardName(card.card_name);
+    setLastFour(card.last_four_digits);
+    setCardOwner(card.card_owner || '');
+    setIssuer(card.issuer || '');
+    setFormError(null);
+  };
+
+  const handleUpdateCard = async () => {
+    if (!editingCard) return;
+    if (!cardName.trim()) {
+      setFormError('Card name is required');
+      return;
+    }
+    if (lastFour.length !== 4 || !/^\d{4}$/.test(lastFour)) {
+      setFormError('Enter exactly 4 digits');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    const result = await updateCard(editingCard.id, {
+      cardName: cardName.trim(),
+      lastFourDigits: lastFour,
+      cardOwner: cardOwner.trim() || null,
+      issuer: issuer.trim() || null,
+    });
+
+    setIsSubmitting(false);
+
+    if (result.success && result.card) {
+      setCards(prev => prev.map(c => c.id === editingCard.id ? result.card! : c));
+      resetForm();
+    } else {
+      setFormError(result.error || 'Failed to update card');
+    }
   };
 
   const handleAddCard = async () => {
@@ -143,40 +186,117 @@ export function CardManagement({ householdId, isOpen, onClose }: CardManagementP
               ) : (
                 <div className="space-y-2 mb-4">
                   {cards.map(card => (
-                    <div
-                      key={card.id}
-                      className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
-                        card.is_active
-                          ? 'border-[rgba(124,58,237,0.1)] bg-white/60'
-                          : 'border-gray-100 bg-gray-50/60 opacity-60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-lg flex-shrink-0">💳</span>
-                        <div className="min-w-0">
-                          <p className={`text-sm font-medium truncate ${card.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
-                            {card.card_name} <span className="text-gray-400">•••• {card.last_four_digits}</span>
-                          </p>
-                          <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                            {card.card_owner && <span>{card.card_owner}</span>}
-                            {card.card_owner && card.issuer && <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />}
-                            {card.issuer && <span>{card.issuer}</span>}
-                          </div>
+                    editingCard?.id === card.id ? (
+                      /* Edit form inline */
+                      <div key={card.id} className="glass-card p-4 space-y-3 border-2 border-[var(--color-primary)] rounded-xl">
+                        <h3 className="text-sm font-semibold text-gray-900">Edit Card</h3>
+
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Card Name <span className="text-red-400">*</span></label>
+                          <input
+                            ref={cardNameRef}
+                            type="text"
+                            value={cardName}
+                            onChange={(e) => { setCardName(e.target.value); setFormError(null); }}
+                            className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Last 4 Digits <span className="text-red-400">*</span></label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={lastFour}
+                            onChange={(e) => { setLastFour(e.target.value.replace(/\D/g, '').slice(0, 4)); setFormError(null); }}
+                            className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Card Owner</label>
+                          <input
+                            type="text"
+                            value={cardOwner}
+                            onChange={(e) => setCardOwner(e.target.value)}
+                            placeholder="Optional"
+                            className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Bank / Issuer</label>
+                          <input
+                            type="text"
+                            value={issuer}
+                            onChange={(e) => setIssuer(e.target.value)}
+                            placeholder="Optional"
+                            className="w-full px-3 py-2.5 border border-[rgba(124,58,237,0.15)] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white/75 focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
+                          />
+                        </div>
+
+                        {formError && <p className="text-sm text-red-500">{formError}</p>}
+
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={resetForm}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleUpdateCard}
+                            disabled={isSubmitting || !cardName.trim() || lastFour.length !== 4}
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                              isSubmitting || !cardName.trim() || lastFour.length !== 4
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-primary-gradient text-white shadow-[0_4px_16px_rgba(124,58,237,0.3)]'
+                            }`}
+                          >
+                            {isSubmitting ? 'Saving...' : 'Save'}
+                          </button>
                         </div>
                       </div>
-
-                      {/* Active/Inactive toggle */}
+                    ) : (
                       <button
-                        onClick={() => handleToggleActive(card)}
-                        className={`relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0 ml-3 ${
-                          card.is_active ? 'bg-[var(--color-primary)]' : 'bg-gray-200'
+                        key={card.id}
+                        onClick={() => startEdit(card)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-colors text-left ${
+                          card.is_active
+                            ? 'border-[rgba(124,58,237,0.1)] bg-white/60 hover:border-[var(--color-primary)] hover:bg-white/80'
+                            : 'border-gray-100 bg-gray-50/60 opacity-60'
                         }`}
                       >
-                        <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
-                          card.is_active ? 'translate-x-[18px]' : 'translate-x-0'
-                        }`} />
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className="text-lg flex-shrink-0">💳</span>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${card.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+                              {card.card_name} <span className="text-gray-400">•••• {card.last_four_digits}</span>
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                              {card.card_owner && <span>{card.card_owner}</span>}
+                              {card.card_owner && card.issuer && <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />}
+                              {card.issuer && <span>{card.issuer}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Active/Inactive toggle */}
+                        <div
+                          role="switch"
+                          aria-checked={card.is_active}
+                          onClick={(e) => { e.stopPropagation(); handleToggleActive(card); }}
+                          className={`relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0 ml-3 cursor-pointer ${
+                            card.is_active ? 'bg-[var(--color-primary)]' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                            card.is_active ? 'translate-x-[18px]' : 'translate-x-0'
+                          }`} />
+                        </div>
                       </button>
-                    </div>
+                    )
                   ))}
                 </div>
               )}

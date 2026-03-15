@@ -21,14 +21,30 @@ const CARD_COLORS = [
   '#4338CA', // Indigo
 ];
 
+interface HouseholdMember {
+  id: string;
+  displayName: string;
+}
+
 interface CCDuesSectionProps {
   transactions: TransactionWithDetails[];
   cards: HouseholdCard[];
+  householdUsers?: HouseholdMember[];
+  currentUserId?: string;
   onPayBill?: (cardId: string, cardName: string, amount: number) => void;
 }
 
-export function CCDuesSection({ transactions, cards, onPayBill }: CCDuesSectionProps) {
+export function CCDuesSection({ transactions, cards, householdUsers, currentUserId, onPayBill }: CCDuesSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<string>('all');
+
+  const showMemberFilter = (householdUsers?.length ?? 0) > 1;
+
+  // Filter transactions by selected member
+  const filteredTransactions = useMemo(() => {
+    if (selectedMember === 'all') return transactions;
+    return transactions.filter(t => t.logged_by === selectedMember);
+  }, [transactions, selectedMember]);
 
   // Calculate per-card outstanding: CC expenses - CC fund-transfer payments
   const cardDues = useMemo(() => {
@@ -36,12 +52,12 @@ export function CCDuesSection({ transactions, cards, onPayBill }: CCDuesSectionP
 
     for (const card of cards) {
       // CC expenses tagged to this card
-      const expenses = transactions
+      const expenses = filteredTransactions
         .filter(t => t.transaction_type === 'expense' && t.card_id === card.id)
         .reduce((sum, t) => sum + t.amount, 0);
 
       // CC payments (cc_payment transactions tagged to this card)
-      const payments = transactions
+      const payments = filteredTransactions
         .filter(t => t.transaction_type === 'cc_payment' && t.card_id === card.id)
         .reduce((sum, t) => sum + t.amount, 0);
 
@@ -54,14 +70,14 @@ export function CCDuesSection({ transactions, cards, onPayBill }: CCDuesSectionP
 
     // Sort by outstanding (highest first)
     return dues.sort((a, b) => b.outstanding - a.outstanding);
-  }, [transactions, cards]);
+  }, [filteredTransactions, cards]);
 
   // Also include untagged CC expenses (payment_method='card' but no card_id)
   const untaggedCCExpenses = useMemo(() => {
-    return transactions
+    return filteredTransactions
       .filter(t => t.transaction_type === 'expense' && t.payment_method === 'card' && !t.card_id)
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   const totalOutstanding = cardDues.reduce((sum, d) => sum + d.outstanding, 0) + untaggedCCExpenses;
   const maxOutstanding = Math.max(...cardDues.map(d => d.outstanding), untaggedCCExpenses, 1);
@@ -98,6 +114,35 @@ export function CCDuesSection({ transactions, cards, onPayBill }: CCDuesSectionP
       {/* Expanded content */}
       {isExpanded && (
         <div className="border-t border-[rgba(124,58,237,0.06)] px-4 py-3 space-y-3">
+          {/* Member filter */}
+          {showMemberFilter && householdUsers && (
+            <div className="flex gap-1.5 mb-1">
+              <button
+                onClick={() => setSelectedMember('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  selectedMember === 'all'
+                    ? 'bg-primary-gradient text-white shadow-sm'
+                    : 'bg-white/60 text-gray-500 border border-[rgba(124,58,237,0.12)] hover:border-[var(--color-primary)]'
+                }`}
+              >
+                All
+              </button>
+              {householdUsers.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => setSelectedMember(u.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedMember === u.id
+                      ? 'bg-primary-gradient text-white shadow-sm'
+                      : 'bg-white/60 text-gray-500 border border-[rgba(124,58,237,0.12)] hover:border-[var(--color-primary)]'
+                  }`}
+                >
+                  {u.displayName}
+                </button>
+              ))}
+            </div>
+          )}
+
           {cardDues.map((due, idx) => {
             const color = CARD_COLORS[idx % CARD_COLORS.length];
             const barWidth = maxOutstanding > 0 ? Math.max((due.outstanding / maxOutstanding) * 100, 2) : 0;
@@ -174,6 +219,10 @@ export function CCDuesSection({ transactions, cards, onPayBill }: CCDuesSectionP
             <p className="text-[10px] text-gray-400 text-center pt-1">
               Tag expenses to specific cards for per-card tracking
             </p>
+          )}
+
+          {cardDues.length === 0 && untaggedCCExpenses <= 0 && selectedMember !== 'all' && (
+            <p className="text-xs text-gray-400 text-center py-2">No CC activity for this member</p>
           )}
         </div>
       )}

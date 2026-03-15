@@ -119,6 +119,43 @@ export async function createCard(
 }
 
 /**
+ * Update card details (name, last four, owner, issuer)
+ */
+export async function updateCard(
+  cardId: string,
+  updates: { cardName?: string; lastFourDigits?: string; cardOwner?: string | null; issuer?: string | null }
+): Promise<CardResult> {
+  try {
+    const updateData: Record<string, unknown> = {};
+    if (updates.cardName !== undefined) updateData.card_name = updates.cardName.trim();
+    if (updates.lastFourDigits !== undefined) updateData.last_four_digits = updates.lastFourDigits;
+    if (updates.cardOwner !== undefined) updateData.card_owner = updates.cardOwner?.trim() || null;
+    if (updates.issuer !== undefined) updateData.issuer = updates.issuer?.trim() || null;
+
+    const { data, error } = await supabase
+      .from('household_cards')
+      .update(updateData)
+      .eq('id', cardId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return { success: false, error: 'A card with this name and last 4 digits already exists.' };
+      }
+      console.error('updateCard error:', error);
+      return { success: false, error: 'Failed to update card' };
+    }
+
+    track('card.updated', {});
+    return { success: true, card: data as HouseholdCard };
+  } catch (e) {
+    console.error('updateCard error:', e);
+    return { success: false, error: 'Failed to update card' };
+  }
+}
+
+/**
  * Toggle a card's active/inactive status
  */
 export async function toggleCardActive(
