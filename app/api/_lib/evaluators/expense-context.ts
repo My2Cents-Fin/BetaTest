@@ -20,6 +20,7 @@ export interface UserExpenseContext {
   scheduleSlot: string;
   consecutiveDaysWithoutTxn: number; // 0 = has txns today, 1 = none today, 2 = none today+yesterday, etc.
   subCategoryActivities: SubCategoryActivity[];
+  recentTrackBSubCatIds: string[]; // sub-category IDs nudged via Track B in the last 3 days (cooldown)
   dayOfMonth: number;
   dayOfWeek: number; // 0=Sun, 1=Mon, ..., 6=Sat
 }
@@ -104,6 +105,32 @@ export async function buildExpenseContexts(
     }
   }
 
+  // Query 4: Recent Track B notifications in last 3 days (cooldown check)
+  // Prevents nagging about the same sub-category every single day
+  const cooldownDate = new Date();
+  cooldownDate.setDate(cooldownDate.getDate() - 3);
+  const cooldownStr = cooldownDate.toISOString();
+
+  const { data: recentTrackBLogs } = await supabaseAdmin
+    .from('notification_log')
+    .select('user_id, message_data')
+    .eq('notification_type', 'expense_reminder')
+    .eq('status', 'sent')
+    .like('notification_subtype', 'track_b:%')
+    .gte('created_at', cooldownStr)
+    .in('user_id', users.map((u) => u.userId));
+
+  // Build lookup: userId → Set of sub-category IDs recently nudged
+  const recentTrackBMap = new Map<string, Set<string>>();
+  for (const log of recentTrackBLogs || []) {
+    const subCatId = (log.message_data as Record<string, unknown>)?.subCategoryId as string | undefined;
+    if (subCatId) {
+      const set = recentTrackBMap.get(log.user_id) || new Set();
+      set.add(subCatId);
+      recentTrackBMap.set(log.user_id, set);
+    }
+  }
+
   // Build contexts
   return users.map((u) => {
     // Calculate consecutive days without transactions
@@ -155,6 +182,7 @@ export async function buildExpenseContexts(
       scheduleSlot,
       consecutiveDaysWithoutTxn: consecutiveDays,
       subCategoryActivities: activities,
+      recentTrackBSubCatIds: [...(recentTrackBMap.get(u.userId) || [])],
       dayOfMonth: today.dayOfMonth,
       dayOfWeek: today.dayOfWeek,
     };
