@@ -725,7 +725,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                 </div>
                 <div className="text-left">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Actual Income</p>
-                  <p className="text-base font-bold text-[var(--color-success)]">₹{formatNumber(totalIncome)}</p>
+                  <p className="text-base font-bold text-[var(--color-success)]">₹{formatNumber(totalIncome, { showDecimals: true })}</p>
                 </div>
               </div>
               <div className="flex items-center justify-center gap-3">
@@ -736,7 +736,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                 </div>
                 <div className="text-left">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Actual Expenses</p>
-                  <p className="text-base font-bold text-[var(--color-danger)]">₹{formatNumber(totalSpent)}</p>
+                  <p className="text-base font-bold text-[var(--color-danger)]">₹{formatNumber(totalSpent, { showDecimals: true })}</p>
                 </div>
               </div>
             </div>
@@ -809,7 +809,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                   </svg>
                   <h3 className="text-sm font-medium text-[var(--color-text-primary)]">{group.label}</h3>
                   <span className="text-xs text-[var(--color-text-secondary)] ml-auto">
-                    {group.transactions.length} txn{group.transactions.length !== 1 ? 's' : ''} · ₹{formatNumber(groupTotal)}
+                    {group.transactions.length} txn{group.transactions.length !== 1 ? 's' : ''} · ₹{formatNumber(groupTotal, { showDecimals: true })}
                   </span>
                 </button>
 
@@ -864,7 +864,7 @@ export function TransactionsTab({ quickAddTrigger, fundTransferTrigger, onFundTr
                           txn.transaction_type === 'cc_payment' ? 'text-amber-600' :
                           txn.transaction_type === 'income' ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          {txn.transaction_type === 'income' ? '+' : txn.transaction_type === 'transfer' ? '→ ' : txn.transaction_type === 'cc_payment' ? '💳 ' : '-'}₹{formatNumber(txn.amount)}
+                          {txn.transaction_type === 'income' ? '+' : txn.transaction_type === 'transfer' ? '→ ' : txn.transaction_type === 'cc_payment' ? '💳 ' : '-'}₹{formatNumber(txn.amount, { showDecimals: true })}
                         </p>
                       </div>
 

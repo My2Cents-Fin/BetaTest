@@ -96,19 +96,22 @@ export function BudgetInterstitial({
   }, [totalIncome]);
 
   const handleAmountChange = (raw: string) => {
-    const cleaned = raw.replace(/[^0-9]/g, '');
-    if (cleaned === '') {
+    let cleaned = raw.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
+    if (parts.length === 2 && parts[1].length > 2) cleaned = parts[0] + '.' + parts[1].slice(0, 2);
+    if (cleaned === '' || cleaned === '.') {
       setAmount('');
       setDisplayValue('');
       return;
     }
-    const num = parseInt(cleaned, 10);
+    const num = parseFloat(cleaned);
     setAmount(String(num));
-    setDisplayValue(num.toLocaleString('en-IN'));
+    setDisplayValue(cleaned.includes('.') ? cleaned : num.toLocaleString('en-IN'));
   };
 
   const handleRecordIncome = async () => {
-    const numAmount = parseInt(amount, 10);
+    const numAmount = parseFloat(amount);
     if (!numAmount || numAmount <= 0) {
       setError('Please enter your income amount');
       return;
@@ -193,7 +196,7 @@ export function BudgetInterstitial({
               <input
                 ref={amountInputRef}
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 value={displayValue}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 placeholder="0"

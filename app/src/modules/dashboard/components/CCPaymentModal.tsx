@@ -59,7 +59,10 @@ export function CCPaymentModal({
   const selectedCard = cards.find(c => c.id === selectedCardId);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
+    let raw = e.target.value.replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+    if (parts.length === 2 && parts[1].length > 2) raw = parts[0] + '.' + parts[1].slice(0, 2);
     setAmount(raw);
     setError(null);
   };
@@ -72,7 +75,7 @@ export function CCPaymentModal({
   };
 
   const handleSubmit = async () => {
-    const numAmount = parseInt(amount, 10) || 0;
+    const numAmount = parseFloat(amount) || 0;
 
     if (numAmount <= 0) {
       setError('Enter amount');
@@ -208,8 +211,8 @@ export function CCPaymentModal({
             <input
               ref={amountInputRef}
               type="text"
-              inputMode="numeric"
-              value={amount ? formatNumber(parseInt(amount, 10)) : ''}
+              inputMode="decimal"
+              value={amount ? (amount.includes('.') ? amount : formatNumber(parseFloat(amount), { showDecimals: true })) : ''}
               onChange={handleAmountChange}
               onKeyDown={handleKeyDown}
               placeholder="0"

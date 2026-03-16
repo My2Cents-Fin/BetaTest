@@ -113,8 +113,11 @@ export function BudgetItem({ item, index, onSave, onDelete, onRename, indented =
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
-    const numValue = parseInt(raw, 10) || 0;
+    let raw = e.target.value.replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+    if (parts.length === 2 && parts[1].length > 2) raw = parts[0] + '.' + parts[1].slice(0, 2);
+    const numValue = parseFloat(raw) || 0;
     setEditAmount(numValue);
     setDisplayValue(raw);
   };
@@ -206,7 +209,7 @@ export function BudgetItem({ item, index, onSave, onDelete, onRename, indented =
                 <input
                   ref={inputRef}
                   type="text"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   value={displayValue}
                   onChange={handleAmountChange}
                   onBlur={handleBlur}

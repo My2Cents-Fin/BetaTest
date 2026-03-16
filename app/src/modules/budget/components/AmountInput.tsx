@@ -52,12 +52,19 @@ export function AmountInput({
     }
   }, [isEditingName]);
 
-  // Handle amount input
+  // Handle amount input — allow up to 2 decimal places
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
-    const numValue = parseInt(raw, 10) || 0;
+    let raw = e.target.value.replace(/[^0-9.]/g, '');
+    // Only allow one decimal point
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+    // Limit to 2 decimal places
+    if (parts.length === 2 && parts[1].length > 2) {
+      raw = parts[0] + '.' + parts[1].slice(0, 2);
+    }
 
-    setDisplayValue(raw ? formatNumber(numValue) : '');
+    const numValue = parseFloat(raw) || 0;
+    setDisplayValue(raw ? (raw.endsWith('.') || raw.endsWith('.0') || raw.endsWith('.00') ? raw : formatNumber(numValue, { showDecimals: true })) : '');
     onAmountChange(numValue);
   };
 
@@ -138,7 +145,7 @@ export function AmountInput({
         <input
           ref={inputRef}
           type="text"
-          inputMode="numeric"
+          inputMode="decimal"
           value={displayValue}
           onChange={handleAmountChange}
           onFocus={handleFocus}
@@ -207,29 +214,50 @@ export function AmountInput({
 }
 
 /**
- * Format number with Indian comma separators (lakhs/crores)
- * All numbers are rounded UP to the next integer
+ * Format integer part with Indian comma separators (lakhs/crores)
  */
-export function formatNumber(num: number): string {
-  // Round UP to next integer
-  const rounded = Math.ceil(num);
-  const integerPart = rounded.toString();
-  const len = integerPart.length;
+function formatIndianCommas(intStr: string): string {
+  const len = intStr.length;
+  if (len <= 3) return intStr;
 
-  if (len <= 3) {
-    return integerPart;
-  }
+  let result = intStr.slice(-3);
+  let rem = intStr.slice(0, -3);
 
-  let result = integerPart.slice(-3);
-  let remaining = integerPart.slice(0, -3);
-
-  while (remaining.length > 0) {
-    const chunk = remaining.slice(-2);
+  while (rem.length > 0) {
+    const chunk = rem.slice(-2);
     result = chunk + ',' + result;
-    remaining = remaining.slice(0, -2);
+    rem = rem.slice(0, -2);
   }
 
   return result;
+}
+
+/**
+ * Format number with Indian comma separators (lakhs/crores)
+ * - Default: truncates decimals (no rounding up or down)
+ * - showDecimals: true → shows up to 2 decimal digits (truncated, not rounded)
+ */
+export function formatNumber(num: number, options?: { showDecimals?: boolean }): string {
+  const showDecimals = options?.showDecimals ?? false;
+
+  // Truncate (never round) to integer or 2 decimal places
+  const truncated = showDecimals
+    ? Math.trunc(num * 100) / 100
+    : Math.trunc(num);
+
+  const abs = Math.abs(truncated);
+  const intPart = Math.trunc(abs).toString();
+  const formatted = formatIndianCommas(intPart);
+
+  if (showDecimals) {
+    const decimalVal = abs - Math.trunc(abs);
+    if (decimalVal > 0.001) { // floating point tolerance
+      const decStr = abs.toFixed(2).split('.')[1].replace(/0+$/, '');
+      return formatted + '.' + decStr;
+    }
+  }
+
+  return formatted;
 }
 
 /**

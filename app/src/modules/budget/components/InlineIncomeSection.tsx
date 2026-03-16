@@ -140,8 +140,11 @@ export function InlineIncomeSection({
   };
 
   const handleEditAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
-    const numValue = parseInt(raw, 10) || 0;
+    let raw = e.target.value.replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+    if (parts.length === 2 && parts[1].length > 2) raw = parts[0] + '.' + parts[1].slice(0, 2);
+    const numValue = parseFloat(raw) || 0;
     setEditAmount(numValue);
     setEditDisplayValue(raw);
   };
@@ -314,14 +317,17 @@ export function InlineIncomeSection({
 
   // Step 2: Amount changed
   const handleAddAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
+    let raw = e.target.value.replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+    if (parts.length === 2 && parts[1].length > 2) raw = parts[0] + '.' + parts[1].slice(0, 2);
     setAddAmount(raw);
     setAddDisplayAmount(raw);
   };
 
   // Step 2: Save — create the transaction
   const handleAddSave = async () => {
-    const numAmount = parseInt(addAmount, 10);
+    const numAmount = parseFloat(addAmount);
     if (!numAmount || numAmount <= 0) {
       setAddError('Enter an amount');
       return;
@@ -483,7 +489,7 @@ export function InlineIncomeSection({
                         <input
                           ref={editInputRef}
                           type="text"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           value={editDisplayValue}
                           onChange={handleEditAmountChange}
                           onBlur={handleEditBlur}
@@ -631,7 +637,7 @@ export function InlineIncomeSection({
                       <input
                         ref={amountInputRef}
                         type="text"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         value={addDisplayAmount}
                         onChange={handleAddAmountChange}
                         onBlur={handleAmountBlur}

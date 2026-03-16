@@ -16,9 +16,9 @@ export function ExpenseSelectionScreen() {
   const incomeAllocations = location.state?.incomeAllocations || {};
   const totalMonthlyIncome = location.state?.totalMonthlyIncome || 0;
 
-  // Format number with Indian comma separators (round UP to next integer)
+  // Format number with Indian comma separators (truncate decimals, no rounding)
   const formatNumber = (num: number): string => {
-    const str = Math.ceil(num).toString();
+    const str = Math.trunc(num).toString();
     if (str.length <= 3) return str;
     let result = str.slice(-3);
     let remaining = str.slice(0, -3);
