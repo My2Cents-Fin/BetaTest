@@ -3,53 +3,79 @@
 > **This file is the source of truth for project progress.** Read it at the start of every session. Update it at the end of every session and at regular intervals during long sessions. This is non-negotiable.
 
 ## Last Updated
-2026-03-13
+2026-03-16
 
 ## Last Session Summary
-**Session 55-56: Prod Deploy + Smart Pre-fill + Interstitial Redesign**
+**Session 59: Decimal Amount Support + Notification Fix**
 
 ### What Was Done
 
-#### Deployed Sessions 47-54 to Production ✅
-- Committed all Track-to-Plan Phase 2 work (17 files, +1392/-303 lines)
-- Merged `claude/main-usJxC` → `main`, pushed to origin → Vercel auto-deploy
-- Commit: `44e8be7` — "Track-to-Plan Phase 2: Budget interstitial, expense pre-fill, relaxed freeze"
-- No DB migrations needed, no impact on existing users
+#### Decimal Amount Support ✅
+- `formatNumber()` rewritten: `Math.ceil` → `Math.trunc` (no rounding), added `{ showDecimals: true }` option
+- All 7 amount input fields now accept up to 2 decimal places (regex: `/[^0-9.]/g`, `parseFloat`)
+- `inputMode="decimal"` on all amount inputs (shows `.` key on mobile keyboard)
+- **Budget tab + Dashboard**: truncate decimals (no rounding) — `formatNumber(x)` default
+- **Transaction list**: show decimals — `formatNumber(x, { showDecimals: true })`
+- Files changed: AmountInput.tsx, BudgetItem.tsx, QuickAddTransaction.tsx, CCPaymentModal.tsx, FundTransferModal.tsx, BudgetInterstitial.tsx, InlineIncomeSection.tsx, ExpenseSelectionScreen.tsx, TransactionsTab.tsx
 
-#### Built: Smart Pre-fill (3-Tier Lookback) ✅
-- Replaced single-month pre-fill with intelligent 6-month lookback
-- **Tier 1 (Budget history):** Avg of planned amounts from frozen months → rounded up to ₹1,000
-- **Tier 2 (Transaction history):** Avg of monthly expense totals (no prior budgets) → rounded up to ₹1,000
-- **Tier 3 (Current month only):** Current month actuals → rounded up to ₹1,000
-- New `getSmartPreFillAmounts()` in `budget.ts` — 4 parallel Supabase queries
-- Applied to ALL "start fresh" paths (not just interstitial)
+#### Notification Fix: Track B Spam ✅
+- **Problem**: Track B (sub-category nudge "Bills Pot expenses: 42 days ago") was firing every slot (3x/day), every day — drowning out regular expense reminders
+- **Fix 1**: Track B now only fires in **morning slot**; afternoon/night always get Track A (regular reminders)
+- **Fix 2**: 3-day cooldown per sub-category — if a sub-cat was nudged via Track B in last 3 days, skip it and try next candidate or fall through to Track A
+- Context builder (`expense-context.ts`) queries `notification_log` for recent Track B sends
+- Files changed: expense-reminder.ts, expense-context.ts
 
-#### Redesigned: Budget Interstitial (Option B — Radio Choice Screen) ✅
-- **Two-phase flow:** Phase 1 = income entry (if needed) → Phase 2 = choice screen
-- **Choice screen with radio selection:**
-  - Suggestions from history (smart pre-fill) — default when history exists
-  - Clone from [month dropdown] — only shows when frozen plans exist
-  - Start blank — always available
-- Single "Let's go" CTA after selecting choice
-- Income shown as pill/badge ("💰 ₹1,20,000 earned")
-- Heading changed to "Plan [Month] budget" (action-oriented)
-- Variant B transitions to same choice screen after recording income
+### Deployed to Production ✅
+- `af389be` — Decimal amount support (9 files, +103/-54 lines)
+- `eb0014b` — Notification Track B fix (2 files, +71/-38 lines)
+
+### Previous Session Summary
+**Session 57-58: Credit Card Management + CC Bill Payments + UI Fixes**
+
+#### Credit Card Management ✅
+- New `household_cards` table with RLS (migration `018_household_cards.sql`)
+- Full CRUD: add, edit (inline on click), toggle active/inactive
+- Card management accessible from Profile panel
+- `onCardsChanged` → `onDataMutated` → `incrementDataVersion` callback chain refreshes all tabs when cards are edited
+
+#### CC Bill Payment Feature ✅
+- New `cc_payment` transaction type (migration `019_cc_payment_type.sql`)
+- `CCPaymentModal` — create + edit mode (card selector, paid-by dropdown, amount, date, remarks)
+- "Pay Bill" button on CC Dues dashboard card (pre-fills card + outstanding amount)
+- CC payments reduce outstanding balance in Cash Position and CC Dues sections
+
+#### CC Dues Dashboard Section ✅
+- `CCDuesSection` — per-card outstanding = expenses - payments, color-coded bars
+- Member filter pills (All / member names) — hidden for single-member households
+- Untagged CC expenses shown separately
+- Shown in both tracking and frozen dashboard modes
+
+#### Transaction List: CC Payment Edit Support ✅
+- Clicking a `cc_payment` transaction opens `CCPaymentModal` in edit mode (not the expense edit modal)
+- Cards loaded in parallel with transaction data
+
+#### UI Fixes (multiple rounds from user testing) ✅
+- Select dropdown padding (`pr-8`) in CC Payment modal
+- "Paid By" changed from toggle buttons to dropdown, preselects logged-in user
+- Card data refreshes across all touchpoints after card edit (dataVersion pattern)
+- Increased padding between member filter pills and first card in CC Dues
+- Filter panel fixed to stay associated with icon on scroll (sticky headers + portal dropdown)
+- Cash Position CC Due now shows `totalCCSpent - totalCCPayments` (was showing just totalCCSpent)
+- Sticky header transparency fix — solid background so content doesn't show through
+
+#### Deployed to Production ✅
+- 6 commits merged from `claude/main-usJxC` → `main`
+- Migrations `018_household_cards.sql` and `019_cc_payment_type.sql` run on PROD
 
 #### Fixed: Gap 1 — BudgetEmptyState "Start planning" now uses smart pre-fill ✅
 - `handleFreshBudget` upgraded from zeroes → smart pre-fill with fallback to zeroes
-- Both entry points (Dashboard "Plan Now" and Budget Tab direct) now offer smart pre-fill
 
 #### Fixed: Gap 2 — Clone option available from interstitial ✅
 - Interstitial loads frozen months via `getPlannedMonths()`
 - Clone radio option with month dropdown (single month = no dropdown)
 
-### Files Changed
-- `BudgetInterstitial.tsx` — Full rewrite: 2-phase flow, radio choice UI, clone integration
-- `BudgetTab.tsx` — New handlers (`handleInterstitialSuggestions`, `handleInterstitialClone`, `handleInterstitialBlank`), `handleFreshBudget` upgraded to smart pre-fill
-- `budget.ts` — New `getSmartPreFillAmounts()` function (~120 lines)
-
 ### Status
-- Sessions 47-54 deployed to prod ✅
+- Sessions 47-58 deployed to prod ✅
 - Smart pre-fill + interstitial redesign on `claude/main-usJxC` branch, **uncommitted, needs rigorous testing**
 
 ### ⚠️ Testing Required — Smart Pre-fill + Interstitial Redesign
@@ -78,29 +104,24 @@ This feature touches multiple entry points and user scenarios. Must test ALL com
 - [ ] User who skipped months (e.g., planned Feb, skipped Mar, now Apr)
 - [ ] Amounts are rounded up to nearest ₹1,000
 
-**Regression tests:**
-- [ ] "Plan first" user: frozen plan → view mode still works
-- [ ] Month navigation between frozen/unfrozen months
-- [ ] Clone + freeze + unfreeze cycle
-- [ ] Income recording from interstitial Variant B
-
 ### Open Items (Discussion Needed)
 1. **Custom income categories** — Inline creation only works for expense subcats, not income
 2. **Category/subcategory grouping** — Better taxonomy than 9 system categories?
 3. **Additional data points** — What other metrics add value beyond current?
-4. **Regression testing** — Full test of "plan first" mode to ensure nothing broke
 
 ### Remaining Work
-- User-test interstitial redesign + smart pre-fill, then commit + merge to `main`
-- Address discussion items 1-4 above
-- **Notification Engine (paused):**
-  - Phase 3: Expense Logging Reminders
-  - Phase 4: Release Updates + Preferences UI
-  - Phase 5: Scale + Polish
+- **Notification Engine:**
+  - Expense reminders: ✅ deployed, Track B spam fixed
+  - Budget reminders: ✅ deployed
+  - Cross-txn alerts: ✅ deployed
+  - Remaining: Release Updates + Preferences UI + Quiet hours enforcement
+- **Next session:** Set up Postgres analytics
 
 ---
 
 ### Previous Session Summary
+**Session 55-56:** Prod deploy of Track-to-Plan Phase 2. Smart Pre-fill (3-tier lookback). Budget Interstitial redesign (Option B — radio choice screen).
+
 **Session 53-54:** Budget Interstitial build (Variant A/B), Expense Pre-fill from transaction history, Relaxed Freeze Validation (soft modals instead of inline warnings), shared executeFreezeplan(). All user-tested and confirmed working.
 
 **Session 52:** Interstitial design finalized (all 7 decisions confirmed). Income deletion bug fix (fresh + clone flows).
@@ -703,6 +724,14 @@ Applied a comprehensive "dreamy glass" design language across the entire My2cent
 - [x] Icons added to modal field labels (📁, 📅, 📝)
 - [x] Changed "Date" to "Date of Payment"
 
+### Credit Card Management & Payments
+- [x] **Card Management** — `household_cards` table, add/edit/toggle in ProfilePanel, inline edit on card click
+- [x] **CC Bill Payments** — `cc_payment` transaction type, `CCPaymentModal` (create + edit), "Pay Bill" from dashboard
+- [x] **CC Dues Dashboard** — `CCDuesSection` per-card outstanding bars, member filter pills, untagged expenses
+- [x] **CC Payment editing** — Click cc_payment in TransactionsTab opens CCPaymentModal in edit mode
+- [x] **Cross-component refresh** — Card edits propagate via `onCardsChanged` → `onDataMutated` → `incrementDataVersion`
+- [x] **Migrations:** `018_household_cards.sql`, `019_cc_payment_type.sql` — run on both DEV and PROD
+
 ### Production Deployment
 - [x] **Deployed to Vercel** → https://beta-test-five.vercel.app
 - [x] Configured Vercel environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
@@ -814,6 +843,7 @@ Each journey becomes its own file: `finny-user-journey-{feature-area}.md`
 
 | Date | What was done |
 |------|---------------|
+| 2026-03-16 | **Session 57-58 (CC card management + CC bill payments + UI fixes):** Built complete credit card management feature: `household_cards` table (migration 018), CRUD in ProfilePanel with inline edit on click, toggle active/inactive. Built CC bill payment: new `cc_payment` transaction type (migration 019), `CCPaymentModal` with create + edit mode, "Pay Bill" button on dashboard CC Dues card. Built `CCDuesSection` with per-card outstanding bars, member filter pills, untagged CC expenses. Fixed 10+ UI issues across multiple testing rounds: dropdown padding, paid-by as dropdown, card data refresh via dataVersion pattern, filter panel scroll fix (sticky headers + portal), Cash Position CC outstanding calculation, sticky header transparency. Added CC payment edit support in TransactionsTab (routes to CCPaymentModal instead of expense edit modal). Deployed 6 commits to production (14 files, +1560/-69 lines). Migrations run on PROD. |
 | 2026-03-01 | **Session 40 (Notifications use case definition):** Pure product design session — no code changes. Defined 5 notification types (Release Updates, Expense Logging Reminders, Budget Creation Reminders, Add to Homescreen, Tutorials). Fully defined Release Updates: in-app "What's New" swipeable carousel + push to pull back inactive users, content in Supabase table. Fully defined Expense Logging Reminders: Duolingo-style gamified approach with Track A (zero txns today, escalating across days) and Track B (contextual nudges, max 2-3/day). Wrote custom sassy hook+action messages for all ~30 predefined sub-categories with specific triggers/frequencies. Generic messages for custom sub-cats. Created `docs/Finny-Foundation-Pillar/finny-user-journey-notifications.md`. Remaining: Budget Creation Reminders (#3), Add to Homescreen (#4), Tutorials (#5), architecture design. |
 | 2026-03-01 | **Session 39 (Bug fix + deploy):** Fixed stale QuickAdd categories — sub-categories weren't refreshing when modal opened, causing newly created sub-categories to be missing. Added useEffect on all 3 tabs to refresh from DB when QuickAdd opens. Removed destructive orphan cleanup in BudgetTab.loadEditData() that permanently deleted expense sub-categories from household_sub_categories based on a single month's missing allocations (data loss bug). Also deployed Session 38 perf optimizations (query waterfall elimination). Modified: BudgetTab.tsx, DashboardTab.tsx, TransactionsTab.tsx. Deployed to prod (commit `7fc812f`). |
 | 2026-02-28 | **Session 38 (Performance Optimization Phases 1-3, 5):** App was taking 7-8s to load with 35-40 Supabase queries per session. Created HouseholdProvider that loads household data once and caches for all tabs (~20 queries eliminated). Updated DashboardTab, BudgetTab, TransactionsTab, ProfilePanel, BudgetProvider to use useHousehold() context. Parallelized AuthProvider onboarding check (Promise.all). Added optional `providedUserMap` param to getTransactions(), getActualIncomeForMonth(), getBudgetViewData() — skips nested user lookups when map provided. Parallelized getHouseholdSubCategories() and getCategoryList() in budget.ts. New: HouseholdProvider.tsx. Modified: App.tsx, AuthProvider.tsx, BudgetProvider.tsx, DashboardTab.tsx, BudgetTab.tsx, TransactionsTab.tsx, ProfilePanel.tsx, transactions.ts, budget.ts. TypeScript passes clean. Phase 4 (tab-level caching) deferred. Not yet deployed — needs browser testing. |
